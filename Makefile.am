@@ -1,4 +1,4 @@
-## Process this file with automake or autoreconf to produce Makefile.in
+AUTOMAKE_OPTIONS = foreign
 
 if WITH_UNIX
   lib_LTLIBRARIES = libclib.la
