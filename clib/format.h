@@ -195,6 +195,16 @@ unformat_peek_input (unformat_input_t * input)
   return c;
 }
 
+/* Skip current input line. */
+static inline void unformat_skip_line (unformat_input_t * i)
+{
+  uword c;
+
+  while ((c = unformat_get_input (i)) != UNFORMAT_END_OF_INPUT
+	 && c != '\n')
+    ;
+}
+
 /* Unformat function. */
 typedef uword (unformat_function_t) (unformat_input_t * input, va_list * args);
 

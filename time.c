@@ -88,7 +88,7 @@ static f64 clock_frequency_from_proc_filesystem (void)
 	  break;
 	}
       else
-	unformat (&input, "%s\n", 0);
+	unformat_skip_line (&input);
     }
 
   unformat_free (&input);
