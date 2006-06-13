@@ -81,7 +81,7 @@ clib_byte_swap_64 (u64 x)
 #undef _
 
 #define _(sex,n_bits)						\
-/* SEX -> HOST */						\
+/* HOST -> SEX */						\
 static always_inline u##n_bits					\
 clib_host_to_##sex##_##n_bits (u##n_bits x)			\
 {								\
@@ -91,31 +91,31 @@ clib_host_to_##sex##_##n_bits (u##n_bits x)			\
 }								\
 								\
 static always_inline u##n_bits					\
-clib_host_to_##sex##_mem##n_bits (u##n_bits * x)		\
+clib_host_to_##sex##_mem_##n_bits (u##n_bits * x)		\
 {								\
   u##n_bits v = x[0];						\
   return clib_host_to_##sex##_##n_bits (v);			\
 }								\
 								\
 static always_inline u##n_bits					\
-clib_host_to_##sex##_unaligned_mem##n_bits (u##n_bits * x)	\
+clib_host_to_##sex##_unaligned_mem_##n_bits (u##n_bits * x)	\
 {								\
   u##n_bits v = clib_mem_unaligned (x, u##n_bits);		\
   return clib_host_to_##sex##_##n_bits (v);			\
 }								\
 								\
-/* HOST -> SEX */						\
+/* SEX -> HOST */						\
 static always_inline u##n_bits					\
 clib_##sex##_to_host_##n_bits (u##n_bits x)			\
 { return clib_host_to_##sex##_##n_bits (x); }			\
 								\
 static always_inline u##n_bits					\
 clib_##sex##_to_host_mem_##n_bits (u##n_bits * x)		\
-{ return clib_host_to_##sex##_mem##n_bits (x); }		\
+{ return clib_host_to_##sex##_mem_##n_bits (x); }		\
 								\
 static always_inline u##n_bits					\
 clib_##sex##_to_host_unaligned_mem_##n_bits (u##n_bits * x)	\
-{ return clib_host_to_##sex##_unaligned_mem##n_bits (x); }
+{ return clib_host_to_##sex##_unaligned_mem_##n_bits (x); }
 
 _ (little, 16)
 _ (little, 32)
