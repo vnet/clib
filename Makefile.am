@@ -81,6 +81,7 @@ CORE_UNIT_TEST_SOURCES = \
 
 nobase_include_HEADERS = \
     clib/asm_mips.h \
+    clib/asm_x86.h \
     clib/bitmap.h \
     clib/bitops.h \
     clib/byte_order.h \
@@ -123,6 +124,7 @@ nobase_include_HEADERS = \
     clib/zvec.h
 
 CLIB_CORE = \
+  asm_x86.c \
   backtrace.c \
   elog.c \
   error.c \

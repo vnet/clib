@@ -71,7 +71,8 @@ LIBRARIES = $(lib_LIBRARIES)
 ARFLAGS = cru
 libclibkernel_a_AR = $(AR) $(ARFLAGS)
 libclibkernel_a_LIBADD =
-am__objects_1 = libclibkernel_a-backtrace.$(OBJEXT) \
+am__objects_1 = libclibkernel_a-asm_x86.$(OBJEXT) \
+	libclibkernel_a-backtrace.$(OBJEXT) \
 	libclibkernel_a-elog.$(OBJEXT) libclibkernel_a-error.$(OBJEXT) \
 	libclibkernel_a-fifo.$(OBJEXT) \
 	libclibkernel_a-format.$(OBJEXT) \
@@ -107,7 +108,8 @@ am_libclibkernel_a_OBJECTS = $(am__objects_1) $(am__objects_2) \
 libclibkernel_a_OBJECTS = $(am_libclibkernel_a_OBJECTS)
 libclibstandalone_a_AR = $(AR) $(ARFLAGS)
 libclibstandalone_a_LIBADD =
-am__objects_3 = libclibstandalone_a-backtrace.$(OBJEXT) \
+am__objects_3 = libclibstandalone_a-asm_x86.$(OBJEXT) \
+	libclibstandalone_a-backtrace.$(OBJEXT) \
 	libclibstandalone_a-elog.$(OBJEXT) \
 	libclibstandalone_a-error.$(OBJEXT) \
 	libclibstandalone_a-fifo.$(OBJEXT) \
@@ -147,10 +149,11 @@ libclibstandalone_a_OBJECTS = $(am_libclibstandalone_a_OBJECTS)
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libclib_la_LIBADD =
-am__objects_5 = backtrace.lo elog.lo error.lo fifo.lo format.lo \
-	hash.lo heap.lo longjmp.lo mheap.lo md5.lo mem_mheap.lo \
-	phash.lo random.lo random_buffer.lo random_isaac.lo \
-	serialize.lo std-formats.lo time.lo unformat.lo vec.lo zvec.lo
+am__objects_5 = asm_x86.lo backtrace.lo elog.lo error.lo fifo.lo \
+	format.lo hash.lo heap.lo longjmp.lo mheap.lo md5.lo \
+	mem_mheap.lo phash.lo random.lo random_buffer.lo \
+	random_isaac.lo serialize.lo std-formats.lo time.lo \
+	unformat.lo vec.lo zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) mem_malloc.lo socket.lo \
 	timer.lo unix-formats.lo unix-misc.lo
 libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
@@ -420,6 +423,7 @@ CORE_UNIT_TEST_SOURCES = \
 
 nobase_include_HEADERS = \
     clib/asm_mips.h \
+    clib/asm_x86.h \
     clib/bitmap.h \
     clib/bitops.h \
     clib/byte_order.h \
@@ -462,6 +466,7 @@ nobase_include_HEADERS = \
     clib/zvec.h
 
 CLIB_CORE = \
+  asm_x86.c \
   backtrace.c \
   elog.c \
   error.c \
@@ -700,6 +705,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asm_x86.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/backtrace.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elog.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/error.Plo@am__quote@
@@ -707,6 +713,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/format.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/heap.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-asm_x86.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-backtrace.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-error.Po@am__quote@
@@ -741,6 +748,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-unformat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-zvec.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-asm_x86.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-backtrace.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-error.Po@am__quote@
@@ -849,6 +857,20 @@ libclibstandalone_a-longjmp.obj: longjmp.S
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+libclibkernel_a-asm_x86.o: asm_x86.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-asm_x86.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-asm_x86.Tpo" -c -o libclibkernel_a-asm_x86.o `test -f 'asm_x86.c' || echo '$(srcdir)/'`asm_x86.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-asm_x86.Tpo" "$(DEPDIR)/libclibkernel_a-asm_x86.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-asm_x86.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='asm_x86.c' object='libclibkernel_a-asm_x86.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-asm_x86.o `test -f 'asm_x86.c' || echo '$(srcdir)/'`asm_x86.c
+
+libclibkernel_a-asm_x86.obj: asm_x86.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-asm_x86.obj -MD -MP -MF "$(DEPDIR)/libclibkernel_a-asm_x86.Tpo" -c -o libclibkernel_a-asm_x86.obj `if test -f 'asm_x86.c'; then $(CYGPATH_W) 'asm_x86.c'; else $(CYGPATH_W) '$(srcdir)/asm_x86.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-asm_x86.Tpo" "$(DEPDIR)/libclibkernel_a-asm_x86.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-asm_x86.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='asm_x86.c' object='libclibkernel_a-asm_x86.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-asm_x86.obj `if test -f 'asm_x86.c'; then $(CYGPATH_W) 'asm_x86.c'; else $(CYGPATH_W) '$(srcdir)/asm_x86.c'; fi`
 
 libclibkernel_a-backtrace.o: backtrace.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-backtrace.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-backtrace.Tpo" -c -o libclibkernel_a-backtrace.o `test -f 'backtrace.c' || echo '$(srcdir)/'`backtrace.c; \
@@ -1325,6 +1347,20 @@ libclibkernel_a-standalone_string.obj: standalone_string.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='standalone_string.c' object='libclibkernel_a-standalone_string.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-standalone_string.obj `if test -f 'standalone_string.c'; then $(CYGPATH_W) 'standalone_string.c'; else $(CYGPATH_W) '$(srcdir)/standalone_string.c'; fi`
+
+libclibstandalone_a-asm_x86.o: asm_x86.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-asm_x86.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-asm_x86.Tpo" -c -o libclibstandalone_a-asm_x86.o `test -f 'asm_x86.c' || echo '$(srcdir)/'`asm_x86.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-asm_x86.Tpo" "$(DEPDIR)/libclibstandalone_a-asm_x86.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-asm_x86.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='asm_x86.c' object='libclibstandalone_a-asm_x86.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-asm_x86.o `test -f 'asm_x86.c' || echo '$(srcdir)/'`asm_x86.c
+
+libclibstandalone_a-asm_x86.obj: asm_x86.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-asm_x86.obj -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-asm_x86.Tpo" -c -o libclibstandalone_a-asm_x86.obj `if test -f 'asm_x86.c'; then $(CYGPATH_W) 'asm_x86.c'; else $(CYGPATH_W) '$(srcdir)/asm_x86.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-asm_x86.Tpo" "$(DEPDIR)/libclibstandalone_a-asm_x86.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-asm_x86.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='asm_x86.c' object='libclibstandalone_a-asm_x86.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-asm_x86.obj `if test -f 'asm_x86.c'; then $(CYGPATH_W) 'asm_x86.c'; else $(CYGPATH_W) '$(srcdir)/asm_x86.c'; fi`
 
 libclibstandalone_a-backtrace.o: backtrace.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-backtrace.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-backtrace.Tpo" -c -o libclibstandalone_a-backtrace.o `test -f 'backtrace.c' || echo '$(srcdir)/'`backtrace.c; \
