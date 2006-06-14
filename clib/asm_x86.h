@@ -32,6 +32,44 @@ x86_insn_operand_is_valid (x86_insn_t * i, uword o)
   return i->operands[o].code != '_';
 }
 
+#define foreach_x86_legacy_prefix		\
+  _ (OPERAND_SIZE, 0x66)			\
+  _ (ADDRESS_SIZE, 0x67)			\
+  _ (SEGMENT_CS, 0x2e)				\
+  _ (SEGMENT_DS, 0x3e)				\
+  _ (SEGMENT_ES, 0x26)				\
+  _ (SEGMENT_FS, 0x64)				\
+  _ (SEGMENT_GS, 0x65)				\
+  _ (SEGMENT_SS, 0x36)				\
+  _ (LOCK, 0xf0)				\
+  _ (REPZ, 0xf3)				\
+  _ (REPNZ, 0xf2)
+
+#define foreach_x86_insn_parse_flag		\
+  /* Parse in 32/64-bit mode. */		\
+  _ (PARSE_32_BIT, 0)				\
+  _ (PARSE_64_BIT, 0)				\
+  _ (IS_ADDRESS, 0)				\
+ /* regs[1/2] is a valid base/index register */	\
+  _ (HAS_BASE, 0)				\
+  _ (HAS_INDEX, 0)				\
+ /* rex w bit */				\
+ _ (OPERAND_SIZE_64, 0)
+
+typedef enum {
+#define _(f,o) X86_INSN_FLAG_BIT_##f,
+  foreach_x86_insn_parse_flag
+  foreach_x86_legacy_prefix
+#undef _
+} x86_insn_parse_flag_bit_t;
+
+typedef enum {
+#define _(f,o) X86_INSN_##f = 1 << X86_INSN_FLAG_BIT_##f,
+  foreach_x86_insn_parse_flag
+  foreach_x86_legacy_prefix
+#undef _
+} x86_insn_parse_flag_t;
+
 typedef struct {
   /* Registers in instruction.
      [0] is modrm reg field
@@ -46,6 +84,7 @@ typedef struct {
 
   i32 displacement;
 
+  /* Parser flags: set of x86_insn_parse_flag_t enums. */
   u32 flags;
 
   i64 immediate;
@@ -53,11 +92,7 @@ typedef struct {
   x86_insn_t insn;
 } x86_insn_parse_t;
 		
-/* Parser flags. */
-#define X86_INSN_PARSE_32_BIT (1 << 0)	/* operand size 32 */
-#define X86_INSN_PARSE_64_BIT (1 << 1)	/* long mode */
-
-u8 * x86_insn_parse (x86_insn_parse_t * x, u32 parse_flags, u8 * code_start);
+u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start);
 format_function_t format_x86_insn_parse;
 
 #endif /* included_asm_x86_h */
