@@ -12,17 +12,18 @@ typedef union {
 } x86_insn_operand_t;
 
 typedef struct {
+  /* Instruction name. */
   char * name;
 
+  /* X86 instructions may have up to 3 operands. */
   x86_insn_operand_t operands[3];
 
   u16 flags;
-#define X86_INSN_FLAG_MODRM_REG_GROUP	(1 << 0)
-#define X86_INSN_FLAG_SSE_GROUP		(1 << 1)
-#define X86_INSN_FLAG_MODRM		(1 << 2)
-#define X86_INSN_FLAG_DEFAULT_64_BIT	(1 << 3)
-#define X86_INSN_FLAG_GROUP(n)		((n) << 8)
-#define X86_INSN_FLAG_GET_GROUP(f)	((f) >> 8)
+#define X86_INSN_FLAG_DEFAULT_64_BIT		(1 << 0)
+#define X86_INSN_FLAG_SET_SSE_GROUP(n)		((n) << 5)
+#define X86_INSN_FLAG_GET_SSE_GROUP(f)		(((f) >> 5) & 0x1f)
+#define X86_INSN_FLAG_SET_MODRM_REG_GROUP(n)	(((n) & 0x3f) << 10)
+#define X86_INSN_FLAG_GET_MODRM_REG_GROUP(f)	(((f) >> 10) & 0x3f)
 } x86_insn_t;
 
 static always_inline uword
