@@ -1,9 +1,7 @@
 /* FIXME missing
    sse pages
-   0x0f 01 ... modrm exceptions
    x87
    3dnow
-   arpl -> movsxd in long mode
    cbw naming
 */
 
@@ -87,6 +85,16 @@ enum {
 #undef _
 };
 
+#define foreach_x86_gp_reg			\
+  _ (AX) _ (CX) _ (DX) _ (BX)			\
+  _ (SP) _ (BP) _ (SI) _ (DI)
+
+#define foreach_x86_condition			\
+  _ (o) _ (no)  _ (b) _ (nb)			\
+  _ (z) _ (nz) _ (be) _ (nbe)			\
+  _ (s) _ (ns)  _ (p) _ (np)			\
+  _ (l) _ (nl) _ (le) _ (nle)
+
 #define _3f(x,f,o0,o1,o2)			\
 {						\
   .name = #x,					\
@@ -105,17 +113,9 @@ enum {
 #define _1(x,o0)	_1f(x,0,o0)
 #define _0(x)		_0f(x,0)
 
-#define foreach_x86_gp_reg			\
-  _ (AX) _ (CX) _ (DX) _ (BX)			\
-  _ (SP) _ (BP) _ (SI) _ (DI)
+static x86_insn_t x86_insns_one_byte[256] = {
 
-#define foreach_x86_condition			\
-  _ (o) _ (no)  _ (b) _ (nb)			\
-  _ (z) _ (nz) _ (be) _ (nbe)			\
-  _ (s) _ (ns)  _ (p) _ (np)			\
-  _ (l) _ (nl) _ (le) _ (nle)
-
-#define _group0_a(x)				\
+#define _(x)					\
   _2 (x, Eb, Gb),				\
   _2 (x, Ev, Gv),				\
   _2 (x, Gb, Eb),				\
@@ -123,38 +123,39 @@ enum {
   _2 (x, AL, Ib),				\
   _2 (x, AX, Iz)
 
-static x86_insn_t x86_insns_one_byte[256] = {
   /* 0x00 */
-  _group0_a (add),
+  _ (add),
   _0 (push_es),
   _0 (pop_es),
-  _group0_a (or),
+  _ (or),
   _0 (push_cs),
   _0 (escape_two_byte),
 
   /* 0x10 */
-  _group0_a (adc),
+  _ (adc),
   _0 (push_ss),
   _0 (pop_ss),
-  _group0_a (sbb),
+  _ (sbb),
   _0 (push_ds),
   _0 (pop_ds),
 
   /* 0x20 */
-  _group0_a (and),
+  _ (and),
   _0 (segment_es),
   _0 (daa),
-  _group0_a (sub),
+  _ (sub),
   _0 (segment_cs),
   _0 (das),
 
   /* 0x30 */
-  _group0_a (xor),
+  _ (xor),
   _0 (segment_ss),
   _0 (aaa),
-  _group0_a (cmp),
+  _ (cmp),
   _0 (segment_ds),
   _0 (aas),
+
+#undef _
 
   /* 0x40 */
 #define _(r) _1 (inc, r),
@@ -176,7 +177,7 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _0 (pusha),
   _0 (popa),
   _2 (bound, Gv, Ma),
-  _2 (arpl, Ew, Gw),
+  _2 (movsxd, Gv, Ed),
   _0 (segment_fs),
   _0 (segment_gs),
   _0 (operand_type),
@@ -185,8 +186,8 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _3 (imul, Gv, Ev, Iz),
   _1f (push, X86_INSN_FLAG_DEFAULT_64_BIT, Ib),
   _3 (imul, Gv, Ev, Ib),
-  _2 (insb, Yb, DX),
-  _2 (insw, Yz, DX),
+  _1 (insb, DX),
+  _1 (insw, DX),
   _1 (outsb, DX),
   _1 (outsw, DX),
 
@@ -745,41 +746,6 @@ static struct { x86_insn_t insns[8]; }
 
 #undef _
 
-#define foreach_x86_legacy_prefix		\
-  _ (OPERAND_SIZE, 0x66)			\
-  _ (ADDRESS_SIZE, 0x67)			\
-  _ (SEGMENT_CS, 0x2e)				\
-  _ (SEGMENT_DS, 0x3e)				\
-  _ (SEGMENT_ES, 0x26)				\
-  _ (SEGMENT_FS, 0x64)				\
-  _ (SEGMENT_GS, 0x65)				\
-  _ (SEGMENT_SS, 0x36)				\
-  _ (LOCK, 0xf0)				\
-  _ (REPZ, 0xf3)				\
-  _ (REPNZ, 0xf2)
-
-#define foreach_x86_insn_flag			\
-  _ (IS_ADDRESS, 0)				\
- /* regs[1/2] is a valid base/index register */	\
-  _ (HAS_BASE, 0)				\
-  _ (HAS_INDEX, 0)				\
- /* rex w bit */				\
- _ (OPERAND_SIZE_64, 0)
-
-enum {
-#define _(f,o) X86_INSN_FLAG_BIT_##f,
-  foreach_x86_insn_flag
-  foreach_x86_legacy_prefix
-#undef _
-};
-
-enum {
-#define _(f,o) X86_INSN_##f = 1 << X86_INSN_FLAG_BIT_##f,
-  foreach_x86_insn_flag
-  foreach_x86_legacy_prefix
-#undef _
-};
-
 /* Parses memory displacements and immediates. */
 static u8 * x86_insn_parse_number (u32 log2_n_bytes,
 				   u8 * code, u8 * code_end,
@@ -846,11 +812,11 @@ x86_insn_log2_immediate_bytes (x86_insn_parse_t * p, x86_insn_t * insn)
 
 static u8 *
 x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
+			   x86_insn_modrm_byte_t modrm,
 			   u32 parse_flags,
 			   u8 * code,
 			   u8 * code_end)
 {
-  x86_insn_modrm_byte_t modrm;
   u8 effective_address_bits;
 
   if (parse_flags & X86_INSN_PARSE_64_BIT)
@@ -863,10 +829,6 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
   x->log2_effective_address_bytes = 1;
   x->log2_effective_address_bytes += effective_address_bits > 16;
   x->log2_effective_address_bytes += effective_address_bits > 32;
-
-  if (code >= code_end)
-    return 0;
-  modrm.byte = *code++;
 
   x->regs[0] |= modrm.reg;
   if (modrm.mode == 3)
@@ -998,13 +960,16 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
   return code;
 }
 
-u8 * x86_insn_parse (x86_insn_parse_t * x, u32 parse_flags, u8 * code_start)
+u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 {
   u8 i, * code, * code_end;
   x86_insn_t * insn, * group_insn;
   u8 default_operand_bits, effective_operand_bits;
+  u32 opcode, parse_flags;
 
-  memset (x, 0, sizeof (x[0]));
+  parse_flags = p->flags;
+  memset (p, 0, sizeof (p[0]));
+  p->flags = parse_flags;
 
   /* 64 implies 32 bit parsing. */
   if (parse_flags & X86_INSN_PARSE_64_BIT)
@@ -1026,7 +991,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * x, u32 parse_flags, u8 * code_start)
 	default: goto prefix_done;
 
 	  /* Set flags based on prefix. */
-#define _(p,o) case o: x->flags |= X86_INSN_##p; break;
+#define _(x,o) case o: p->flags |= X86_INSN_##x; break;
 	  foreach_x86_legacy_prefix;
 #undef _
 	}
@@ -1036,33 +1001,78 @@ u8 * x86_insn_parse (x86_insn_parse_t * x, u32 parse_flags, u8 * code_start)
   /* REX prefix. */
   if ((parse_flags & X86_INSN_PARSE_64_BIT) && i >= 0x40 && i <= 0x4f)
     {
-      x->regs[0] |= ((i & (1 << 2)) != 0) << 3;	/* r bit */
-      x->regs[1] |= ((i & (1 << 0)) != 0) << 3;	/* b bit */
-      x->regs[2] |= ((i & (1 << 1)) != 0) << 3;	/* x bit */
-      x->flags |= ((i & (1 << 3))		/* w bit */
+      p->regs[0] |= ((i & (1 << 2)) != 0) << 3;	/* r bit */
+      p->regs[1] |= ((i & (1 << 0)) != 0) << 3;	/* b bit */
+      p->regs[2] |= ((i & (1 << 1)) != 0) << 3;	/* x bit */
+      p->flags |= ((i & (1 << 3))		/* w bit */
 		   ? X86_INSN_OPERAND_SIZE_64 : 0);
       if (code >= code_end)
 	goto insn_too_long;
       i = *code++;
     }
 
-  if (i == 0x0f)
+  opcode = i;
+  if (opcode == 0x0f)
     {
       /* two byte opcode. */;
       if (code >= code_end)
 	goto insn_too_long;
       i = *code++;
+      opcode = (opcode << 8) | i;
       insn = x86_insns_two_byte + i;
     }
   else
-    insn = x86_insns_one_byte + i;
+    {
+      static x86_insn_t arpl = {
+	.name = "arpl",
+	.operands[0].data = "Ew",
+	.operands[1].data = "Gw",
+      };
+
+      if (PREDICT_FALSE (i == 0x63
+			 && ! (parse_flags & X86_INSN_PARSE_64_BIT)))
+	insn = &arpl;
+      else
+	insn = x86_insns_one_byte + i;
+    }
 
   /* Parse modrm and displacement if present. */
   if (x86_insn_has_modrm_byte (insn))
     {
-      code = x86_insn_parse_modrm_byte (x, parse_flags, code, code_end);
-      if (! code)
+      x86_insn_modrm_byte_t modrm;
+
+      if (code >= code_end)
 	goto insn_too_long;
+      modrm.byte = *code++;
+
+      /* Handle special 0x0f01 and 0x0fae encodings. */
+      if (PREDICT_FALSE (modrm.mode == 3
+			 && (opcode == 0x0f01
+			     || opcode == 0x0fae)))
+	{
+	  static x86_insn_t x86_insns_0f01_special[] = {
+	    _0 (swapgs), _0 (rdtscp), _0 (bad), _0 (bad),
+	    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
+	  };
+	  static x86_insn_t x86_insns_0fae_special[] = {
+	    _0 (vmrun), _0 (vmmcall), _0 (vmload), _0 (vmsave),
+	    _0 (stgi), _0 (clgi), _0 (skinit), _0 (invlpga),
+	  };
+
+	  if (opcode == 0x0f01)
+	    insn = x86_insns_0f01_special;
+	  else
+	    insn = x86_insns_0fae_special;
+	  insn += modrm.rm;
+	  opcode = (opcode << 8) | modrm.byte;
+	}
+      else
+	{
+	  code = x86_insn_parse_modrm_byte (p, modrm, parse_flags,
+					    code, code_end);
+	  if (! code)
+	    goto insn_too_long;
+	}
     }
 
   group_insn = 0;
@@ -1070,43 +1080,43 @@ u8 * x86_insn_parse (x86_insn_parse_t * x, u32 parse_flags, u8 * code_start)
     {
       u32 g = X86_INSN_FLAG_GET_GROUP (insn->flags);
       ASSERT (g < ARRAY_LEN (x86_insn_modrm_reg_groups));
-      group_insn = x86_insn_modrm_reg_groups[g].insns + (x->regs[0] & 7);
+      group_insn = x86_insn_modrm_reg_groups[g].insns + (p->regs[0] & 7);
     }
 
-  x->insn = insn[0];
+  p->insn = insn[0];
   if (group_insn)
     {
       u32 k;
-      x->insn.name = group_insn->name;
-      x->insn.flags |= group_insn->flags;
+      p->insn.name = group_insn->name;
+      p->insn.flags |= group_insn->flags;
       for (k = 0; k < ARRAY_LEN (group_insn->operands); k++)
 	if (x86_insn_operand_is_valid (group_insn, k))
-	  x->insn.operands[k] = group_insn->operands[k];
+	  p->insn.operands[k] = group_insn->operands[k];
     }
 
   default_operand_bits
     = ((((parse_flags & X86_INSN_PARSE_32_BIT) != 0)
-	^ ((x->flags & X86_INSN_OPERAND_SIZE) != 0))
+	^ ((p->flags & X86_INSN_OPERAND_SIZE) != 0))
        ? BITS (u32) : BITS (u16));
 
   if ((parse_flags & X86_INSN_PARSE_64_BIT)
-      && (x->insn.flags & X86_INSN_FLAG_DEFAULT_64_BIT))
+      && (p->insn.flags & X86_INSN_FLAG_DEFAULT_64_BIT))
     default_operand_bits = BITS (u64);
 
   effective_operand_bits = default_operand_bits;
-  if (x->flags & X86_INSN_OPERAND_SIZE_64)
+  if (p->flags & X86_INSN_OPERAND_SIZE_64)
     effective_operand_bits = BITS (u64);
 
-  x->log2_effective_operand_bytes = 1;
-  x->log2_effective_operand_bytes += effective_operand_bits > 16;
-  x->log2_effective_operand_bytes += effective_operand_bits > 32;
+  p->log2_effective_operand_bytes = 1;
+  p->log2_effective_operand_bytes += effective_operand_bits > 16;
+  p->log2_effective_operand_bytes += effective_operand_bits > 32;
 
   /* Parse immediate if present. */
   {
-    u32 l = x86_insn_log2_immediate_bytes (x, insn);
+    u32 l = x86_insn_log2_immediate_bytes (p, insn);
     if (l <= 3)
       {
-	code = x86_insn_parse_number (l, code, code_end, &x->immediate);
+	code = x86_insn_parse_number (l, code, code_end, &p->immediate);
 	if (! code)
 	  goto insn_too_long;
       }
@@ -1226,6 +1236,10 @@ static u8 * format_x86_mem_operand (u8 * s, va_list * va)
       s = format (s, ")");
     }
 
+  /* [RIP+disp] PC relative addressing in 64 bit mode. */
+  else if (p->flags & X86_INSN_PARSE_64_BIT)
+    s = format (s, "(%rip)");
+
   return s;
 }
 
@@ -1277,7 +1291,10 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
       break;
 
     case 'J':
-      s = format (s, "pc + 0x%Lx", p->immediate);
+      if (p->immediate < 0)
+	s = format (s, "- 0x%Lx", -p->immediate);
+      else
+	s = format (s, "+ 0x%Lx", p->immediate);
       break;
 
     case 'O':
