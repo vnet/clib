@@ -1,9 +1,10 @@
 /* FIXME missing
    sse pages
-   0x0f 01 ...
+   0x0f 01 ... modrm exceptions
    x87
    3dnow
    arpl -> movsxd in long mode
+   cbw naming
 */
 
 #include <clib/error.h>
@@ -186,8 +187,8 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _3 (imul, Gv, Ev, Ib),
   _2 (insb, Yb, DX),
   _2 (insw, Yz, DX),
-  _2 (outsb, DX, Xb),
-  _2 (outsw, DX, Xz),
+  _1 (outsb, DX),
+  _1 (outsw, DX),
 
   /* 0x70 */
 #define _(x) _1 (j##x, Jb),
@@ -213,9 +214,14 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _1f (modrm_group_1a, X86_INSN_FLAG_MODRM_REG_GROUP_1a, Ev),
 
   /* 0x90 */
-#define _(r) _1 (xchg, r),
-  foreach_x86_gp_reg
-#undef _
+  _0 (nop),
+  _1 (xchg, CX),
+  _1 (xchg, DX),
+  _1 (xchg, BX),
+  _1 (xchg, SP),
+  _1 (xchg, BP),
+  _1 (xchg, SI),
+  _1 (xchg, DI),
   _0 (cbw),
   _0 (cwd),
   _1 (call, Ap),
@@ -230,18 +236,18 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _2 (mov, AX, Ov),
   _2 (mov, Ob, AL),
   _2 (mov, Ov, AX),
-  _2 (movsb, Yb, Xb),
-  _2 (movsw, Yv, Xv),
-  _2 (cmpsb, Xb, Yb),
-  _2 (cmpsw, Xv, Yv),
+  _0 (movsb),
+  _0 (movsw),
+  _0 (cmpsb),
+  _0 (cmpsw),
   _2 (test, AL, Ib),
   _2 (test, AX, Iz),
-  _2 (stosb, Yb, AL),
-  _2 (stosw, Yv, AX),
-  _2 (lodsb, AL, Xb),
-  _2 (lodsw, AX, Xv),
-  _2 (scasb, AL, Yb),
-  _2 (scasw, AX, Yv),
+  _1 (stosb, AL),
+  _1 (stosw, AX),
+  _1 (lodsb, AL),
+  _1 (lodsw, AX),
+  _1 (scasb, AL),
+  _1 (scasw, AX),
 
   /* 0xb0 */
   _2 (mov, AL, Ib),
@@ -775,31 +781,30 @@ enum {
 };
 
 /* Parses memory displacements and immediates. */
-static u8 * x86_insn_parse_number (u32 n_bits,
+static u8 * x86_insn_parse_number (u32 log2_n_bytes,
 				   u8 * code, u8 * code_end,
 				   i64 * result)
 {
   i64 x;
 
-  ASSERT ((n_bits % 8) == 0);
-  if (code + (n_bits / 8) > code_end)
+  if (code + (1 << log2_n_bytes) > code_end)
     return 0;
 
-  switch (n_bits)
+  switch (log2_n_bytes)
     {
-    case 64:
+    case 3:
       x = clib_little_to_host_unaligned_mem_64 ((u64 *) code);
       break;
 
-    case 32:
+    case 2:
       x = (i32) clib_little_to_host_unaligned_mem_32 ((u32 *) code);
       break;
 
-    case 16:
+    case 1:
       x = (i16) clib_little_to_host_unaligned_mem_16 ((u16 *) code);
       break;
 
-    case 8:
+    case 0:
       x = (i8) code[0];
       break;
 
@@ -808,7 +813,35 @@ static u8 * x86_insn_parse_number (u32 n_bits,
     }
 
   *result = x;
-  return code + (n_bits / 8);
+  return code + (1 << log2_n_bytes);
+}
+
+static u32
+x86_insn_log2_immediate_bytes (x86_insn_parse_t * p, x86_insn_t * insn)
+{
+  u32 i = ~0;
+  switch (x86_insn_immediate_type (insn))
+    {
+    case 'b': i = 0; break;
+    case 'w': i = 1; break;
+    case 'd': i = 2; break;
+    case 'q': i = 3; break;
+
+    case 'z':
+      i = p->log2_effective_operand_bytes;
+      if (i > 2) i = 2;
+      break;
+
+    case 'v':
+      i = p->log2_effective_operand_bytes;
+      break;
+
+    default:
+      i = ~0;
+      break;
+    }
+
+  return i;
 }
 
 static u8 *
@@ -840,7 +873,7 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
     x->regs[1] |= modrm.rm;
   else
     {
-      u8 disp_bits = 0;
+      u32 log2_disp_bytes = ~0;
 
       x->flags |= X86_INSN_IS_ADDRESS;
 
@@ -854,7 +887,7 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      /* When base is bp displacement is present for mode 0. */
 	      if (modrm.rm == X86_INSN_GP_REG_BP)
 		{
-		  disp_bits = effective_address_bits;
+		  log2_disp_bytes = x->log2_effective_address_bytes;
 		  break;
 		}
 	      else if (modrm.rm == X86_INSN_GP_REG_SP
@@ -870,11 +903,11 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      x->flags |= X86_INSN_HAS_BASE;
 	      if (modrm.mode != 0)
 		{
-		  disp_bits = (modrm.mode == 1
-			       ? BITS (u8)
-			       : effective_address_bits);
-		  if (disp_bits == 64)
-		    disp_bits = 32;
+		  log2_disp_bytes = (modrm.mode == 1
+				     ? 0
+				     : x->log2_effective_address_bytes);
+		  if (log2_disp_bytes > 2)
+		    log2_disp_bytes = 2;
 		}
 	      break;
 	    }
@@ -907,7 +940,7 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      if (modrm.rm == 6)
 		{
 		  /* [disp16] */
-		  disp_bits = 16;
+		  log2_disp_bytes = 1;
 		  break;
 		}
 	      /* fall through */
@@ -947,16 +980,16 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 		}
 
 	      if (modrm.mode != 0)
-		disp_bits = modrm.mode == 1 ? 8 : 16;
+		log2_disp_bytes = modrm.mode == 1 ? 0 : 1;
 	      break;
 	    }
 	}
-
-      if (disp_bits > 0)
+      
+      if (log2_disp_bytes != ~0)
 	{
 	  i64 disp;
-
-	  code = x86_insn_parse_number (disp_bits, code, code_end, &disp);
+	  code = x86_insn_parse_number (log2_disp_bytes, code, code_end,
+					&disp);
 	  if (code)
 	    x->displacement = disp;
 	}
@@ -1070,24 +1103,10 @@ u8 * x86_insn_parse (x86_insn_parse_t * x, u32 parse_flags, u8 * code_start)
 
   /* Parse immediate if present. */
   {
-    u8 immediate_bits;
-
-    immediate_bits = 0;
-    switch (x86_insn_immediate_type (insn))
+    u32 l = x86_insn_log2_immediate_bytes (x, insn);
+    if (l <= 3)
       {
-      case 'b': immediate_bits = 8; break;
-      case 'w': immediate_bits = 16; break;
-      case 'd': immediate_bits = 32; break;
-      case 'q': immediate_bits = 64; break;
-      case 'z': immediate_bits = clib_min (32, effective_operand_bits); break;
-      case 'v': immediate_bits = effective_operand_bits; break;
-      default: break;
-      }
-
-    if (immediate_bits != 0)
-      {
-	code = x86_insn_parse_number (immediate_bits, code, code_end,
-				      &x->immediate);
+	code = x86_insn_parse_number (l, code, code_end, &x->immediate);
 	if (! code)
 	  goto insn_too_long;
       }
@@ -1250,7 +1269,11 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
       break;
 
     case 'I':
-      s = format (s, "$0x%Lx", p->immediate);
+      {
+	u32 l = x86_insn_log2_immediate_bytes (p, insn);
+	i64 mask = pow2_mask (8 << l);
+	s = format (s, "$0x%Lx", p->immediate & mask);
+      }
       break;
 
     case 'J':
@@ -1318,23 +1341,37 @@ u8 * format_x86_insn_parse (u8 * s, va_list * va)
 
   s = format (s, "%s", insn->name);
 
-  if (x86_insn_operand_is_valid (insn, 0))
-    {
-      is_src_dst = x86_insn_operand_is_valid (insn, 1);
-      for (i = 0; i < ARRAY_LEN (insn->operands); i++)
-	{
-	  o = is_src_dst + i;
-	  if (! x86_insn_operand_is_valid (insn, o))
-	    break;
-	  s = format (s, "%s%U",
-		      i == 0 ? " " : ", ",
-		      format_x86_insn_operand, p, o);
-	}
+  if (! x86_insn_operand_is_valid (insn, 0))
+    goto done;
 
-      if (is_src_dst)
-	s = format (s, ", %U",
-		    format_x86_insn_operand, p, 0);
+  is_src_dst = x86_insn_operand_is_valid (insn, 1);
+
+  /* If instruction has immediate add suffix to opcode to
+     indicate operand size. */
+  if (is_src_dst)
+    {
+      u32 b;
+
+      b = x86_insn_log2_immediate_bytes (p, insn);
+      if (b < p->log2_effective_operand_bytes
+	  && (p->flags & X86_INSN_IS_ADDRESS))
+	s = format (s, "%c", "bwlq"[b]);
     }
 
+  for (i = 0; i < ARRAY_LEN (insn->operands); i++)
+    {
+      o = is_src_dst + i;
+      if (! x86_insn_operand_is_valid (insn, o))
+	break;
+      s = format (s, "%s%U",
+		  i == 0 ? " " : ", ",
+		  format_x86_insn_operand, p, o);
+    }
+
+  if (is_src_dst)
+    s = format (s, ", %U",
+		format_x86_insn_operand, p, 0);
+
+ done:
   return s;
 }
