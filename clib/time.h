@@ -44,7 +44,7 @@ typedef struct {
 
 /* Return CPU time stamp as 64bit number. */
 #if defined(__x86_64__) || defined(i386)
-static inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u32 a, d;
   asm volatile ("rdtsc"
@@ -54,7 +54,7 @@ static inline u64 clib_cpu_time_now (void)
 
 #elif defined (__powerpc64__)
 
-static inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u64 t;
   asm volatile ("mftb %0" : "=r" (t));
@@ -63,7 +63,7 @@ static inline u64 clib_cpu_time_now (void)
 
 #elif defined (__SPU__)
 
-static inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
 #ifdef _XLC
   return spu_rdch (0x8);
@@ -74,7 +74,7 @@ static inline u64 clib_cpu_time_now (void)
 
 #elif defined (__powerpc__)
 
-static inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u32 hi, lo;
   asm volatile ("mftbu %[hi]\n"
@@ -89,7 +89,7 @@ static inline u64 clib_cpu_time_now (void)
 
 #endif
 
-static inline f64
+static always_inline f64
 clib_time_now (clib_time_t * c)
 {
   u64 n = clib_cpu_time_now ();
