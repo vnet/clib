@@ -665,6 +665,7 @@ static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_s
   if (sign)
     vec_add1 (s, '-');
 
+  n_digits_printed = 0;
   if (output_style == 'f'
       || (output_style == 'g' && expon > -10 && expon < 10))
     {
@@ -673,7 +674,10 @@ static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_s
 	  vec_add1 (s, '.');
 	  decimal_point = expon;
 	  while (++decimal_point)
-	    vec_add1 (s, '0');
+	    {
+	      vec_add1 (s, '0');
+	      n_digits_printed++;
+	    }
 	}
       else
 	decimal_point = expon + 1;
@@ -685,7 +689,6 @@ static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_s
       output_style = 'e';
     }
 
-  n_digits_printed = 0;
   while (1)
     {
       uword digit;
