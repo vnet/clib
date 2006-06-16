@@ -1268,7 +1268,7 @@ static u8 * x86_insn_parse_number (u32 log2_n_bytes,
 				   u8 * code, u8 * code_end,
 				   i64 * result)
 {
-  i64 x;
+  i64 x = 0;
 
   if (code + (1 << log2_n_bytes) > code_end)
     return 0;
