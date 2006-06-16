@@ -69,34 +69,39 @@ clib_longjmp:
 	.align 4
 	.type clib_calljmp, @function
 clib_calljmp:
-	/* Make sure stack is properly aligned. */
+	/* Make sure stack is 16-byte aligned. */
 	movq %rdx, %rax
 	andq $0xf, %rax
 	subq %rax, %rdx
-	leaq -8(%rdx), %rdx
 	
-	/* Switch stacks. */
+	/* Get return address. */
+	pop %rax
+	
+	/* Switch to new stack. */
 	xchgq %rsp, %rdx
 	
+	/* Save return address on new stack. */
+	push %rax
+	
 	/* Save old stack pointer on new stack. */
-	sub $8, %rsp
-	movq %rdx, 0(%rsp)
+	push %rdx
 	
 	/* Get function. */
-	movq %rdi, %rax
+	movq %rdi, %rdx
 	
 	/* Move argument into place. */
 	movq %rsi, %rdi
 	
 	/* Away we go. */
-	callq *%rax
+	callq *%rdx
 	
 	/* Switch back to old stack. */
-	movq 0(%rsp), %rdx
-	xchgq %rdx, %rsp
+	movq 8(%rsp), %rdx
+	movq 0(%rsp), %rcx
+	xchgq %rcx, %rsp
 	
 	/* Return to caller. */
-	retq
+	jmpq *%rdx
 
 #elif defined(i386)
 	.global clib_setjmp
