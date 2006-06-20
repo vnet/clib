@@ -221,11 +221,13 @@ unformat_string (unformat_input_t * input,
     return 0;
   
   /* Null terminate C string. */
-  if (format_character == 's')
+  if (format_character == 's' && string_return)
     vec_add1 (s, 0);
 
   if (string_return)
     *string_return = s;
+  else
+    vec_free (s);		/* just to make sure */
 
   return 1;
 }
