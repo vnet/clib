@@ -31,6 +31,9 @@
 typedef char i8;
 typedef short i16;
 
+typedef __complex__ short ci16;
+typedef __complex__ int ci32;
+
 /* Avoid conflicts with Linux asm/types.h when __KERNEL__ */
 #if defined(CLIB_LINUX_KERNEL)
 /* Linux also defines u8/u16/u32/u64 types. */
@@ -118,6 +121,9 @@ typedef word any;
 /* Floating point types. */
 typedef double f64;
 typedef float f32;
+
+typedef __complex__ float cf32;
+typedef __complex__ double cf64;
 
 /* Floating point word size. */
 typedef f64 fword;

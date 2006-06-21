@@ -56,6 +56,7 @@
 #define UNUSED(x)	x __attribute__ ((unused)) 
 
 #define NEVER_INLINE(x) x __attribute__ ((__noinline__)); x
+#define never_inline __attribute__ ((__noinline__))
 
 #if DEBUG > 0
 #define INLINE static
