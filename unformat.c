@@ -841,7 +841,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
     uword l = vec_len (input->buffer_marks);
 
     /* If we did not match back up buffer to last mark. */
-    if (! input_matches_format && input->index != UNFORMAT_END_OF_INPUT)
+    if (! input_matches_format)
       input->index = input->buffer_marks[l-1];
 
     _vec_len (input->buffer_marks) = l - 1;
