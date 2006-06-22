@@ -217,15 +217,18 @@ unformat_string (unformat_input_t * input,
     }
 
  done:
-  if (c == UNFORMAT_END_OF_INPUT && vec_len (s) == 0)
-    return 0;
-  
-  /* Null terminate C string. */
-  if (format_character == 's' && string_return)
-    vec_add1 (s, 0);
-
   if (string_return)
-    *string_return = s;
+    {
+      /* Don't match null string. */
+      if (c == UNFORMAT_END_OF_INPUT && vec_len (s) == 0)
+	return 0;
+  
+      /* Null terminate C string. */
+      if (format_character == 's')
+	vec_add1 (s, 0);
+
+      *string_return = s;
+    }
   else
     vec_free (s);		/* just to make sure */
 
