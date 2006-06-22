@@ -101,6 +101,13 @@ clib_time_now (clib_time_t * c)
   return t * c->seconds_per_clock;
 }
 
+static always_inline void clib_cpu_time_wait (u64 dt)
+{
+  u64 t_end = clib_cpu_time_now () + dt;
+  while (clib_cpu_time_now () < t_end)
+    ;
+}
+
 void clib_time_init (clib_time_t * c);
 
 #ifdef CLIB_UNIX
