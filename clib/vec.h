@@ -286,7 +286,7 @@ do {										\
 
 /* Resize vector by N elements starting from element M.
    Zero new elements. */
-#define vec_insert_ha(V,N,M,H,A)			\
+#define vec_insert_init_empty_ha(V,N,M,INIT,H,A)	\
 do {							\
   word _v(l) = vec_len (V);				\
   word _v(n) = (N);					\
@@ -299,11 +299,17 @@ do {							\
   memmove ((V) + _v(m) + _v(n),				\
 	   (V) + _v(m),					\
 	   (_v(l) - _v(m)) * sizeof ((V)[0]));		\
-  memset  ((V) + _v(m), 0, _v(n) * sizeof ((V)[0]));	\
+  memset  ((V) + _v(m), INIT, _v(n) * sizeof ((V)[0]));	\
 } while (0)
 
+#define vec_insert_ha(V,N,M,H,A)    vec_insert_init_empty_ha(V,N,M,0,H,A)
 #define vec_insert(V,N,M)           vec_insert_ha(V,N,M,0,0)
 #define vec_insert_aligned(V,N,M,A) vec_insert_ha(V,N,M,0,A)
+
+#define vec_insert_init_empty(V,N,M,INIT) \
+  vec_insert_init_empty_ha(V,N,M,INIT,0,0)
+#define vec_insert_init_empty_aligned(V,N,M,INIT,A) \
+  vec_insert_init_empty_ha(V,N,M,INIT,0,A)
 
 /* Resize vector by N elements starting from element M.
    Insert given elements. */
