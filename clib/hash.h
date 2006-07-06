@@ -344,34 +344,72 @@ static inline void hash_set_value_bytes (hash_t * h, uword value_bytes)
 
 /* Hash function based on that of Bob Jenkins (bob_jenkins@compuserve.com).
    Thanks, Bob. */
-#define hash_mix64(a,b,c)			\
+#define hash_mix_step(a,b,c,s0,s1,s2)		\
 do {						\
-  a -= b + c; a ^= (c >> 43);			\
-  b -= c + a; b ^= (a << 9);			\
-  c -= a + b; c ^= (b >> 8);			\
-  a -= b + c; a ^= (c >> 38);			\
-  b -= c + a; b ^= (a << 23);			\
-  c -= a + b; c ^= (b >> 5);			\
-  a -= b + c; a ^= (c >> 35);			\
-  b -= c + a; b ^= (a << 49);			\
-  c -= a + b; c ^= (b >> 11);			\
-  a -= b + c; a ^= (c >> 12);			\
-  b -= c + a; b ^= (a << 18);			\
-  c -= a + b; c ^= (b >> 22);			\
+  (a) -= (b) + (c); (a) ^= (c) >> (s0);		\
+  (b) -= (c) + (a); (b) ^= (a) << (s1);		\
+  (c) -= (a) + (b); (c) ^= (b) >> (s2);		\
 } while (0)
 
-#define hash_mix32(a,b,c)			\
+#define hash_mix32_step_1(a,b,c) hash_mix_step(a,b,c,13,8,13)
+#define hash_mix32_step_2(a,b,c) hash_mix_step(a,b,c,12,16,5)
+#define hash_mix32_step_3(a,b,c) hash_mix_step(a,b,c,3,10,15)
+
+#define hash_mix64_step_1(a,b,c) hash_mix_step(a,b,c,43,9,8)
+#define hash_mix64_step_2(a,b,c) hash_mix_step(a,b,c,38,23,5)
+#define hash_mix64_step_3(a,b,c) hash_mix_step(a,b,c,35,49,11)
+#define hash_mix64_step_4(a,b,c) hash_mix_step(a,b,c,12,18,22)
+
+/* Hash function based on that of Bob Jenkins (bob_jenkins@compuserve.com).
+   Thanks, Bob. */
+#define hash_mix64(a0,b0,c0)			\
 do {						\
-  a -= b + c; a ^= (c >> 13);			\
-  b -= c + a; b ^= (a << 8);			\
-  c -= a + b; c ^= (b >> 13);			\
-  a -= b + c; a ^= (c >> 12);			\
-  b -= c + a; b ^= (a << 16);			\
-  c -= a + b; c ^= (b >> 5);			\
-  a -= b + c; a ^= (c >> 3);			\
-  b -= c + a; b ^= (a << 10);			\
-  c -= a + b; c ^= (b >> 15);			\
+  hash_mix64_step_1 (a0, b0, c0);		\
+  hash_mix64_step_2 (a0, b0, c0);		\
+  hash_mix64_step_3 (a0, b0, c0);		\
+  hash_mix64_step_4 (a0, b0, c0);		\
+} while (0)					\
+
+#define hash_mix32(a0,b0,c0)			\
+do {						\
+  hash_mix32_step_1 (a0, b0, c0);		\
+  hash_mix32_step_2 (a0, b0, c0);		\
+  hash_mix32_step_3 (a0, b0, c0);		\
+} while (0)					\
+
+#if uword_bits == 32
+
+#define hash_mix_x1(a0,b0,c0) hash_mix32(a0,b0,c0)
+
+#define hash_mix_x2(a0,b0,c0,a1,b1,c1)		\
+do {						\
+  hash_mix32_step_1 (a0, b0, c0);		\
+  hash_mix32_step_1 (a1, b1, c1);		\
+  hash_mix32_step_2 (a0, b0, c0);		\
+  hash_mix32_step_2 (a1, b1, c1);		\
+  hash_mix32_step_3 (a0, b0, c0);		\
+  hash_mix32_step_3 (a1, b1, c1);		\
 } while (0)
+
+#elif uword_bits == 64
+
+#define hash_mix_x1(a0,b0,c0) hash_mix64(a0,b0,c0)
+
+#define hash_mix_x2(a0,b0,c0,a1,b1,c1)		\
+do {						\
+  hash_mix64_step_1 (a0, b0, c0);		\
+  hash_mix64_step_1 (a1, b1, c1);		\
+  hash_mix64_step_2 (a0, b0, c0);		\
+  hash_mix64_step_2 (a1, b1, c1);		\
+  hash_mix64_step_3 (a0, b0, c0);		\
+  hash_mix64_step_3 (a1, b1, c1);		\
+  hash_mix64_step_4 (a0, b0, c0);		\
+  hash_mix64_step_4 (a1, b1, c1);		\
+} while (0)
+
+#else
+#error "uword_bits must be 32 or 64"
+#endif
 
 extern u64 hash_memory64 (void * p, word n_bytes, u64 state);
 extern u32 hash_memory32 (void * p, word n_bytes, u32 state);
