@@ -24,8 +24,10 @@
 #ifndef included_clib_bitops_h
 #define included_clib_bitops_h
 
+#include <clib/clib.h>
+
 /* Population count from Hacker's Delight. */
-ALWAYS_INLINE (static inline uword count_set_bits (uword x))
+static always_inline uword count_set_bits (uword x)
 {
 #if uword_bits == 64
   const uword c1 = 0x5555555555555555;
