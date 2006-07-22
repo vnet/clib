@@ -119,19 +119,31 @@ void unserialize_f32 (serialize_main_t * m, va_list * va)
 void serialize_vector (serialize_main_t * m, va_list * va)
 {
   void * vec = va_arg (*va, void *);
-  u32 elt_bytes = va_arg (*va, u32);
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
-  void * v;
-  u32 i, l;
-
-  v = vec;
-  l = vec_len (v);
+  u32 l = vec_len (vec);
   serialize_integer (m, l, sizeof (l));
-  for (i = 0; i < l; i++)
-    {
-      serialize (m, f, v);
-      v += elt_bytes;
-    }
+  if (l > 0)
+    serialize (m, f, vec, l);
+}
+
+void *
+unserialize_vector_ha (serialize_main_t * m, 
+		       u32 elt_bytes,
+		       u32 header_bytes,
+		       u32 align,
+		       u32 max_length,
+		       serialize_function_t * f)
+{
+  void * v;
+  u32 l;
+
+  unserialize_integer (m, &l, sizeof (l));
+  if (l > max_length)
+    serialize_error (m, clib_error_create ("bad vector length %d", l));
+  v = _vec_resize (0, l, l*elt_bytes, header_bytes, /* align */ align);
+  if (l > 0)
+    unserialize (m, f, v, l);
+  return v;
 }
 
 void unserialize_vector (serialize_main_t * m, va_list * va)
@@ -139,18 +151,114 @@ void unserialize_vector (serialize_main_t * m, va_list * va)
   void ** vec = va_arg (*va, void **);
   u32 elt_bytes = va_arg (*va, u32);
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
-  void * v = 0;
-  u32 i, l;
 
-  unserialize_integer (m, &l, sizeof (l));
-  v = _vec_resize (v, l, l*elt_bytes, /* header bytes */ 0, /* align */ 0);
-  *vec = v;
+  *vec = unserialize_vector_ha (m, elt_bytes,
+				/* header_bytes */ 0,
+				/* align */ 0,
+				/* max_length */ ~0,
+				f);
+}
+
+void serialize_bitmap (serialize_main_t * m, uword * b)
+{
+  u32 l, i;
+
+  l = vec_len (b);
+  serialize_integer (m, l * sizeof (b[0]) / sizeof (l), sizeof (l));
   for (i = 0; i < l; i++)
     {
-      unserialize (m, f, v);
-      v += elt_bytes;
+      if (BITS (uword) == 64)
+	serialize_integer (m, (u64) b[i] >> (u64) 32, sizeof (u32));
+      serialize_integer (m, b[i], sizeof (u32));
     }
-  
+}
+
+uword * unserialize_bitmap (serialize_main_t * m)
+{
+  uword * b = 0;
+  u32 l, i;
+
+  unserialize_integer (m, &l, sizeof (l));
+  if (l == 0)
+    return b;
+
+  vec_resize (b, l * sizeof (l) / sizeof (b[0]));
+  for (i = 0; i < vec_len (b); i++)
+    {
+      if (BITS (uword) == 64)
+	{
+	  u32 hi, lo;
+	  unserialize_integer (m, &hi, sizeof (u32));
+	  unserialize_integer (m, &lo, sizeof (u32));
+	  b[i] = ((u64) hi << (u64) 32) | lo;
+	}
+      else
+	{
+	  u32 lo;
+	  unserialize_integer (m, &lo, sizeof (u32));
+	  b[i] = lo;
+	}
+    }
+
+  return b;
+}
+
+void serialize_pool (serialize_main_t * m, va_list * va)
+{
+  void * pool = va_arg (*va, void *);
+  u32 elt_bytes = va_arg (*va, u32);
+  serialize_function_t * f = va_arg (*va, serialize_function_t *);
+  void * v;
+  u32 l, i, i_last;
+  pool_header_t * p;
+
+  l = vec_len (pool);
+  serialize_integer (m, l, sizeof (u32));
+  if (l == 0)
+    return;
+  p = pool_header (pool);
+  serialize_bitmap (m, p->free_bitmap);
+  v = pool;
+  i_last = 0;
+  clib_bitmap_foreach (i, p->free_bitmap, ({
+    if (i > i_last)
+      serialize (m, f, v + i_last*elt_bytes, i - i_last);
+    i_last = i + 1;
+  }));			       
+  if (i_last < l)
+    serialize (m, f, v + i_last*elt_bytes, l - i_last);
+}
+
+void unserialize_pool (serialize_main_t * m, va_list * va)
+{
+  void ** result = va_arg (*va, void **);
+  u32 elt_bytes = va_arg (*va, u32);
+  serialize_function_t * f = va_arg (*va, serialize_function_t *);
+  void * v;
+  u32 l, i, i_last;
+  pool_header_t * p;
+
+  unserialize_integer (m, &l, sizeof (l));
+  if (l == 0)
+    {
+      *result = 0;
+      return;
+    }
+
+  v = _vec_resize (0, l, l*elt_bytes, sizeof (p[0]), /* align */ 0);
+  p = pool_header (v);
+
+  p->free_bitmap = unserialize_bitmap (m);
+  i_last = 0;
+  clib_bitmap_foreach (i, p->free_bitmap, ({
+    if (i > i_last)
+      unserialize (m, f, v + i_last*elt_bytes, i - i_last);
+    i_last = i + 1;
+  }));
+  if (i_last < l)
+    unserialize (m, f, v + i_last*elt_bytes, l - i_last);
+
+  *result = v;
 }
 
 void serialize_cstring (serialize_main_t * m, char * s)
@@ -163,10 +271,7 @@ void serialize_cstring (serialize_main_t * m, char * s)
 
 void unserialize_cstring (serialize_main_t * m, char ** s)
 {
-  u32 len;
-
-  unserialize_integer (m, &len, sizeof (len));
-  *s = unserialize_data (m, len);
+  *s = unserialize_data (m);
 
   /* Null terminate. */
   vec_add1 (*s, 0);
@@ -288,12 +393,14 @@ void serialize_fill_buffer (serialize_main_t * m, u32 n_must_read)
 
 clib_error_t * serialize_close (serialize_main_t * m)
 {
-  clib_error_t * e;
+  clib_error_t * e = 0;
   u32 n_written;
 
   n_written = vec_len (m->buffer);
-  e = m->write (m, m->buffer, &n_written);
-  m->close (m);
+  if (m->write)
+    e = m->write (m, m->buffer, &n_written);
+  if (m->close)
+    m->close (m);
   vec_free (m->buffer);
   memset (m, 0, sizeof (m[0]));
   return e;
@@ -301,9 +408,29 @@ clib_error_t * serialize_close (serialize_main_t * m)
 
 clib_error_t * unserialize_close (serialize_main_t * m)
 {
-  m->close (m);
+  if (m->close)
+    m->close (m);
   vec_free (m->buffer);
   memset (m, 0, sizeof (m[0]));
+  return 0;
+}
+
+clib_error_t *
+serialize_open_vector (serialize_main_t * m, u8 * vector)
+{
+  memset (m, 0, sizeof (m[0]));
+  m->flush_threshold = ~0;	/* never flush */
+  m->buffer = vector;
+  if (vector)
+    _vec_len (m->buffer) = 0;
+  return 0;
+}
+
+clib_error_t *
+unserialize_open_vector (serialize_main_t * m, u8 * vector)
+{
+  memset (m, 0, sizeof (m[0]));
+  m->buffer = vector;
   return 0;
 }
 

@@ -244,20 +244,30 @@ static void
 serialize_elog_type (serialize_main_t * m, va_list * va)
 {
   elog_event_type_t * t = va_arg (*va, elog_event_type_t *);
-  serialize_cstring (m, t->format);
-  serialize_cstring (m, t->format_args);
-  serialize_integer (m, t->type, sizeof (t->type));
-  serialize_integer (m, t->n_data_bytes, sizeof (t->n_data_bytes));
+  int n = va_arg (*va, int);
+  int i;
+  for (i = 0; i < n; i++)
+    {
+      serialize_cstring (m, t[i].format);
+      serialize_cstring (m, t[i].format_args);
+      serialize_integer (m, t[i].type, sizeof (t->type));
+      serialize_integer (m, t[i].n_data_bytes, sizeof (t->n_data_bytes));
+    }
 }
 
 static void
 unserialize_elog_type (serialize_main_t * m, va_list * va)
 {
   elog_event_type_t * t = va_arg (*va, elog_event_type_t *);
-  unserialize_cstring (m, &t->format);
-  unserialize_cstring (m, &t->format_args);
-  unserialize_integer (m, &t->type, sizeof (t->type));
-  unserialize_integer (m, &t->n_data_bytes, sizeof (t->n_data_bytes));
+  int n = va_arg (*va, int);
+  int i;
+  for (i = 0; i < n; i++)
+    {
+      unserialize_cstring (m, &t[i].format);
+      unserialize_cstring (m, &t[i].format_args);
+      unserialize_integer (m, &t[i].type, sizeof (t->type));
+      unserialize_integer (m, &t[i].n_data_bytes, sizeof (t->n_data_bytes));
+    }
 }
 
 static char * elog_serialize_magic = "elog v0";
