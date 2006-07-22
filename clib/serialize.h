@@ -25,8 +25,10 @@
 #define included_clib_serialize_h
 
 #include <stdarg.h>
+#include <clib/byte_order.h>
 #include <clib/types.h>
 #include <clib/vec.h>
+#include <clib/pool.h>
 #include <clib/longjmp.h>
 
 typedef struct serialize_main_t {
@@ -96,62 +98,65 @@ serialize_read (serialize_main_t * m, uword n_bytes)
   return d;
 }
 
-static inline void
+static always_inline void
 serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
 {
-  u32 i;
-  u8 data[sizeof(x)];
-
-  ASSERT (n_bytes <= sizeof (x));
-  for (i = 0; i < n_bytes; i++)
-    {
-      data[i] = x & 0xff;
-      x >>= 8;
-    }
-  
-  serialize_write (m, data, n_bytes);
+  u8 * p;
+  vec_add2 (m->buffer, p, n_bytes);
+  if (n_bytes == 1)
+    p[0] = x;
+  else if (n_bytes == 2)
+    clib_mem_unaligned (p, u16) = clib_host_to_little_16 (x);
+  else if (n_bytes == 4)
+    clib_mem_unaligned (p, u32) = clib_host_to_little_32 (x);
+  else
+    ASSERT (0);
+  if (PREDICT_FALSE (vec_len (m->buffer) > m->flush_threshold))
+    serialize_flush_buffer (m);
 }
 
-static inline void
+static always_inline void
 unserialize_integer (serialize_main_t * m, u32 * x, u32 n_bytes)
 {
-  u32 i, d;
-  u8 * data = serialize_read (m, n_bytes);
-
-  ASSERT (n_bytes <= sizeof (d));
-  d = 0;
-  for (i = 0; i < n_bytes; i++)
-    d = (d << 8) + data[n_bytes - 1 - i];
-
-  *x = d;
+  u8 * p = serialize_read (m, n_bytes);
+  if (n_bytes == 1)
+    *x = p[0];
+  else if (n_bytes == 2)
+    *x = clib_little_to_host_unaligned_mem_16 ((u16 *) p);
+  else if (n_bytes == 4)
+    *x = clib_little_to_host_unaligned_mem_32 ((u32 *) p);
+  else
+    ASSERT (0);
 }
 
 /* Basic types. */
-void serialize_64 (serialize_main_t * m, va_list * va);
-void serialize_32 (serialize_main_t * m, va_list * va);
-void serialize_16 (serialize_main_t * m, va_list * va);
-void serialize_8 (serialize_main_t * m, va_list * va);
+serialize_function_t serialize_64, unserialize_64;
+serialize_function_t serialize_32, unserialize_32;
+serialize_function_t serialize_16, unserialize_16;
+serialize_function_t serialize_8, unserialize_8;
+serialize_function_t serialize_f64, unserialize_f64;
+serialize_function_t serialize_f32, unserialize_f32;
 
-void unserialize_64 (serialize_main_t * m, va_list * va);
-void unserialize_32 (serialize_main_t * m, va_list * va);
-void unserialize_16 (serialize_main_t * m, va_list * va);
-void unserialize_8 (serialize_main_t * m, va_list * va);
+/* Serialize generic vectors. */
+serialize_function_t serialize_vector, unserialize_vector;
 
-void serialize_f64 (serialize_main_t * m, va_list * va);
-void serialize_f32 (serialize_main_t * m, va_list * va);
-void unserialize_f64 (serialize_main_t * m, va_list * va);
-void unserialize_f32 (serialize_main_t * m, va_list * va);
-
-void serialize_vector (serialize_main_t * m, va_list * va);
-void unserialize_vector (serialize_main_t * m, va_list * va);
-
-/* Serialize generic vector.
-   serialize (m, v, sizeof (v[0]), serialize_elt_function). */
 #define vec_serialize(m,v,f) \
-  serialize (m, serialize_vector, v, sizeof (v[0]), f)
+  serialize ((m), serialize_vector, (v), (f))
 
 #define vec_unserialize(m,v,f) \
-  unserialize (m, unserialize_vector, (v), sizeof ((v)[0][0]), f)
+  unserialize ((m), unserialize_vector, (v), sizeof ((*(v))[0]), (f))
+
+/* Serialize pools. */
+serialize_function_t serialize_pool, unserialize_pool;
+
+#define pool_serialize(m,v,f) \
+  serialize ((m), serialize_pool, (v), sizeof ((v)[0]), (f))
+
+#define pool_unserialize(m,v,f) \
+  unserialize ((m), unserialize_pool, (v), sizeof ((*(v))[0]), (f))
+
+void serialize_bitmap (serialize_main_t * m, uword * b);
+uword * unserialize_bitmap (serialize_main_t * m);
 
 void serialize_cstring (serialize_main_t * m, char * string);
 void unserialize_cstring (serialize_main_t * m, char ** string);
@@ -164,13 +169,20 @@ do {						\
 } while (0)
 
 static inline void *
-unserialize_data (serialize_main_t * m, u32 len)
+unserialize_data (serialize_main_t * m)
 {
-  u8 * d = serialize_read (m, len);
-  u8 * v = 0;
+  u8 * d, * v;
+  u32 len;
+
+  unserialize_integer (m, &len, sizeof (len));
+  d = serialize_read (m, len);
+  v = 0;
   vec_add (v, d, len);
   return v;
 }
+
+clib_error_t * serialize_open_vector (serialize_main_t * m, u8 * vector);
+clib_error_t * unserialize_open_vector (serialize_main_t * m, u8 * vector);
 
 #ifdef CLIB_UNIX
 clib_error_t * serialize_open_unix_file (serialize_main_t * m, char * file);
