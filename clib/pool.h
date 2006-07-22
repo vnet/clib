@@ -106,29 +106,34 @@ pool_free_elts (void * v)
 
 /* Allocate an object E from a pool P.
    First search free list.  If nothing is free extend vector of objects. */
-#define pool_get_aligned(P,E,A)									\
-do {												\
-  pool_header_t * _pool(p) = pool_header (P);							\
-  uword _pool(l);										\
-												\
-  _pool(l) = 0;											\
-  if (P)											\
-    _pool(l) = vec_len (_pool(p)->free_indices);						\
-												\
-  if (_pool(l) > 0)										\
-    {												\
-      /* Return free element from free list. */							\
-      uword _pool(i) = _pool(p)->free_indices[_pool(l) - 1];					\
-      (E) = (P) + _pool(i);									\
-      _pool(p)->free_bitmap = clib_bitmap_andnoti (_pool(p)->free_bitmap, _pool(i));		\
-      _vec_len (_pool(p)->free_indices) = _pool(l) - 1;						\
-    }												\
-  else												\
-    {												\
-      /* Nothing on free list, make a new element and return it. */				\
-      P = _vec_resize (P, 1, (vec_len (P) + 1) * sizeof (P[0]), sizeof (pool_header_t), (A));	\
-      E = vec_end (P) - 1;									\
-    }												\
+#define pool_get_aligned(P,E,A)						\
+do {									\
+  pool_header_t * _pool(p) = pool_header (P);				\
+  uword _pool(l);							\
+									\
+  _pool(l) = 0;								\
+  if (P)								\
+    _pool(l) = vec_len (_pool(p)->free_indices);			\
+									\
+  if (_pool(l) > 0)							\
+    {									\
+      /* Return free element from free list. */				\
+      uword _pool(i) = _pool(p)->free_indices[_pool(l) - 1];		\
+      (E) = (P) + _pool(i);						\
+      _pool(p)->free_bitmap =						\
+	clib_bitmap_andnoti (_pool(p)->free_bitmap, _pool(i));		\
+      _vec_len (_pool(p)->free_indices) = _pool(l) - 1;			\
+    }									\
+  else									\
+    {									\
+      /* Nothing on free list, make a new element and return it. */	\
+      P = _vec_resize (P,						\
+		       /* length_increment */ 1,			\
+		       /* new size */ (vec_len (P) + 1) * sizeof (P[0]), \
+		       /* header bytes */ sizeof (pool_header_t),	\
+		       /* align */ (A));				\
+      E = vec_end (P) - 1;						\
+    }									\
 } while (0)
 
 #define pool_get(P,E) pool_get_aligned(P,E,0)
