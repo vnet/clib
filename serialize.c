@@ -208,8 +208,7 @@ void serialize_pool (serialize_main_t * m, va_list * va)
   void * pool = va_arg (*va, void *);
   u32 elt_bytes = va_arg (*va, u32);
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
-  void * v;
-  u32 l, i, i_last;
+  u32 l, lo, hi;
   pool_header_t * p;
 
   l = vec_len (pool);
@@ -218,15 +217,8 @@ void serialize_pool (serialize_main_t * m, va_list * va)
     return;
   p = pool_header (pool);
   serialize_bitmap (m, p->free_bitmap);
-  v = pool;
-  i_last = 0;
-  clib_bitmap_foreach (i, p->free_bitmap, ({
-    if (i > i_last)
-      serialize (m, f, v + i_last*elt_bytes, i - i_last);
-    i_last = i + 1;
-  }));			       
-  if (i_last < l)
-    serialize (m, f, v + i_last*elt_bytes, l - i_last);
+  pool_foreach_region (lo, hi, pool,
+		       serialize (m, f, pool + lo*elt_bytes, hi - lo));
 }
 
 void unserialize_pool (serialize_main_t * m, va_list * va)
@@ -235,7 +227,7 @@ void unserialize_pool (serialize_main_t * m, va_list * va)
   u32 elt_bytes = va_arg (*va, u32);
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
   void * v;
-  u32 l, i, i_last;
+  u32 l, lo, hi;
   pool_header_t * p;
 
   unserialize_integer (m, &l, sizeof (l));
@@ -247,17 +239,9 @@ void unserialize_pool (serialize_main_t * m, va_list * va)
 
   v = _vec_resize (0, l, l*elt_bytes, sizeof (p[0]), /* align */ 0);
   p = pool_header (v);
-
   p->free_bitmap = unserialize_bitmap (m);
-  i_last = 0;
-  clib_bitmap_foreach (i, p->free_bitmap, ({
-    if (i > i_last)
-      unserialize (m, f, v + i_last*elt_bytes, i - i_last);
-    i_last = i + 1;
-  }));
-  if (i_last < l)
-    unserialize (m, f, v + i_last*elt_bytes, l - i_last);
-
+  pool_foreach_region (lo, hi, v,
+		       unserialize (m, f, v + lo*elt_bytes, hi - lo));
   *result = v;
 }
 
