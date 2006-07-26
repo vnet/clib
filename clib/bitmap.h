@@ -207,21 +207,22 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 }
 
 /* Iterate through set bits. */
-#define clib_bitmap_foreach(i,ai,body)						\
-do {										\
-  uword __bitmap_i, __bitmap_ai, __bitmap_len, __bitmap_first_set;		\
-  __bitmap_len = vec_len ((ai));						\
-  for (__bitmap_i = 0; __bitmap_i < __bitmap_len; __bitmap_i++)			\
-    {										\
-      __bitmap_ai = (ai)[__bitmap_i];						\
-      while (__bitmap_ai != 0)							\
-	{									\
-	  __bitmap_first_set = first_set (__bitmap_ai);				\
-	  (i) = __bitmap_i * BITS ((ai)[0]) + min_log2 (__bitmap_first_set);	\
-	  do { body; } while (0);						\
-	  __bitmap_ai ^= __bitmap_first_set;					\
-	}									\
-    }										\
+#define clib_bitmap_foreach(i,ai,body)					\
+do {									\
+  uword __bitmap_i, __bitmap_ai, __bitmap_len, __bitmap_first_set;	\
+  __bitmap_len = vec_len ((ai));					\
+  for (__bitmap_i = 0; __bitmap_i < __bitmap_len; __bitmap_i++)		\
+    {									\
+      __bitmap_ai = (ai)[__bitmap_i];					\
+      while (__bitmap_ai != 0)						\
+	{								\
+	  __bitmap_first_set = first_set (__bitmap_ai);			\
+	  (i) = (__bitmap_i * BITS ((ai)[0])				\
+		 + min_log2 (__bitmap_first_set));			\
+	  do { body; } while (0);					\
+	  __bitmap_ai ^= __bitmap_first_set;				\
+	}								\
+    }									\
 } while (0)
 
 /* Return lowest numbered set bit in bitmap.
