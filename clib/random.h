@@ -72,6 +72,15 @@ random_u64 (u32 * seed)
   return result;
 }
 
+static inline uword
+random_uword (u32 * seed)
+{
+  if (sizeof (uword) == sizeof (u64))
+    return random_u64 (seed);
+  else
+    return random_u32 (seed);
+}
+
 /* Return random float between 0 and 1. */
 static inline f64 random_f64 (u32 * seed)
 { return (f64) random_u32 (seed) / (f64) random_u32_max (); }
