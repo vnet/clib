@@ -138,7 +138,7 @@ qhash_get_multiple (void * v,
   k = search_keys;
   n_left = n_search_keys;
   hash_keys = h->hash_keys;
-  while (n_left >= 2)
+  while (0 && n_left >= 2)
     {
       uword a0, b0, c0, k0, valid0, * h0;
       uword a1, b1, c1, k1, valid1, * h1;
@@ -247,38 +247,53 @@ qhash_get_multiple (void * v,
   return ~0;
 }
 
-static uword
-qhash_set_overflow (uword * v, uword key, uword bi, uword * n_elts)
+static void *
+qhash_set_overflow (void * v, uword elt_bytes,
+		    uword key, uword bi,
+		    uword * n_elts, uword * result)
 {
   qhash_t * h = qhash_header (v);
   uword * p = hash_get (h->overflow_hash, key);
-  uword result;
+  uword i;
 
   bi /= QHASH_KEYS_PER_BUCKET;
 
   if (p)
-    result = p[0];
+    i = p[0];
   else
     {
       uword l = vec_len (h->overflow_free_indices);
       if (l > 0)
 	{
-	  result = h->overflow_free_indices[l - 1];
+	  i = h->overflow_free_indices[l - 1];
 	  _vec_len (h->overflow_free_indices) = l - 1;
 	}
       else
-	result = (1 << h->log2_hash_size) + hash_elts (h->overflow_hash);
-      hash_set (h->overflow_hash, key, result);
+	i = (1 << h->log2_hash_size) + hash_elts (h->overflow_hash);
+      hash_set (h->overflow_hash, key, i);
       vec_validate (h->overflow_counts, bi);
       h->overflow_counts[bi] += 1;
       *n_elts += 1;
+
+      l = vec_len (v);
+      if (i >= l)
+	{
+	  uword dl = round_pow2 (1 + i - l, 8);
+	  v = _vec_resize (v, dl,
+			   (l + dl) * elt_bytes,
+			   sizeof (h[0]),
+			   /* align */ 0);
+	  memset (v + l*elt_bytes, ~0, dl * elt_bytes);
+	}
     }
 
-  return result;
+  *result = i;
+
+  return v;
 }
 
 static uword
-qhash_unset_overflow (uword * v, uword key, uword bi, uword * n_elts)
+qhash_unset_overflow (void * v, uword key, uword bi, uword * n_elts)
 {
   qhash_t * h = qhash_header (v);
   uword * p = hash_get (h->overflow_hash, key);
@@ -319,14 +334,18 @@ qhash_find_free (uword i, uword valid_mask)
 }
 
 static void *
-qhash_set_multiple (void * v,
-		    uword * search_keys,
-		    uword n_search_keys,
-		    uword * result_indices)
+_qhash_set_multiple (void * v,
+		     uword elt_bytes,
+		     uword * search_keys,
+		     uword n_search_keys,
+		     uword * result_indices)
 {
   qhash_t * h = qhash_header (v);
   uword a, b, c, bi0, bi1, * k, * r, * hash_keys;
   uword n_left, n_elts, bucket_mask;
+
+  if (vec_len (v) < n_search_keys)
+    v = _qhash_resize (v, n_search_keys, elt_bytes);
 
   ASSERT (v != 0);
 
@@ -372,14 +391,14 @@ qhash_set_multiple (void * v,
       valid0 = qhash_get_valid_elt_mask (h, bi0);
       valid1 = qhash_get_valid_elt_mask (h, bi1);
 
+      match0 = qhash_search_bucket (h0, k0, valid0);
+      match1 = qhash_search_bucket (h1, k1, valid1);
+
       /* Find first free element starting at hash offset into bucket. */
       free0 = qhash_find_free (c0 & (QHASH_KEYS_PER_BUCKET - 1), valid0);
 
-      free1 = valid1 | (bi0 == bi1 ? free0 : 0);
-      free1 = qhash_find_free (c1 & (QHASH_KEYS_PER_BUCKET - 1), free1);
-
-      match0 = qhash_search_bucket (h0, k0, valid0);
-      match1 = qhash_search_bucket (h1, k1, valid1);
+      valid1 = valid1 | (bi0 == bi1 ? free0 : 0);
+      free1 = qhash_find_free (c1 & (QHASH_KEYS_PER_BUCKET - 1), valid1);
 
       n_elts += (match0 == 0) + (match1 == 0);
 
@@ -400,7 +419,6 @@ qhash_set_multiple (void * v,
       r[0] = h0 - hash_keys;
       r[1] = h1 - hash_keys;
       r += 2;
-
       qhash_set_valid_elt_mask (h, bi0, valid0);
       qhash_set_valid_elt_mask (h, bi1, valid1);
       continue;
@@ -409,22 +427,24 @@ qhash_set_multiple (void * v,
       if (! match0)
 	{
 	  n_elts -= 1;
-	  r[0] = qhash_set_overflow (v, k0, bi0, &n_elts);
+	  v = qhash_set_overflow (v, elt_bytes, k0, bi0, &n_elts, &r[0]);
 	}
       else
 	{
 	  h0[0] = k0;
 	  r[0] = h0 - hash_keys;
+	  qhash_set_valid_elt_mask (h, bi0, valid0);
 	}
       if (! match1)
 	{
 	  n_elts -= 1;
-	  r[1] = qhash_set_overflow (v, k1, bi1, &n_elts);
+	  v = qhash_set_overflow (v, elt_bytes, k1, bi1, &n_elts, &r[1]);
 	}
       else
 	{
 	  h1[0] = k1;
 	  r[1] = h1 - hash_keys;
+	  qhash_set_valid_elt_mask (h, bi1, valid1);
 	}
       r += 2;
     }
@@ -471,12 +491,59 @@ qhash_set_multiple (void * v,
 
     slow_path1:
       n_elts -= 1;
-      r[0] = qhash_set_overflow (v, k0, bi0, &n_elts);
+      v = qhash_set_overflow (v, elt_bytes, k0, bi0, &n_elts, &r[0]);
       r += 1;
     }
 
+  h = qhash_header (v);
   h->n_elts = n_elts;
+
   return v;
+}
+
+static always_inline void
+memswap (void * _a, void * _b, uword bytes)
+{
+  uword pa = pointer_to_uword (_a);
+  uword pb = pointer_to_uword (_b);
+
+#define _(TYPE)					\
+  if (0 == ((pa | pb) & (sizeof (TYPE) - 1)))	\
+    {						\
+      TYPE * a = uword_to_pointer (pa, TYPE *);	\
+      TYPE * b = uword_to_pointer (pb, TYPE *);	\
+						\
+      while (bytes >= 2*sizeof (TYPE))		\
+	{					\
+	  TYPE a0, a1, b0, b1;			\
+	  bytes -= 2*sizeof (TYPE);		\
+	  a += 2;				\
+	  b += 2;				\
+	  a0 = a[-2]; a1 = a[-1];		\
+	  b0 = b[-2]; b1 = b[-1];		\
+	  a[-2] = b0; a[-1] = b1;		\
+	  b[-2] = a0; b[-1] = a1;		\
+	}					\
+      pa = pointer_to_uword (a);		\
+      pb = pointer_to_uword (b);		\
+    }
+      
+  if (BITS (uword) == BITS (u64))
+    _ (u64);
+  _ (u32);
+  _ (u16);
+  _ (u8);
+
+#undef _
+
+  ASSERT (bytes < 2);
+  if (bytes)
+    {
+      u8 * a = uword_to_pointer (pa, u8 *);
+      u8 * b = uword_to_pointer (pb, u8 *);
+      u8 a0 = a[0], b0 = b[0];
+      a[0] = b0; b[0] = a0;
+    }
 }
 
 static uword
@@ -498,12 +565,10 @@ unset_slow_path (void * v, uword elt_bytes,
   i = bi0 / QHASH_KEYS_PER_BUCKET;
   t = bi0 + min_log2 (match0);
 
-  if (i < vec_len (h->overflow_counts)
+  if (valid0 == QHASH_ALL_VALID
+      && i < vec_len (h->overflow_counts)
       && h->overflow_counts[i] > 0)
     {
-      valid0 |= match0;
-      ASSERT (valid0 == QHASH_ALL_VALID);
-
       found = 0;
       hash_foreach_pair (p, h->overflow_hash, ({
 	j = qhash_hash_mix (h, p->key) / QHASH_KEYS_PER_BUCKET;
@@ -522,24 +587,27 @@ unset_slow_path (void * v, uword elt_bytes,
       vec_add1 (h->overflow_free_indices, j);
       h->overflow_counts[i] -= 1;
 
-      h->hash_keys[t] = k;
-      memcpy (v + t*elt_bytes,
-	      v + l*elt_bytes,
-	      elt_bytes);
       qhash_set_valid_elt_mask (h, bi0, valid0);
-      t = ~0 - 1;
+
+      h->hash_keys[t] = k;
+      memswap (v + t*elt_bytes,
+	       v + l*elt_bytes,
+	       elt_bytes);
+      t = l;
     }
+  else
+    qhash_set_valid_elt_mask (h, bi0, valid0 ^ match0);
 
   return t;
 }
 
 /* Returns number of keys successfully unset. */
 static void
-qhash_unset_multiple (void * v,
-		      uword elt_bytes,
-		      uword * search_keys,
-		      uword n_search_keys,
-		      uword * result_indices)
+_qhash_unset_multiple (void * v,
+		       uword elt_bytes,
+		       uword * search_keys,
+		       uword n_search_keys,
+		       uword * result_indices)
 {
   qhash_t * h = qhash_header (v);
   uword a, b, c, bi0, bi1, * k, * r, * hash_keys;
@@ -564,7 +632,7 @@ qhash_unset_multiple (void * v,
   n_left = n_search_keys;
   n_elts = h->n_elts;
 
-  while (0 && n_left >= 2)
+  while (1 && n_left >= 2)
     {
       uword a0, b0, c0, k0, match0, valid0, * h0;
       uword a1, b1, c1, k1, match1, valid1, * h1;
@@ -597,7 +665,11 @@ qhash_unset_multiple (void * v,
       match0 = qhash_search_bucket (h0, k0, valid0);
       match1 = qhash_search_bucket (h1, k1, valid1);
 
-      n_elts += (match0 != 0) + (match1 != 0);
+      n_elts -= (match0 != 0) + (match1 != 0);
+
+      if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID
+			 || valid1 == QHASH_ALL_VALID))
+	goto slow_path2;
 
       valid0 ^= match0;
       qhash_set_valid_elt_mask (h, bi0, valid0);
@@ -607,16 +679,27 @@ qhash_unset_multiple (void * v,
 
       qhash_set_valid_elt_mask (h, bi1, valid1);
 
-      r[0] = bi0 + min_log2 (match0);
-      r[1] = bi1 + min_log2 (match1);
+      r[0] = match0 ? bi0 + min_log2 (match0) : ~0;
+      r[1] = match1 ? bi1 + min_log2 (match1) : ~0;
       r += 2;
+      continue;
 
-      if (PREDICT_FALSE ((valid0 | match0) == QHASH_ALL_VALID))
-	r[-2] = unset_slow_path (v, elt_bytes, k0, bi0, valid0, match0,
-				 &n_elts);
-      if (PREDICT_FALSE ((valid1 | match1) == QHASH_ALL_VALID))
-	r[-1] = unset_slow_path (v, elt_bytes, k1, bi1, valid1, match1,
-				 &n_elts);
+    slow_path2:
+      r[0] = unset_slow_path (v, elt_bytes, k0, bi0, valid0, match0,
+			      &n_elts);
+      if (bi0 == bi1)
+	{
+	  /* Search again in same bucket to test new overflow element. */
+	  valid1 = qhash_get_valid_elt_mask (h, bi0);
+	  if (! match1)
+	    {
+	      match1 = qhash_search_bucket (h1, k1, valid1);
+	      n_elts -= (match1 != 0);
+	    }
+	}
+      r[1] = unset_slow_path (v, elt_bytes, k1, bi1, valid1, match1,
+			      &n_elts);
+      r += 2;
     }
 
   while (n_left >= 1)
@@ -639,13 +722,12 @@ qhash_unset_multiple (void * v,
 
       match0 = qhash_search_bucket (h0, k0, valid0);
       n_elts -= (match0 != 0);
-      valid0 ^= match0;
-      qhash_set_valid_elt_mask (h, bi0, valid0);
+      qhash_set_valid_elt_mask (h, bi0, valid0 ^ match0);
 
-      r[0] = bi0 + min_log2 (match0);
+      r[0] = match0 ? bi0 + min_log2 (match0) : ~0;
       r += 1;
 
-      if (PREDICT_FALSE ((valid0 | match0) == QHASH_ALL_VALID))
+      if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID))
 	r[-1] = unset_slow_path (v, elt_bytes, k0, bi0, valid0, match0,
 				 &n_elts);
     }
@@ -653,34 +735,48 @@ qhash_unset_multiple (void * v,
   h->n_elts = n_elts;
 }
 
+#define qhash_set_multiple(v,keys,n,results) \
+  (v) = _qhash_set_multiple ((v), sizeof ((v)[0]), (keys), (n), (results))
+
+#define qhash_unset_multiple(v,keys,n,results) \
+  _qhash_unset_multiple ((v), sizeof ((v)[0]), (keys), (n), (results))
+
 #define qhash_get(v,key)					\
 ({								\
   uword _qhash_get_k = (key);					\
   qhash_get_multiple ((v), &_qhash_get_k, 1, &_qhash_get_k);	\
 })
 
-#define qhash_set(v,k)							\
-({									\
-  uword _qhash_set_k = (k);						\
-  v = qhash_set_multiple ((v), &_qhash_set_k, 1, &_qhash_set_k);	\
-  _qhash_set_k;								\
+#define qhash_set(v,k)						\
+({								\
+  uword _qhash_set_k = (k);					\
+  qhash_set_multiple ((v), &_qhash_set_k, 1, &_qhash_set_k);	\
+  _qhash_set_k;							\
 })
 
 #define qhash_unset(v,k)						\
 ({									\
   uword _qhash_unset_k = (k);						\
-  qhash_unset_multiple ((v), sizeof ((v)[0]), &_qhash_unset_k, 1, &_qhash_unset_k); \
+  qhash_unset_multiple ((v), &_qhash_unset_k, 1, &_qhash_unset_k);	\
   _qhash_unset_k;							\
-})									\
+})
 
 typedef struct {
   u32 n_iter, seed, n_keys, verbose;
 
+  u32 max_vector;
+
   uword * hash;
+
+  uword * keys_in_hash;
 
   u32 * qhash;
 
   uword * keys;
+
+  uword * lookup_keys;
+  uword * lookup_key_indices;
+  uword * lookup_results;
 } test_qhash_main_t;
 
 clib_error_t *
@@ -695,6 +791,7 @@ test_qhash_main (unformat_input_t * input)
   tm->n_iter = 10;
   tm->seed = 1;
   tm->n_keys = 10;
+  tm->max_vector = 1;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -703,6 +800,8 @@ test_qhash_main (unformat_input_t * input)
       else if (unformat (input, "seed %d", &tm->seed))
 	;
       else if (unformat (input, "keys %d", &tm->n_keys))
+	;
+      else if (unformat (input, "vector %d", &tm->max_vector))
 	;
       else if (unformat (input, "verbose"))
 	tm->verbose = 1;
@@ -717,8 +816,8 @@ test_qhash_main (unformat_input_t * input)
   if (! tm->seed)
     tm->seed = random_default_seed ();
 
-  clib_warning ("iter %d, seed %u, keys %d, ",
-		tm->n_iter, tm->seed, tm->n_keys);
+  clib_warning ("iter %d, seed %u, keys %d, max vector %d, ",
+		tm->n_iter, tm->seed, tm->n_keys, tm->max_vector);
 
   vec_resize (tm->keys, tm->n_keys);
   for (i = 0; i < vec_len (tm->keys); i++)
@@ -735,31 +834,64 @@ test_qhash_main (unformat_input_t * input)
 
   overflow_fraction = 0;
 
+  vec_resize (tm->lookup_keys, tm->max_vector);
+  vec_resize (tm->lookup_key_indices, tm->max_vector);
+  vec_resize (tm->lookup_results, tm->max_vector);
+
   for (iter = 0; iter < tm->n_iter; iter++)
     {
-      uword * p, j;
+      uword * p, j, n, is_set;
 
-      i = random_u32 (&tm->seed) % vec_len (tm->keys);
+      n = 1 + (random_u32 (&tm->seed) % tm->max_vector);
 
-      p = hash_get (tm->hash, tm->keys[i]);
-      if (p)
+      is_set = random_u32 (&tm->seed) & 1;
+      is_set |= hash_elts (tm->hash) < (tm->n_keys / 2);
+      if (hash_elts (tm->hash) + n > tm->n_keys)
+	is_set = 0;
+
+      _vec_len (tm->lookup_keys) = n;
+      _vec_len (tm->lookup_key_indices) = n;
+      j = 0;
+      while (j < n)
 	{
-	  j = qhash_unset (tm->qhash, tm->keys[i]);
-	  if (j != ~0 - 1)
+	  i = random_u32 (&tm->seed) % vec_len (tm->keys);
+	  if (clib_bitmap_get (tm->keys_in_hash, i) != is_set)
 	    {
-	      if (*vec_elt_at_index (tm->qhash, j) != i)
-		os_panic ();
-	      tm->qhash[j] = ~0;
+	      tm->lookup_key_indices[j] = i;
+	      tm->lookup_keys[j] = tm->keys[i];
+	      if (is_set)
+		hash_set (tm->hash, tm->keys[i], i);
+	      else
+		hash_unset (tm->hash, tm->keys[i]);
+	      tm->keys_in_hash = clib_bitmap_set (tm->keys_in_hash, i,
+						  is_set);
+	      j++;
 	    }
-	  hash_unset (tm->hash, tm->keys[i]);
+	}
+
+      if (is_set)
+	{
+	  qhash_set_multiple (tm->qhash,
+			      tm->lookup_keys,
+			      vec_len (tm->lookup_keys),
+			      tm->lookup_results);
+	  for (i = 0; i < vec_len (tm->lookup_keys); i++)
+	    {
+	      uword r = tm->lookup_results[i];
+	      *vec_elt_at_index (tm->qhash, r) = tm->lookup_key_indices[i];
+	    }
 	}
       else
 	{
-	  hash_set (tm->hash, tm->keys[i], i);
-	  j = qhash_set (tm->qhash, tm->keys[i]);
-	  vec_validate_init_empty_ha (tm->qhash, j, ~0,
-				      sizeof (qhash_t), 0);
-	  tm->qhash[j] = i;
+	  qhash_unset_multiple (tm->qhash,
+				tm->lookup_keys,
+				vec_len (tm->lookup_keys),
+				tm->lookup_results);
+	  for (i = 0; i < vec_len (tm->lookup_keys); i++)
+	    {
+	      uword r = tm->lookup_results[i];
+	      *vec_elt_at_index (tm->qhash, r) = ~0;
+	    }
 	}
 
       if (qhash_elts (tm->qhash) != hash_elts (tm->hash))
@@ -825,8 +957,8 @@ test_qhash_main (unformat_input_t * input)
 	    }
 	}
 
-      overflow_fraction += (f64) qhash_n_overflow (tm->qhash)
-	/ qhash_elts (tm->qhash);
+      overflow_fraction +=
+	((f64) qhash_n_overflow (tm->qhash) / qhash_elts (tm->qhash));
     }
 
   clib_warning ("%d iter %.4e overflow",
