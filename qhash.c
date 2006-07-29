@@ -1,9 +1,6 @@
 #include <clib/bitmap.h>
 #include <clib/cache.h>
 #include <clib/hash.h>
-#include <clib/os.h>
-#include <clib/random.h>
-#include <clib/time.h>
 
 /* Word hash tables. */
 
@@ -103,14 +100,16 @@ static always_inline uword
 qhash_search_bucket (uword * hash_keys, uword search_key,
 		     uword m)
 {
+  uword t;
 #define _(i) ((hash_keys[i] == search_key) << i)
-  m &= (_ (0) | _ (1) | _ (2) | _ (3)
-	| _ (4) | _ (5) | _ (6) | _ (7));
-  if (QHASH_KEYS_PER_BUCKET >= 16)
-    m &= (_ (8) | _ (9) | _ (10) | _ (11)
+  t = (_ (0) | _ (1) | _ (2) | _ (3));
+  if (QHASH_KEYS_PER_BUCKET > 4)
+    t |= (_ (4) | _ (5) | _ (6) | _ (7));
+  if (QHASH_KEYS_PER_BUCKET > 8)
+    t |= (_ (8) | _ (9) | _ (10) | _ (11)
 	  | _ (12) | _ (13) | _ (14) | _ (15));
 #undef _
-  return m;
+  return m & t;
 }
 
 /* Lookup multiple keys in the same hash table.
@@ -321,6 +320,8 @@ qhash_unset_overflow (void * v, uword key, uword bi, uword * n_elts)
 static always_inline uword
 qhash_find_free (uword i, uword valid_mask)
 {
+  return first_set (~valid_mask & pow2_mask (QHASH_KEYS_PER_BUCKET));
+#if 0
 #if QHASH_LOG2_KEYS_PER_BUCKET <= 3
   u8 f;
 #else
@@ -331,6 +332,7 @@ qhash_find_free (uword i, uword valid_mask)
   f = first_set (f);
   f = ((f >> (QHASH_KEYS_PER_BUCKET - i)) | (f << i));
   return f;
+#endif
 }
 
 static void *
@@ -761,6 +763,10 @@ _qhash_unset_multiple (void * v,
   _qhash_unset_k;							\
 })
 
+#include <clib/os.h>
+#include <clib/random.h>
+#include <clib/time.h>
+
 typedef struct {
   u32 n_iter, seed, n_keys, verbose;
 
@@ -777,6 +783,8 @@ typedef struct {
   uword * lookup_keys;
   uword * lookup_key_indices;
   uword * lookup_results;
+
+  clib_time_t time;
 } test_qhash_main_t;
 
 clib_error_t *
@@ -785,7 +793,9 @@ test_qhash_main (unformat_input_t * input)
   clib_error_t * error = 0;
   test_qhash_main_t _tm, * tm = &_tm;
   uword i, iter;
-  f64 overflow_fraction;
+  f64 overflow_fraction, ave_elts;
+  f64 set_time, set_count, unset_time, unset_count;
+  f64 hash_set_time, hash_unset_time;
 
   memset (tm, 0, sizeof (tm[0]));
   tm->n_iter = 10;
@@ -816,6 +826,8 @@ test_qhash_main (unformat_input_t * input)
   if (! tm->seed)
     tm->seed = random_default_seed ();
 
+  clib_time_init (&tm->time);
+
   clib_warning ("iter %d, seed %u, keys %d, max vector %d, ",
 		tm->n_iter, tm->seed, tm->n_keys, tm->max_vector);
 
@@ -833,6 +845,10 @@ test_qhash_main (unformat_input_t * input)
   }
 
   overflow_fraction = 0;
+  ave_elts = 0;
+  set_time = set_count = 0;
+  unset_time = unset_count = 0;
+  hash_set_time = hash_unset_time = 0;
 
   vec_resize (tm->lookup_keys, tm->max_vector);
   vec_resize (tm->lookup_key_indices, tm->max_vector);
@@ -842,11 +858,11 @@ test_qhash_main (unformat_input_t * input)
     {
       uword * p, j, n, is_set;
 
-      n = 1 + (random_u32 (&tm->seed) % tm->max_vector);
+      n = tm->max_vector;
 
       is_set = random_u32 (&tm->seed) & 1;
-      is_set |= hash_elts (tm->hash) < (tm->n_keys / 2);
-      if (hash_elts (tm->hash) + n > tm->n_keys)
+      is_set |= hash_elts (tm->hash) < (tm->n_keys / 4);
+      if (hash_elts (tm->hash) > (3 * tm->n_keys) / 4)
 	is_set = 0;
 
       _vec_len (tm->lookup_keys) = n;
@@ -857,42 +873,62 @@ test_qhash_main (unformat_input_t * input)
 	  i = random_u32 (&tm->seed) % vec_len (tm->keys);
 	  if (clib_bitmap_get (tm->keys_in_hash, i) != is_set)
 	    {
+	      f64 t[2];
 	      tm->lookup_key_indices[j] = i;
 	      tm->lookup_keys[j] = tm->keys[i];
+	      t[0] = clib_time_now (&tm->time);
 	      if (is_set)
 		hash_set (tm->hash, tm->keys[i], i);
 	      else
 		hash_unset (tm->hash, tm->keys[i]);
+	      t[1] = clib_time_now (&tm->time);
+	      if (is_set)
+		hash_set_time += t[1] - t[0];
+	      else
+		hash_unset_time += t[1] - t[0];
 	      tm->keys_in_hash = clib_bitmap_set (tm->keys_in_hash, i,
 						  is_set);
 	      j++;
 	    }
 	}
 
-      if (is_set)
-	{
-	  qhash_set_multiple (tm->qhash,
-			      tm->lookup_keys,
-			      vec_len (tm->lookup_keys),
-			      tm->lookup_results);
-	  for (i = 0; i < vec_len (tm->lookup_keys); i++)
-	    {
-	      uword r = tm->lookup_results[i];
-	      *vec_elt_at_index (tm->qhash, r) = tm->lookup_key_indices[i];
-	    }
-	}
-      else
-	{
-	  qhash_unset_multiple (tm->qhash,
+      {
+	f64 t[2];
+
+	if (is_set)
+	  {
+	    t[0] = clib_time_now (&tm->time);
+	    qhash_set_multiple (tm->qhash,
 				tm->lookup_keys,
 				vec_len (tm->lookup_keys),
 				tm->lookup_results);
-	  for (i = 0; i < vec_len (tm->lookup_keys); i++)
-	    {
-	      uword r = tm->lookup_results[i];
-	      *vec_elt_at_index (tm->qhash, r) = ~0;
-	    }
-	}
+	    t[1] = clib_time_now (&tm->time);
+	    set_time += t[1] - t[0];
+	    set_count += vec_len (tm->lookup_keys);
+	    for (i = 0; i < vec_len (tm->lookup_keys); i++)
+	      {
+		uword r = tm->lookup_results[i];
+		*vec_elt_at_index (tm->qhash, r) = tm->lookup_key_indices[i];
+	      }
+	  }
+	else
+	  {
+	    t[0] = clib_time_now (&tm->time);
+	    qhash_unset_multiple (tm->qhash,
+				  tm->lookup_keys,
+				  vec_len (tm->lookup_keys),
+				  tm->lookup_results);
+	    t[1] = clib_time_now (&tm->time);
+	    unset_time += t[1] - t[0];
+	    unset_count += vec_len (tm->lookup_keys);
+
+	    for (i = 0; i < vec_len (tm->lookup_keys); i++)
+	      {
+		uword r = tm->lookup_results[i];
+		*vec_elt_at_index (tm->qhash, r) = ~0;
+	      }
+	  }
+      }
 
       if (qhash_elts (tm->qhash) != hash_elts (tm->hash))
 	os_panic ();
@@ -959,10 +995,16 @@ test_qhash_main (unformat_input_t * input)
 
       overflow_fraction +=
 	((f64) qhash_n_overflow (tm->qhash) / qhash_elts (tm->qhash));
+      ave_elts += qhash_elts (tm->qhash);
     }
 
-  clib_warning ("%d iter %.4e overflow",
-		tm->n_iter, overflow_fraction / tm->n_iter);
+  fformat (stderr, "%d iter %.4e overflow, %.4f elts\n",
+	   tm->n_iter,
+	   overflow_fraction / tm->n_iter,
+	   ave_elts / tm->n_iter);
+  fformat (stderr, "set/unset time %.4e %.4e, clib %.4e/%.4e\n",
+	   set_time / set_count, unset_time / unset_count,
+	   hash_set_time / set_count, hash_unset_time / unset_count);
 
  done:
   return error;
