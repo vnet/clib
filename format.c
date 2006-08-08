@@ -9,7 +9,7 @@
  */
 
 /*
-  Copyright (c) 2001, 2002, 2003 Eliot Dresselhaus
+  Copyright (c) 2001, 2002, 2003, 2006 Eliot Dresselhaus
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the

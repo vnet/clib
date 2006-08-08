@@ -86,6 +86,7 @@ am__objects_1 = libclibkernel_a-asm_x86.$(OBJEXT) \
 	libclibkernel_a-random_isaac.$(OBJEXT) \
 	libclibkernel_a-serialize.$(OBJEXT) \
 	libclibkernel_a-std-formats.$(OBJEXT) \
+	libclibkernel_a-string.$(OBJEXT) \
 	libclibkernel_a-time.$(OBJEXT) \
 	libclibkernel_a-unformat.$(OBJEXT) \
 	libclibkernel_a-vec.$(OBJEXT) libclibkernel_a-zvec.$(OBJEXT)
@@ -126,6 +127,7 @@ am__objects_3 = libclibstandalone_a-asm_x86.$(OBJEXT) \
 	libclibstandalone_a-random_isaac.$(OBJEXT) \
 	libclibstandalone_a-serialize.$(OBJEXT) \
 	libclibstandalone_a-std-formats.$(OBJEXT) \
+	libclibstandalone_a-string.$(OBJEXT) \
 	libclibstandalone_a-time.$(OBJEXT) \
 	libclibstandalone_a-unformat.$(OBJEXT) \
 	libclibstandalone_a-vec.$(OBJEXT) \
@@ -152,7 +154,7 @@ libclib_la_LIBADD =
 am__objects_5 = asm_x86.lo backtrace.lo elog.lo error.lo fifo.lo \
 	format.lo hash.lo heap.lo longjmp.lo mheap.lo md5.lo \
 	mem_mheap.lo phash.lo random.lo random_buffer.lo \
-	random_isaac.lo serialize.lo std-formats.lo time.lo \
+	random_isaac.lo serialize.lo std-formats.lo string.lo time.lo \
 	unformat.lo vec.lo zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) mem_malloc.lo socket.lo \
 	timer.lo unix-formats.lo unix-misc.lo
@@ -484,6 +486,7 @@ CLIB_CORE = \
   random_isaac.c \
   serialize.c \
   std-formats.c \
+  string.c \
   time.c \
   unformat.c \
   vec.c \
@@ -733,6 +736,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-serialize.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-standalone_string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-std-formats.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_format.Po@am__quote@
@@ -768,6 +772,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-standalone_main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-standalone_string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-std-formats.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_format.Po@am__quote@
@@ -794,6 +799,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serialize.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socket.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/std-formats.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/string.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_elog-test_elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fifo-test_fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_format-test_format.Po@am__quote@
@@ -1095,6 +1101,20 @@ libclibkernel_a-std-formats.obj: std-formats.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='std-formats.c' object='libclibkernel_a-std-formats.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-std-formats.obj `if test -f 'std-formats.c'; then $(CYGPATH_W) 'std-formats.c'; else $(CYGPATH_W) '$(srcdir)/std-formats.c'; fi`
+
+libclibkernel_a-string.o: string.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-string.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-string.Tpo" -c -o libclibkernel_a-string.o `test -f 'string.c' || echo '$(srcdir)/'`string.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-string.Tpo" "$(DEPDIR)/libclibkernel_a-string.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-string.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='string.c' object='libclibkernel_a-string.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-string.o `test -f 'string.c' || echo '$(srcdir)/'`string.c
+
+libclibkernel_a-string.obj: string.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-string.obj -MD -MP -MF "$(DEPDIR)/libclibkernel_a-string.Tpo" -c -o libclibkernel_a-string.obj `if test -f 'string.c'; then $(CYGPATH_W) 'string.c'; else $(CYGPATH_W) '$(srcdir)/string.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-string.Tpo" "$(DEPDIR)/libclibkernel_a-string.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-string.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='string.c' object='libclibkernel_a-string.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-string.obj `if test -f 'string.c'; then $(CYGPATH_W) 'string.c'; else $(CYGPATH_W) '$(srcdir)/string.c'; fi`
 
 libclibkernel_a-time.o: time.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-time.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-time.Tpo" -c -o libclibkernel_a-time.o `test -f 'time.c' || echo '$(srcdir)/'`time.c; \
@@ -1585,6 +1605,20 @@ libclibstandalone_a-std-formats.obj: std-formats.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='std-formats.c' object='libclibstandalone_a-std-formats.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-std-formats.obj `if test -f 'std-formats.c'; then $(CYGPATH_W) 'std-formats.c'; else $(CYGPATH_W) '$(srcdir)/std-formats.c'; fi`
+
+libclibstandalone_a-string.o: string.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-string.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-string.Tpo" -c -o libclibstandalone_a-string.o `test -f 'string.c' || echo '$(srcdir)/'`string.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-string.Tpo" "$(DEPDIR)/libclibstandalone_a-string.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-string.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='string.c' object='libclibstandalone_a-string.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-string.o `test -f 'string.c' || echo '$(srcdir)/'`string.c
+
+libclibstandalone_a-string.obj: string.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-string.obj -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-string.Tpo" -c -o libclibstandalone_a-string.obj `if test -f 'string.c'; then $(CYGPATH_W) 'string.c'; else $(CYGPATH_W) '$(srcdir)/string.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-string.Tpo" "$(DEPDIR)/libclibstandalone_a-string.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-string.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='string.c' object='libclibstandalone_a-string.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-string.obj `if test -f 'string.c'; then $(CYGPATH_W) 'string.c'; else $(CYGPATH_W) '$(srcdir)/string.c'; fi`
 
 libclibstandalone_a-time.o: time.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-time.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-time.Tpo" -c -o libclibstandalone_a-time.o `test -f 'time.c' || echo '$(srcdir)/'`time.c; \

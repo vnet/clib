@@ -142,6 +142,7 @@ CLIB_CORE = \
   random_isaac.c \
   serialize.c \
   std-formats.c \
+  string.c \
   time.c \
   unformat.c \
   vec.c \
