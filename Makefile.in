@@ -81,6 +81,7 @@ am__objects_1 = libclibkernel_a-asm_x86.$(OBJEXT) \
 	libclibkernel_a-mheap.$(OBJEXT) libclibkernel_a-md5.$(OBJEXT) \
 	libclibkernel_a-mem_mheap.$(OBJEXT) \
 	libclibkernel_a-phash.$(OBJEXT) \
+	libclibkernel_a-qhash.$(OBJEXT) \
 	libclibkernel_a-random.$(OBJEXT) \
 	libclibkernel_a-random_buffer.$(OBJEXT) \
 	libclibkernel_a-random_isaac.$(OBJEXT) \
@@ -97,6 +98,7 @@ am__objects_2 = libclibkernel_a-test_elog.$(OBJEXT) \
 	libclibkernel_a-test_longjmp.$(OBJEXT) \
 	libclibkernel_a-test_mheap.$(OBJEXT) \
 	libclibkernel_a-test_phash.$(OBJEXT) \
+	libclibkernel_a-test_qhash.$(OBJEXT) \
 	libclibkernel_a-test_random.$(OBJEXT) \
 	libclibkernel_a-test_random_isaac.$(OBJEXT) \
 	libclibkernel_a-test_vec.$(OBJEXT) \
@@ -122,6 +124,7 @@ am__objects_3 = libclibstandalone_a-asm_x86.$(OBJEXT) \
 	libclibstandalone_a-md5.$(OBJEXT) \
 	libclibstandalone_a-mem_mheap.$(OBJEXT) \
 	libclibstandalone_a-phash.$(OBJEXT) \
+	libclibstandalone_a-qhash.$(OBJEXT) \
 	libclibstandalone_a-random.$(OBJEXT) \
 	libclibstandalone_a-random_buffer.$(OBJEXT) \
 	libclibstandalone_a-random_isaac.$(OBJEXT) \
@@ -139,6 +142,7 @@ am__objects_4 = libclibstandalone_a-test_elog.$(OBJEXT) \
 	libclibstandalone_a-test_longjmp.$(OBJEXT) \
 	libclibstandalone_a-test_mheap.$(OBJEXT) \
 	libclibstandalone_a-test_phash.$(OBJEXT) \
+	libclibstandalone_a-test_qhash.$(OBJEXT) \
 	libclibstandalone_a-test_random.$(OBJEXT) \
 	libclibstandalone_a-test_random_isaac.$(OBJEXT) \
 	libclibstandalone_a-test_vec.$(OBJEXT) \
@@ -153,7 +157,7 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 libclib_la_LIBADD =
 am__objects_5 = asm_x86.lo backtrace.lo elog.lo error.lo fifo.lo \
 	format.lo hash.lo heap.lo longjmp.lo mheap.lo md5.lo \
-	mem_mheap.lo phash.lo random.lo random_buffer.lo \
+	mem_mheap.lo phash.lo qhash.lo random.lo random_buffer.lo \
 	random_isaac.lo serialize.lo std-formats.lo string.lo time.lo \
 	unformat.lo vec.lo zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) mem_malloc.lo socket.lo \
@@ -163,9 +167,9 @@ libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
 am__EXEEXT_1 = test_elog$(EXEEXT) test_fifo$(EXEEXT) \
 	test_format$(EXEEXT) test_hash$(EXEEXT) test_heap$(EXEEXT) \
 	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
-	test_phash$(EXEEXT) test_random_isaac$(EXEEXT) \
-	test_socket$(EXEEXT) test_time$(EXEEXT) test_vec$(EXEEXT) \
-	test_zvec$(EXEEXT)
+	test_phash$(EXEEXT) test_qhash$(EXEEXT) \
+	test_random_isaac$(EXEEXT) test_socket$(EXEEXT) \
+	test_time$(EXEEXT) test_vec$(EXEEXT) test_zvec$(EXEEXT)
 test_elog_SOURCES = test_elog.c
 test_elog_OBJECTS = test_elog-test_elog.$(OBJEXT)
 test_elog_DEPENDENCIES = libclib.la
@@ -193,6 +197,9 @@ test_mheap_DEPENDENCIES = libclib.la
 test_phash_SOURCES = test_phash.c
 test_phash_OBJECTS = test_phash-test_phash.$(OBJEXT)
 test_phash_DEPENDENCIES = libclib.la
+test_qhash_SOURCES = test_qhash.c
+test_qhash_OBJECTS = test_qhash-test_qhash.$(OBJEXT)
+test_qhash_DEPENDENCIES = libclib.la
 test_random_isaac_SOURCES = test_random_isaac.c
 test_random_isaac_OBJECTS =  \
 	test_random_isaac-test_random_isaac.$(OBJEXT)
@@ -226,14 +233,14 @@ LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
 	$(libclib_la_SOURCES) test_elog.c test_fifo.c test_format.c \
 	test_hash.c test_heap.c test_longjmp.c test_md5.c test_mheap.c \
-	test_phash.c test_random_isaac.c test_socket.c test_time.c \
-	test_vec.c test_zvec.c
+	test_phash.c test_qhash.c test_random_isaac.c test_socket.c \
+	test_time.c test_vec.c test_zvec.c
 DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(libclibstandalone_a_SOURCES) $(libclib_la_SOURCES) \
 	test_elog.c test_fifo.c test_format.c test_hash.c test_heap.c \
 	test_longjmp.c test_md5.c test_mheap.c test_phash.c \
-	test_random_isaac.c test_socket.c test_time.c test_vec.c \
-	test_zvec.c
+	test_qhash.c test_random_isaac.c test_socket.c test_time.c \
+	test_vec.c test_zvec.c
 nobase_includeHEADERS_INSTALL = $(install_sh_DATA)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
@@ -368,6 +375,7 @@ TESTS = test_elog \
 	   test_md5 \
 	   test_mheap \
 	   test_phash \
+	   test_qhash \
 	   test_random_isaac \
 	   test_socket \
 	   test_time \
@@ -386,6 +394,7 @@ test_longjmp_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_md5_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_mheap_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_phash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
+test_qhash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_socket_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_time_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
@@ -400,6 +409,7 @@ test_longjmp_LDADD = libclib.la
 test_md5_LDADD = libclib.la
 test_mheap_LDADD = libclib.la
 test_phash_LDADD = libclib.la
+test_qhash_LDADD = libclib.la
 test_random_isaac_LDADD = libclib.la
 test_socket_LDADD = libclib.la
 test_time_LDADD = libclib.la -lm
@@ -416,6 +426,7 @@ CORE_UNIT_TEST_SOURCES = \
   test_longjmp.c \
   test_mheap.c \
   test_phash.c \
+  test_qhash.c \
   test_random.c \
   test_random_isaac.c \
   test_vec.c \
@@ -446,6 +457,7 @@ nobase_include_HEADERS = \
     clib/os.h \
     clib/phash.h \
     clib/pool.h \
+    clib/qhash.h \
     clib/random.h \
     clib/random_buffer.h \
     clib/random_isaac.h \
@@ -481,6 +493,7 @@ CLIB_CORE = \
   md5.c \
   mem_mheap.c \
   phash.c \
+  qhash.c \
   random.c \
   random_buffer.c \
   random_isaac.c \
@@ -686,6 +699,9 @@ test_mheap$(EXEEXT): $(test_mheap_OBJECTS) $(test_mheap_DEPENDENCIES)
 test_phash$(EXEEXT): $(test_phash_OBJECTS) $(test_phash_DEPENDENCIES) 
 	@rm -f test_phash$(EXEEXT)
 	$(LINK) $(test_phash_LDFLAGS) $(test_phash_OBJECTS) $(test_phash_LDADD) $(LIBS)
+test_qhash$(EXEEXT): $(test_qhash_OBJECTS) $(test_qhash_DEPENDENCIES) 
+	@rm -f test_qhash$(EXEEXT)
+	$(LINK) $(test_qhash_LDFLAGS) $(test_qhash_OBJECTS) $(test_qhash_LDADD) $(LIBS)
 test_random_isaac$(EXEEXT): $(test_random_isaac_OBJECTS) $(test_random_isaac_DEPENDENCIES) 
 	@rm -f test_random_isaac$(EXEEXT)
 	$(LINK) $(test_random_isaac_LDFLAGS) $(test_random_isaac_OBJECTS) $(test_random_isaac_LDADD) $(LIBS)
@@ -729,6 +745,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-mem_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-qsort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-random_buffer.Po@am__quote@
@@ -744,6 +761,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_longjmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_vec.Po@am__quote@
@@ -764,6 +782,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-mem_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-qsort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-random_buffer.Po@am__quote@
@@ -780,6 +799,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_longjmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_vec.Po@am__quote@
@@ -793,6 +813,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_mheap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mheap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/phash.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/qhash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/random.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/random_buffer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/random_isaac.Plo@am__quote@
@@ -809,6 +830,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_md5-test_md5.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_mheap-test_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_phash-test_phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_qhash-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_random_isaac-test_random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_socket-test_socket.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_time-test_time.Po@am__quote@
@@ -1031,6 +1053,20 @@ libclibkernel_a-phash.obj: phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='phash.c' object='libclibkernel_a-phash.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-phash.obj `if test -f 'phash.c'; then $(CYGPATH_W) 'phash.c'; else $(CYGPATH_W) '$(srcdir)/phash.c'; fi`
+
+libclibkernel_a-qhash.o: qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-qhash.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-qhash.Tpo" -c -o libclibkernel_a-qhash.o `test -f 'qhash.c' || echo '$(srcdir)/'`qhash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-qhash.Tpo" "$(DEPDIR)/libclibkernel_a-qhash.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qhash.c' object='libclibkernel_a-qhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-qhash.o `test -f 'qhash.c' || echo '$(srcdir)/'`qhash.c
+
+libclibkernel_a-qhash.obj: qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-qhash.obj -MD -MP -MF "$(DEPDIR)/libclibkernel_a-qhash.Tpo" -c -o libclibkernel_a-qhash.obj `if test -f 'qhash.c'; then $(CYGPATH_W) 'qhash.c'; else $(CYGPATH_W) '$(srcdir)/qhash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-qhash.Tpo" "$(DEPDIR)/libclibkernel_a-qhash.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qhash.c' object='libclibkernel_a-qhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-qhash.obj `if test -f 'qhash.c'; then $(CYGPATH_W) 'qhash.c'; else $(CYGPATH_W) '$(srcdir)/qhash.c'; fi`
 
 libclibkernel_a-random.o: random.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-random.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-random.Tpo" -c -o libclibkernel_a-random.o `test -f 'random.c' || echo '$(srcdir)/'`random.c; \
@@ -1269,6 +1305,20 @@ libclibkernel_a-test_phash.obj: test_phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_phash.c' object='libclibkernel_a-test_phash.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-test_phash.obj `if test -f 'test_phash.c'; then $(CYGPATH_W) 'test_phash.c'; else $(CYGPATH_W) '$(srcdir)/test_phash.c'; fi`
+
+libclibkernel_a-test_qhash.o: test_qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-test_qhash.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-test_qhash.Tpo" -c -o libclibkernel_a-test_qhash.o `test -f 'test_qhash.c' || echo '$(srcdir)/'`test_qhash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-test_qhash.Tpo" "$(DEPDIR)/libclibkernel_a-test_qhash.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-test_qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_qhash.c' object='libclibkernel_a-test_qhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-test_qhash.o `test -f 'test_qhash.c' || echo '$(srcdir)/'`test_qhash.c
+
+libclibkernel_a-test_qhash.obj: test_qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-test_qhash.obj -MD -MP -MF "$(DEPDIR)/libclibkernel_a-test_qhash.Tpo" -c -o libclibkernel_a-test_qhash.obj `if test -f 'test_qhash.c'; then $(CYGPATH_W) 'test_qhash.c'; else $(CYGPATH_W) '$(srcdir)/test_qhash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-test_qhash.Tpo" "$(DEPDIR)/libclibkernel_a-test_qhash.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-test_qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_qhash.c' object='libclibkernel_a-test_qhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-test_qhash.obj `if test -f 'test_qhash.c'; then $(CYGPATH_W) 'test_qhash.c'; else $(CYGPATH_W) '$(srcdir)/test_qhash.c'; fi`
 
 libclibkernel_a-test_random.o: test_random.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-test_random.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-test_random.Tpo" -c -o libclibkernel_a-test_random.o `test -f 'test_random.c' || echo '$(srcdir)/'`test_random.c; \
@@ -1536,6 +1586,20 @@ libclibstandalone_a-phash.obj: phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-phash.obj `if test -f 'phash.c'; then $(CYGPATH_W) 'phash.c'; else $(CYGPATH_W) '$(srcdir)/phash.c'; fi`
 
+libclibstandalone_a-qhash.o: qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-qhash.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-qhash.Tpo" -c -o libclibstandalone_a-qhash.o `test -f 'qhash.c' || echo '$(srcdir)/'`qhash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-qhash.Tpo" "$(DEPDIR)/libclibstandalone_a-qhash.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qhash.c' object='libclibstandalone_a-qhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-qhash.o `test -f 'qhash.c' || echo '$(srcdir)/'`qhash.c
+
+libclibstandalone_a-qhash.obj: qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-qhash.obj -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-qhash.Tpo" -c -o libclibstandalone_a-qhash.obj `if test -f 'qhash.c'; then $(CYGPATH_W) 'qhash.c'; else $(CYGPATH_W) '$(srcdir)/qhash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-qhash.Tpo" "$(DEPDIR)/libclibstandalone_a-qhash.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='qhash.c' object='libclibstandalone_a-qhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-qhash.obj `if test -f 'qhash.c'; then $(CYGPATH_W) 'qhash.c'; else $(CYGPATH_W) '$(srcdir)/qhash.c'; fi`
+
 libclibstandalone_a-random.o: random.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-random.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-random.Tpo" -c -o libclibstandalone_a-random.o `test -f 'random.c' || echo '$(srcdir)/'`random.c; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-random.Tpo" "$(DEPDIR)/libclibstandalone_a-random.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-random.Tpo"; exit 1; fi
@@ -1774,6 +1838,20 @@ libclibstandalone_a-test_phash.obj: test_phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-test_phash.obj `if test -f 'test_phash.c'; then $(CYGPATH_W) 'test_phash.c'; else $(CYGPATH_W) '$(srcdir)/test_phash.c'; fi`
 
+libclibstandalone_a-test_qhash.o: test_qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-test_qhash.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo" -c -o libclibstandalone_a-test_qhash.o `test -f 'test_qhash.c' || echo '$(srcdir)/'`test_qhash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo" "$(DEPDIR)/libclibstandalone_a-test_qhash.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_qhash.c' object='libclibstandalone_a-test_qhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-test_qhash.o `test -f 'test_qhash.c' || echo '$(srcdir)/'`test_qhash.c
+
+libclibstandalone_a-test_qhash.obj: test_qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-test_qhash.obj -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo" -c -o libclibstandalone_a-test_qhash.obj `if test -f 'test_qhash.c'; then $(CYGPATH_W) 'test_qhash.c'; else $(CYGPATH_W) '$(srcdir)/test_qhash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo" "$(DEPDIR)/libclibstandalone_a-test_qhash.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_qhash.c' object='libclibstandalone_a-test_qhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-test_qhash.obj `if test -f 'test_qhash.c'; then $(CYGPATH_W) 'test_qhash.c'; else $(CYGPATH_W) '$(srcdir)/test_qhash.c'; fi`
+
 libclibstandalone_a-test_random.o: test_random.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-test_random.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-test_random.Tpo" -c -o libclibstandalone_a-test_random.o `test -f 'test_random.c' || echo '$(srcdir)/'`test_random.c; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-test_random.Tpo" "$(DEPDIR)/libclibstandalone_a-test_random.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-test_random.Tpo"; exit 1; fi
@@ -1997,6 +2075,20 @@ test_phash-test_phash.obj: test_phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_phash.c' object='test_phash-test_phash.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_phash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_phash-test_phash.obj `if test -f 'test_phash.c'; then $(CYGPATH_W) 'test_phash.c'; else $(CYGPATH_W) '$(srcdir)/test_phash.c'; fi`
+
+test_qhash-test_qhash.o: test_qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_qhash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_qhash-test_qhash.o -MD -MP -MF "$(DEPDIR)/test_qhash-test_qhash.Tpo" -c -o test_qhash-test_qhash.o `test -f 'test_qhash.c' || echo '$(srcdir)/'`test_qhash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/test_qhash-test_qhash.Tpo" "$(DEPDIR)/test_qhash-test_qhash.Po"; else rm -f "$(DEPDIR)/test_qhash-test_qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_qhash.c' object='test_qhash-test_qhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_qhash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_qhash-test_qhash.o `test -f 'test_qhash.c' || echo '$(srcdir)/'`test_qhash.c
+
+test_qhash-test_qhash.obj: test_qhash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_qhash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_qhash-test_qhash.obj -MD -MP -MF "$(DEPDIR)/test_qhash-test_qhash.Tpo" -c -o test_qhash-test_qhash.obj `if test -f 'test_qhash.c'; then $(CYGPATH_W) 'test_qhash.c'; else $(CYGPATH_W) '$(srcdir)/test_qhash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/test_qhash-test_qhash.Tpo" "$(DEPDIR)/test_qhash-test_qhash.Po"; else rm -f "$(DEPDIR)/test_qhash-test_qhash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_qhash.c' object='test_qhash-test_qhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_qhash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_qhash-test_qhash.obj `if test -f 'test_qhash.c'; then $(CYGPATH_W) 'test_qhash.c'; else $(CYGPATH_W) '$(srcdir)/test_qhash.c'; fi`
 
 test_random_isaac-test_random_isaac.o: test_random_isaac.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_random_isaac_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_random_isaac-test_random_isaac.o -MD -MP -MF "$(DEPDIR)/test_random_isaac-test_random_isaac.Tpo" -c -o test_random_isaac-test_random_isaac.o `test -f 'test_random_isaac.c' || echo '$(srcdir)/'`test_random_isaac.c; \

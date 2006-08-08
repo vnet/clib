@@ -22,6 +22,7 @@ TESTS	=  test_elog \
 	   test_md5 \
 	   test_mheap \
 	   test_phash \
+	   test_qhash \
 	   test_random_isaac \
 	   test_socket \
 	   test_time \
@@ -40,6 +41,7 @@ test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
@@ -55,6 +57,7 @@ test_longjmp_LDADD =	libclib.la
 test_md5_LDADD =	libclib.la
 test_mheap_LDADD =	libclib.la
 test_phash_LDADD =	libclib.la
+test_qhash_LDADD =	libclib.la
 test_random_isaac_LDADD =	libclib.la
 test_socket_LDADD =	libclib.la
 test_time_LDADD =	libclib.la -lm
@@ -72,6 +75,7 @@ CORE_UNIT_TEST_SOURCES = \
   test_longjmp.c \
   test_mheap.c \
   test_phash.c \
+  test_qhash.c \
   test_random.c \
   test_random_isaac.c \
   test_vec.c \
@@ -102,6 +106,7 @@ nobase_include_HEADERS = \
     clib/os.h \
     clib/phash.h \
     clib/pool.h \
+    clib/qhash.h \
     clib/random.h \
     clib/random_buffer.h \
     clib/random_isaac.h \
@@ -137,6 +142,7 @@ CLIB_CORE = \
   md5.c \
   mem_mheap.c \
   phash.c \
+  qhash.c \
   random.c \
   random_buffer.c \
   random_isaac.c \
