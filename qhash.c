@@ -2,6 +2,16 @@
 #include <clib/cache.h>
 #include <clib/hash.h>
 
+#define hash_mix_x2(a0,b0,c0,a1,b1,c1)		\
+do {						\
+  hash_mix32_step_1 (a0, b0, c0);		\
+  hash_mix32_step_1 (a1, b1, c1);		\
+  hash_mix32_step_2 (a0, b0, c0);		\
+  hash_mix32_step_2 (a1, b1, c1);		\
+  hash_mix32_step_3 (a0, b0, c0);		\
+  hash_mix32_step_3 (a1, b1, c1);		\
+} while (0)
+
 /* Word hash tables. */
 
 typedef struct {
@@ -11,7 +21,7 @@ typedef struct {
   u32 log2_hash_size;
 
   /* Jenkins hash seeds. */
-  uword hash_seeds[3];
+  u32 hash_seeds[3];
 
   /* Fall back CLIB hash for overflow in fixed sized buckets. */
   uword * overflow_hash;
@@ -42,17 +52,41 @@ qhash_n_overflow (void * v)
 static always_inline uword
 qhash_hash_mix (qhash_t * h, uword key)
 {
-  uword a, b, c;
+  u32 a, b, c;
 
   a = h->hash_seeds[0];
   b = h->hash_seeds[1];
   c = h->hash_seeds[2];
 
   a ^= key;
+#if uword_bits == 64
+  b ^= key >> 32;
+#endif
 
-  hash_mix_x1 (a, b, c);
+  hash_mix32 (a, b, c);
 
   return c & pow2_mask (h->log2_hash_size);
+}
+
+static u8 min_log2_table[256];
+
+static always_inline uword
+qhash_min_log2 (uword x)
+{
+  ASSERT (is_pow2 (x));
+  ASSERT (x < 256);
+#if 0
+  return min_log2 (x);
+#else
+  return min_log2_table[x];
+#endif
+}
+
+static void fuckme ()
+{
+  int i;
+  for (i = 0; i < 256; i++)
+    min_log2_table[i] = min_log2 (i);
 }
 
 static always_inline void *
@@ -72,6 +106,7 @@ _qhash_resize (void * v, uword length, uword elt_bytes)
   h->log2_hash_size = l;
   h->hash_keys = clib_mem_alloc_aligned_no_fail (sizeof (h->hash_keys[0]) << l,
 						 CLIB_CACHE_LINE_BYTES);
+  vec_resize (h->hash_key_valid_bitmap, 1 << l);
   memset (v, ~0, elt_bytes << l);
 
   return v;
@@ -82,16 +117,24 @@ _qhash_resize (void * v, uword length, uword elt_bytes)
 static always_inline uword
 qhash_get_valid_elt_mask (qhash_t * h, uword i)
 {
+#if 0
   return clib_bitmap_get_multiple (h->hash_key_valid_bitmap, i,
 				   QHASH_KEYS_PER_BUCKET);
+#else
+  return ((u8 *) h->hash_key_valid_bitmap)[i / QHASH_KEYS_PER_BUCKET];
+#endif
 }
 
 static always_inline void
 qhash_set_valid_elt_mask (qhash_t * h, uword i, uword mask)
 {
+#if 0
   h->hash_key_valid_bitmap =
     clib_bitmap_set_multiple (h->hash_key_valid_bitmap, i, mask,
 			      QHASH_KEYS_PER_BUCKET);
+#else
+  ((u8 *) h->hash_key_valid_bitmap)[i / QHASH_KEYS_PER_BUCKET] = mask;
+#endif
 }
 
 #define qhash_foreach(var,v,body)
@@ -121,15 +164,11 @@ qhash_get_multiple (void * v,
 		    uword * matching_key)
 {
   qhash_t * h = qhash_header (v);
-  uword a, b, c, bi0, bi1, * k, * hash_keys;
+  uword * k, * hash_keys;
   uword n_left, match_mask, bucket_mask;
 
   if (! v)
     return ~0;
-
-  a = h->hash_seeds[0];
-  b = h->hash_seeds[1];
-  c = h->hash_seeds[2];
 
   match_mask = 0;
   bucket_mask = pow2_mask (h->log2_hash_size) &~ (QHASH_KEYS_PER_BUCKET - 1);
@@ -137,20 +176,26 @@ qhash_get_multiple (void * v,
   k = search_keys;
   n_left = n_search_keys;
   hash_keys = h->hash_keys;
-  while (0 && n_left >= 2)
+  while (n_left >= 2)
     {
-      uword a0, b0, c0, k0, valid0, * h0;
-      uword a1, b1, c1, k1, valid1, * h1;
+      u32 a0, b0, c0, bi0, valid0;
+      u32 a1, b1, c1, bi1, valid1;
+      uword k0, k1, * h0, * h1;
 
       k0 = k[0];
       k1 = k[1];
       n_left -= 2;
       k += 2;
 
-      a0 = a; b0 = b; c0 = c;
-      a1 = a; b1 = b; c1 = c;
+      a0 = a1 = h->hash_seeds[0];
+      b0 = b1 = h->hash_seeds[1];
+      c0 = c1 = h->hash_seeds[2];
       a0 ^= k0;
       a1 ^= k1;
+#if uword_bits == 64
+      b0 ^= k0 >> 32;
+      b1 ^= k1 >> 32;
+#endif
       
       hash_mix_x2 (a0, b0, c0, a1, b1, c1);
 
@@ -205,16 +250,22 @@ qhash_get_multiple (void * v,
 
   while (n_left >= 1)
     {
-      uword a0, b0, c0, k0, valid0, * h0;
+      u32 a0, b0, c0, bi0, valid0;
+      uword k0, * h0;
 
       k0 = k[0];
       n_left -= 1;
       k += 1;
 
-      a0 = a; b0 = b; c0 = c;
+      a0 = h->hash_seeds[0];
+      b0 = h->hash_seeds[1];
+      c0 = h->hash_seeds[2];
       a0 ^= k0;
-      
-      hash_mix_x1 (a0, b0, c0);
+#if uword_bits == 64
+      b0 ^= k0 >> 32;
+#endif
+
+      hash_mix32 (a0, b0, c0);
 
       bi0 = c0 & bucket_mask;
 
@@ -319,21 +370,7 @@ qhash_unset_overflow (void * v, uword key, uword bi, uword * n_elts)
 
 static always_inline uword
 qhash_find_free (uword i, uword valid_mask)
-{
-  return first_set (~valid_mask & pow2_mask (QHASH_KEYS_PER_BUCKET));
-#if 0
-#if QHASH_LOG2_KEYS_PER_BUCKET <= 3
-  u8 f;
-#else
-  u16 f;
-#endif
-  f = ~valid_mask;
-  f = ((f << (QHASH_KEYS_PER_BUCKET - i)) | (f >> i));
-  f = first_set (f);
-  f = ((f >> (QHASH_KEYS_PER_BUCKET - i)) | (f << i));
-  return f;
-#endif
-}
+{ return first_set (~valid_mask & pow2_mask (QHASH_KEYS_PER_BUCKET)); }
 
 static void *
 _qhash_set_multiple (void * v,
@@ -343,17 +380,13 @@ _qhash_set_multiple (void * v,
 		     uword * result_indices)
 {
   qhash_t * h = qhash_header (v);
-  uword a, b, c, bi0, bi1, * k, * r, * hash_keys;
+  uword * k, * r, * hash_keys;
   uword n_left, n_elts, bucket_mask;
 
   if (vec_len (v) < n_search_keys)
     v = _qhash_resize (v, n_search_keys, elt_bytes);
 
   ASSERT (v != 0);
-
-  a = h->hash_seeds[0];
-  b = h->hash_seeds[1];
-  c = h->hash_seeds[2];
 
   bucket_mask = pow2_mask (h->log2_hash_size) &~ (QHASH_KEYS_PER_BUCKET - 1);
 
@@ -365,8 +398,10 @@ _qhash_set_multiple (void * v,
 
   while (n_left >= 2)
     {
-      uword a0, b0, c0, k0, match0, valid0, free0, * h0;
-      uword a1, b1, c1, k1, match1, valid1, free1, * h1;
+      u32 a0, b0, c0, bi0, match0, valid0, free0;
+      u32 a1, b1, c1, bi1, match1, valid1, free1;
+      uword k0, * h0;
+      uword k1, * h1;
 
       k0 = k[0];
       k1 = k[1];
@@ -377,10 +412,15 @@ _qhash_set_multiple (void * v,
       n_left -= 2;
       k += 2;
       
-      a0 = a; b0 = b; c0 = c;
-      a1 = a; b1 = b; c1 = c;
+      a0 = a1 = h->hash_seeds[0];
+      b0 = b1 = h->hash_seeds[1];
+      c0 = c1 = h->hash_seeds[2];
       a0 ^= k0;
       a1 ^= k1;
+#if uword_bits == 64
+      b0 ^= k0 >> 32;
+      b1 ^= k1 >> 32;
+#endif
       hash_mix_x2 (a0, b0, c0, a1, b1, c1);
 
       bi0 = c0 & bucket_mask;
@@ -410,8 +450,8 @@ _qhash_set_multiple (void * v,
       valid0 |= match0;
       valid1 |= match1;
 
-      h0 += min_log2 (match0);
-      h1 += min_log2 (match1);
+      h0 += qhash_min_log2 (match0);
+      h1 += qhash_min_log2 (match1);
 
       if (PREDICT_FALSE (! match0 || ! match1))
 	goto slow_path2;
@@ -453,15 +493,22 @@ _qhash_set_multiple (void * v,
 
   while (n_left >= 1)
     {
-      uword a0, b0, c0, k0, match0, valid0, free0, * h0;
+      u32 a0, b0, c0, bi0, match0, valid0, free0;
+      uword k0, * h0;
 
       k0 = k[0];
       n_left -= 1;
       k += 1;
       
-      a0 = a; b0 = b; c0 = c;
+      a0 = h->hash_seeds[0];
+      b0 = h->hash_seeds[1];
+      c0 = h->hash_seeds[2];
       a0 ^= k0;
-      hash_mix_x1 (a0, b0, c0);
+#if uword_bits == 64
+      b0 ^= k0 >> 32;
+#endif
+
+      hash_mix32 (a0, b0, c0);
 
       bi0 = c0 & bucket_mask;
 
@@ -480,7 +527,7 @@ _qhash_set_multiple (void * v,
 
       valid0 |= match0;
 
-      h0 += min_log2 (match0);
+      h0 += qhash_min_log2 (match0);
 
       if (PREDICT_FALSE (! match0))
 	goto slow_path1;
@@ -565,7 +612,7 @@ unset_slow_path (void * v, uword elt_bytes,
     }
 
   i = bi0 / QHASH_KEYS_PER_BUCKET;
-  t = bi0 + min_log2 (match0);
+  t = bi0 + qhash_min_log2 (match0);
 
   if (valid0 == QHASH_ALL_VALID
       && i < vec_len (h->overflow_counts)
@@ -612,7 +659,7 @@ _qhash_unset_multiple (void * v,
 		       uword * result_indices)
 {
   qhash_t * h = qhash_header (v);
-  uword a, b, c, bi0, bi1, * k, * r, * hash_keys;
+  uword * k, * r, * hash_keys;
   uword n_left, n_elts, bucket_mask;
 
   if (! v)
@@ -622,10 +669,6 @@ _qhash_unset_multiple (void * v,
 	result_indices[i] = ~0;
     }
 
-  a = h->hash_seeds[0];
-  b = h->hash_seeds[1];
-  c = h->hash_seeds[2];
-
   bucket_mask = pow2_mask (h->log2_hash_size) &~ (QHASH_KEYS_PER_BUCKET - 1);
 
   hash_keys = h->hash_keys;
@@ -634,10 +677,12 @@ _qhash_unset_multiple (void * v,
   n_left = n_search_keys;
   n_elts = h->n_elts;
 
-  while (1 && n_left >= 2)
+  while (n_left >= 2)
     {
-      uword a0, b0, c0, k0, match0, valid0, * h0;
-      uword a1, b1, c1, k1, match1, valid1, * h1;
+      u32 a0, b0, c0, bi0, match0, valid0;
+      u32 a1, b1, c1, bi1, match1, valid1;
+      uword k0, * h0;
+      uword k1, * h1;
 
       k0 = k[0];
       k1 = k[1];
@@ -648,10 +693,15 @@ _qhash_unset_multiple (void * v,
       n_left -= 2;
       k += 2;
       
-      a0 = a; b0 = b; c0 = c;
-      a1 = a; b1 = b; c1 = c;
+      a0 = a1 = h->hash_seeds[0];
+      b0 = b1 = h->hash_seeds[1];
+      c0 = c1 = h->hash_seeds[2];
       a0 ^= k0;
       a1 ^= k1;
+#if uword_bits == 64
+      b0 ^= k0 >> 32;
+      b1 ^= k1 >> 32;
+#endif
       hash_mix_x2 (a0, b0, c0, a1, b1, c1);
 
       bi0 = c0 & bucket_mask;
@@ -681,8 +731,8 @@ _qhash_unset_multiple (void * v,
 
       qhash_set_valid_elt_mask (h, bi1, valid1);
 
-      r[0] = match0 ? bi0 + min_log2 (match0) : ~0;
-      r[1] = match1 ? bi1 + min_log2 (match1) : ~0;
+      r[0] = match0 ? bi0 + qhash_min_log2 (match0) : ~0;
+      r[1] = match1 ? bi1 + qhash_min_log2 (match1) : ~0;
       r += 2;
       continue;
 
@@ -706,15 +756,22 @@ _qhash_unset_multiple (void * v,
 
   while (n_left >= 1)
     {
-      uword a0, b0, c0, k0, match0, valid0, * h0;
+      u32 a0, b0, c0, bi0, match0, valid0;
+      uword k0, * h0;
 
       k0 = k[0];
       n_left -= 1;
       k += 1;
       
-      a0 = a; b0 = b; c0 = c;
+      a0 = h->hash_seeds[0];
+      b0 = h->hash_seeds[1];
+      c0 = h->hash_seeds[2];
       a0 ^= k0;
-      hash_mix_x1 (a0, b0, c0);
+#if uword_bits == 64
+      b0 ^= k0 >> 32;
+#endif
+
+      hash_mix32 (a0, b0, c0);
 
       bi0 = c0 & bucket_mask;
 
@@ -726,7 +783,7 @@ _qhash_unset_multiple (void * v,
       n_elts -= (match0 != 0);
       qhash_set_valid_elt_mask (h, bi0, valid0 ^ match0);
 
-      r[0] = match0 ? bi0 + min_log2 (match0) : ~0;
+      r[0] = match0 ? bi0 + qhash_min_log2 (match0) : ~0;
       r += 1;
 
       if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID))
@@ -796,6 +853,8 @@ test_qhash_main (unformat_input_t * input)
   f64 overflow_fraction, ave_elts;
   f64 set_time, set_count, unset_time, unset_count;
   f64 hash_set_time, hash_unset_time;
+
+  fuckme ();
 
   memset (tm, 0, sizeof (tm[0]));
   tm->n_iter = 10;
@@ -1002,9 +1061,17 @@ test_qhash_main (unformat_input_t * input)
 	   tm->n_iter,
 	   overflow_fraction / tm->n_iter,
 	   ave_elts / tm->n_iter);
+  set_time /= set_count;
+  unset_time /= unset_count;
+  hash_set_time /= set_count;
+  hash_unset_time /= unset_count;
   fformat (stderr, "set/unset time %.4e %.4e, clib %.4e/%.4e\n",
-	   set_time / set_count, unset_time / unset_count,
-	   hash_set_time / set_count, hash_unset_time / unset_count);
+	   set_time, unset_time, hash_set_time, hash_unset_time);
+  fformat (stderr, "set/unset time %.4e %.4e, clib %.4e/%.4e\n",
+	   set_time * tm->time.clocks_per_second,
+	   unset_time * tm->time.clocks_per_second,
+	   hash_set_time * tm->time.clocks_per_second,
+	   hash_unset_time * tm->time.clocks_per_second);
 
  done:
   return error;
