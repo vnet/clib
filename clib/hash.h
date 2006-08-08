@@ -377,40 +377,6 @@ do {						\
   hash_mix32_step_3 (a0, b0, c0);		\
 } while (0)					\
 
-#if uword_bits == 32
-
-#define hash_mix_x1(a0,b0,c0) hash_mix32(a0,b0,c0)
-
-#define hash_mix_x2(a0,b0,c0,a1,b1,c1)		\
-do {						\
-  hash_mix32_step_1 (a0, b0, c0);		\
-  hash_mix32_step_1 (a1, b1, c1);		\
-  hash_mix32_step_2 (a0, b0, c0);		\
-  hash_mix32_step_2 (a1, b1, c1);		\
-  hash_mix32_step_3 (a0, b0, c0);		\
-  hash_mix32_step_3 (a1, b1, c1);		\
-} while (0)
-
-#elif uword_bits == 64
-
-#define hash_mix_x1(a0,b0,c0) hash_mix64(a0,b0,c0)
-
-#define hash_mix_x2(a0,b0,c0,a1,b1,c1)		\
-do {						\
-  hash_mix64_step_1 (a0, b0, c0);		\
-  hash_mix64_step_1 (a1, b1, c1);		\
-  hash_mix64_step_2 (a0, b0, c0);		\
-  hash_mix64_step_2 (a1, b1, c1);		\
-  hash_mix64_step_3 (a0, b0, c0);		\
-  hash_mix64_step_3 (a1, b1, c1);		\
-  hash_mix64_step_4 (a0, b0, c0);		\
-  hash_mix64_step_4 (a1, b1, c1);		\
-} while (0)
-
-#else
-#error "uword_bits must be 32 or 64"
-#endif
-
 extern u64 hash_memory64 (void * p, word n_bytes, u64 state);
 extern u32 hash_memory32 (void * p, word n_bytes, u32 state);
 extern uword hash_memory (void * p, word n_bytes, uword state);
