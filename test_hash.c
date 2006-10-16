@@ -260,6 +260,7 @@ static clib_error_t * test_string_key (hash_test_t * ht)
     {
       keys[i] = random_string (&ht->seed,
 			       5 + (random_u32 (&ht->seed) & 0xf));
+      keys[i] = format (keys[i], "%x", i);
       vals[i] = random_u32 (&ht->seed);
     }
 
