@@ -233,6 +233,16 @@ clib_error_t * default_socket_close (socket_t * s)
   return 0;
 }
 
+static void socket_init_funcs (socket_t * s)
+{
+  if (! s->write_func)
+    s->write_func = default_socket_write;
+  if (! s->read_func)
+    s->read_func = default_socket_read;
+  if (! s->close_func)
+    s->close_func = default_socket_close;
+}
+
 clib_error_t *
 socket_init (socket_t * s)
 {
@@ -251,12 +261,7 @@ socket_init (socket_t * s)
   if (error)
     goto done;
 
-  if (! s->write_func)
-    s->write_func = default_socket_write;
-  if (! s->read_func)
-    s->read_func = default_socket_read;
-  if (! s->close_func)
-    s->close_func = default_socket_close;
+  socket_init_funcs (s);
 
   s->fd = socket (addr.sa.sa_family, SOCK_STREAM, 0);
   if (s->fd < 0)
@@ -311,7 +316,16 @@ socket_init (socket_t * s)
     }
   else
     {
-      if (connect (s->fd, &addr.sa, addr_len) < 0)
+      if ((s->flags & SOCKET_NON_BLOCKING_CONNECT)
+	  && fcntl (s->fd, F_SETFL, O_NONBLOCK) < 0)
+	{
+	  error = clib_error_return_unix (0, "fcntl NONBLOCK");
+	  goto done;
+	}
+
+      if (connect (s->fd, &addr.sa, addr_len) < 0
+	  && ! ((s->flags & SOCKET_NON_BLOCKING_CONNECT) &&
+		errno == EINPROGRESS))
 	{
 	  error = clib_error_return_unix (0, "connect");
 	  goto done;
@@ -351,7 +365,7 @@ clib_error_t * socket_accept (socket_t * server, socket_t * client)
       goto close_client;
     }
 
-  socket_init (client);
+  socket_init_funcs (client);
   return 0;
 
  close_client:
