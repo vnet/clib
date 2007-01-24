@@ -123,7 +123,6 @@ socket_close (socket_t *sock)
 {
   clib_error_t * err;
   err = (* sock->close_func) (sock);
-  socket_free (sock);
   return err;
 }
 

@@ -150,6 +150,7 @@ default_socket_write (socket_t * s)
   clib_error_t	* err = 0;
   word written = 0;
   word fd = 0;
+  word tx_len;
 
   fd = s->fd;
 
@@ -158,7 +159,8 @@ default_socket_write (socket_t * s)
   if (fd == 0)
     fd = 1;
 
-  written = write (fd, s->tx_buffer, vec_len (s->tx_buffer));
+  tx_len = vec_len (s->tx_buffer);
+  written = write (fd, s->tx_buffer, tx_len);
 
   /* Ignore certain errors. */
   if (written < 0 && ! unix_error_is_fatal (errno))
@@ -167,8 +169,7 @@ default_socket_write (socket_t * s)
   /* A "real" error occurred. */
   if (written < 0)
     {
-      err = clib_error_return_unix (0, "write %d bytes",
-				    vec_len (s->tx_buffer));
+      err = clib_error_return_unix (0, "write %wd bytes", tx_len);
       vec_free (s->tx_buffer);
       goto done;
     }
@@ -176,12 +177,15 @@ default_socket_write (socket_t * s)
   /* Reclaim the transmitted part of the tx buffer on successful writes. */
   else if (written > 0)
     {
-      vec_delete (s->tx_buffer, written, 0);
+      if (written == tx_len)
+	_vec_len (s->tx_buffer) = 0;
+      else
+	vec_delete (s->tx_buffer, written, 0);
     }
 
   /* If a non-fatal error occurred AND
      the buffer is full, then we must free it. */
-  else if ((written == 0) && (vec_len (s->tx_buffer) > 64*1024))
+  else if (written == 0 && tx_len > 64*1024)
     {
       vec_free (s->tx_buffer);
     }
@@ -364,6 +368,8 @@ clib_error_t * socket_accept (socket_t * server, socket_t * client)
       err = clib_error_return_unix (0, "getpeername");
       goto close_client;
     }
+
+  client->flags = SOCKET_IS_CLIENT;
 
   socket_init_funcs (client);
   return 0;
