@@ -155,7 +155,6 @@ do {									\
   uword _pool_var (l) = (E) - (P);					\
   ASSERT (vec_is_member (P, E));					\
   ASSERT (! pool_is_free (P, E));					\
-  memset ((E), 0, sizeof ((E)[0]));					\
 									\
   /* Add element to free bitmap and to free list. */			\
   _pool_var (p)->free_bitmap =						\
