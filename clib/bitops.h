@@ -90,8 +90,8 @@ compress_init (compress_main_t * cm, uword mask)
     }
 }
 
-ALWAYS_INLINE (static inline uword
-	       compress_bits (compress_main_t * cm, uword x))
+static always_inline uword
+compress_bits (compress_main_t * cm, uword x)
 {
   uword q, r;
 

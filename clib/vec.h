@@ -67,9 +67,9 @@ typedef struct {
 #define _vec_round_size(s) \
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
 
-ALWAYS_INLINE (static inline uword
-	       vec_header_bytes_ha (uword header_bytes,
-				    uword align_bytes))
+static always_inline uword
+vec_header_bytes_ha (uword header_bytes,
+		     uword align_bytes)
 {
     header_bytes = _vec_round_size (header_bytes) + sizeof (_VEC);
     if (align_bytes > 0 && header_bytes < 8)
@@ -77,9 +77,8 @@ ALWAYS_INLINE (static inline uword
     return header_bytes;
 }
 
-ALWAYS_INLINE (static inline void *
-	       vec_header_ha (void * v, uword header_bytes,
-			      uword align_bytes))
+static always_inline void *
+vec_header_ha (void * v, uword header_bytes, uword align_bytes)
 { return v - vec_header_bytes_ha (header_bytes, align_bytes); }
 
 static inline void *

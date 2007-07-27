@@ -55,16 +55,11 @@
 #define PACKED(x)	x __attribute__ ((packed))
 #define UNUSED(x)	x __attribute__ ((unused)) 
 
-#define NEVER_INLINE(x) x __attribute__ ((__noinline__)); x
 #define never_inline __attribute__ ((__noinline__))
 
 #if DEBUG > 0
-#define INLINE static
-#define ALWAYS_INLINE(x) x	/* don't inline when debugging */
 #define always_inline __attribute__ ((used))
 #else
-#define INLINE static inline
-#define ALWAYS_INLINE(x) x __attribute__ ((__always_inline__)); x
 #define always_inline inline __attribute__ ((always_inline))
 #endif
 

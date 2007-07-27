@@ -122,10 +122,8 @@ void * elog_long1 (elog_main_t * em,
 
 /* Add an already timed event to the log.  Returns a pointer to the
    data for caller to write into. */
-ALWAYS_INLINE (static inline void *
-	       elog_time1 (elog_main_t * em,
-			   u64 time_now,
-			   u32 type))
+static always_inline void *
+elog_time1 (elog_main_t * em, u64 time_now, u32 type)
 {
   elog_ievent_t * e;
   i64 dt;
@@ -159,29 +157,29 @@ ALWAYS_INLINE (static inline void *
   return result;
 }
 
-ALWAYS_INLINE (static inline void
-	       elog_time_and_data (elog_main_t * em, u64 time_now,
-				   u32 type, u32 data))
+static always_inline void
+elog_time_and_data (elog_main_t * em, u64 time_now,
+		    u32 type, u32 data)
 {
   u32 * d;
   d = elog_time1 (em, time_now, type);
   d[0] = data;
 }
 
-ALWAYS_INLINE (static inline void
-	       elog_data (elog_main_t * em, u32 type, u32 data))
+static always_inline void
+elog_data (elog_main_t * em, u32 type, u32 data)
 { elog_time_and_data (em, clib_cpu_time_now (), type, data); }
 
-ALWAYS_INLINE (static inline void *
-	       elog_time (elog_main_t * em, u64 time_now, u32 type))
+static always_inline void *
+elog_time (elog_main_t * em, u64 time_now, u32 type)
 { return elog_time1 (em, time_now, type); }
 
-ALWAYS_INLINE (static inline void *
-	       elog (elog_main_t * em, u32 type))
+static always_inline void *
+elog (elog_main_t * em, u32 type)
 { return elog_time (em, clib_cpu_time_now (), type); }
 
-ALWAYS_INLINE (static inline int
-	       elog_buffer_is_full (elog_main_t * em))
+static always_inline int
+elog_buffer_is_full (elog_main_t * em)
 { return em->ievent_index >= em->max_n_ievents; }
 
 u32

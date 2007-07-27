@@ -33,13 +33,13 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-NEVER_INLINE (static void f2 (clib_longjmp_t * env))
+static never_inline void f2 (clib_longjmp_t * env)
 {
   i++;
   clib_longjmp (env, 1);
 }
 
-NEVER_INLINE (static void f1 (clib_longjmp_t * env))
+static never_inline void f1 (clib_longjmp_t * env)
 {
   i++;
   f2 (env);

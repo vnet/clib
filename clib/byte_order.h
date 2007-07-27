@@ -127,9 +127,9 @@ _ (big, 64)
 #undef _
 
 /* Network "net" alias for "big". */
-#define _(n_bits)					\
-ALWAYS_INLINE (static inline u##n_bits			\
-	       clib_net_to_host_##n_bits (u##n_bits x))	\
+#define _(n_bits)				\
+static always_inline u##n_bits			\
+clib_net_to_host_##n_bits (u##n_bits x)		\
 { return clib_big_to_host_##n_bits (x); }
 
 _ (16);
@@ -138,12 +138,12 @@ _ (64);
 
 #undef _
 
-#define _(n_bits)						\
-ALWAYS_INLINE (static inline u##n_bits				\
-	       clib_net_to_host_##n_bits##u (u##n_bits * p))	\
-{								\
-  u##n_bits x = clib_mem_unaligned (p, u##n_bits);		\
-  return clib_big_to_host_##n_bits (x);				\
+#define _(n_bits)					\
+static always_inline u##n_bits				\
+clib_net_to_host_##n_bits##u (u##n_bits * p)		\
+{							\
+  u##n_bits x = clib_mem_unaligned (p, u##n_bits);	\
+  return clib_big_to_host_##n_bits (x);			\
 }
 
 _ (16);
@@ -152,9 +152,9 @@ _ (64);
 
 #undef _
 
-#define _(n_bits)					\
-ALWAYS_INLINE (static inline u##n_bits			\
-	       clib_host_to_net_##n_bits (u##n_bits x))	\
+#define _(n_bits)				\
+static always_inline u##n_bits			\
+clib_host_to_net_##n_bits (u##n_bits x)		\
 { return clib_host_to_big_##n_bits (x); }
 
 _ (16);
