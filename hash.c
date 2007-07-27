@@ -941,7 +941,7 @@ unformat_hash_string_internal (unformat_input_t * input,
   u8 * string = 0;
   uword * p;
 
-  if (! unformat (input, is_vec ? "%v" : "%s", &string))
+  if (! unformat (input, is_vec ? "%v%_" : "%s%_", &string))
     return 0;
 
   p = hash_get_mem (hash, string);
