@@ -41,8 +41,8 @@ typedef struct {
   u8 * range_flags;
 } sparse_vec_header_t;
 
-ALWAYS_INLINE (static inline sparse_vec_header_t *
-	       sparse_vec_header (void * v))
+static always_inline sparse_vec_header_t *
+sparse_vec_header (void * v)
 { return vec_header (v, sizeof (sparse_vec_header_t)); }
 
 /* Index 0 is always used to mark indices that are not valid in
@@ -80,11 +80,11 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
   return v;
 }
 
-ALWAYS_INLINE (static inline uword
-	       sparse_vec_index_internal (void * v,
-					  uword sparse_index,
-					  uword maybe_range,
-					  u32 * insert))
+static always_inline uword
+sparse_vec_index_internal (void * v,
+			   uword sparse_index,
+			   uword maybe_range,
+			   u32 * insert)
 {
   sparse_vec_header_t * h;
   uword i, b, d, w;
@@ -132,18 +132,18 @@ ALWAYS_INLINE (static inline uword
   return is_member + d;
 }
 
-ALWAYS_INLINE (static inline uword
-	       sparse_vec_index (void * v, uword sparse_index))
+static always_inline uword
+sparse_vec_index (void * v, uword sparse_index)
 {
   return sparse_vec_index_internal (v, sparse_index,
 				    /* maybe range */ 0,
 				    /* insert? */ 0);
 }
 				    
-ALWAYS_INLINE (static inline void
-	       sparse_vec_index2 (sparse_vec_header_t * h,
-				  u32 si0, u32 si1,
-				  u32 * i0_return, u32 * i1_return))
+static always_inline void
+sparse_vec_index2 (sparse_vec_header_t * h,
+		   u32 si0, u32 si1,
+		   u32 * i0_return, u32 * i1_return)
 {
   uword b0, b1, w0, w1, v0, v1;
   u32 i0, i1, d0, d1;
