@@ -84,21 +84,7 @@ static u8 * dispatch_message (u8 * msg)
 
   /* If no message handler is specified provide a default one. */
   if (vec_len (handlers) == 0)
-    {
-#ifdef CLIB_UNIX
-      write (2, msg, vec_len (msg));
-#else
-      /* Null terminate. */
-      vec_add1 (msg, 0);
-
-#ifdef CLIB_LINUX_KERNEL
-      printk (KERN_ERR "%s", msg);
-#else
-      os_puts (msg);
-#endif
-
-#endif
-    }
+    os_puts (msg, vec_len (msg), /* is_error */ 1);
 
   return msg;
 }

@@ -23,6 +23,7 @@
 
 #include <clib/error.h>
 #include <clib/unix.h>
+#include <clib/os.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -67,3 +68,20 @@ clib_error_t * unix_file_contents (char * file, u8 ** result)
   return error;
 }
 
+void os_panic (void)
+{ abort (); }
+
+void os_exit (int code)
+{ exit (code); }
+
+void os_puts (u8 * string, uword string_length, uword is_error)
+  __attribute__ ((weak));
+void os_puts (u8 * string, uword string_length, uword is_error)
+{ write (is_error ? 2 : 1, string, string_length); }
+
+int os_get_cpu_number () __attribute__ ((weak));
+int os_get_cpu_number (void)
+{ return 0; }
+
+void os_out_of_memory (void)
+{ os_exit (1); }

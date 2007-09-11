@@ -26,7 +26,6 @@
 
 #include <clib/types.h>
 
-#ifndef CLIB_UNIX
 /* External panic function. */
 void os_panic (void);
 
@@ -34,7 +33,7 @@ void os_panic (void);
 void os_exit (int code);
 
 /* External function to print a line. */
-void os_puts (u8 * string);
+void os_puts (u8 * string, uword length, uword is_error);
 
 /* External function to fetch cpu number. */
 int os_get_cpu_number (void);
@@ -44,29 +43,5 @@ void os_out_of_memory (void);
 
 /* Estimate, measure or divine CPU timestamp clock frequency. */
 f64 os_cpu_clock_frequency (void);
-
-#else
-
-#include <unistd.h>
-
-static inline void os_panic (void)
-{ abort (); }
-
-static inline void os_exit (int code)
-{ exit (code); }
-
-static inline void os_puts (u8 * string)
-{ write (1, string, strlen ((char *) string)); }
-
-/* FIXME */
-static inline int os_get_cpu_number (void)
-{ return 0; }
-
-static inline void os_out_of_memory (void)
-{ }
-
-/* Estimate, measure or divine CPU timestamp clock frequency. */
-f64 os_cpu_clock_frequency (void);
-#endif
 
 #endif /* included_os_h */

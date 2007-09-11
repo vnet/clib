@@ -399,15 +399,16 @@ word va_fformat (FILE * f, char * fmt, va_list * va)
   s = va_format (0, fmt, va);
 
 #ifdef CLIB_UNIX
-  ret = fwrite (s, vec_len (s), 1, f);
-#else /* CLIB_UNIX */
-
-  vec_add1 (s, 0);
-  ret = 0;
-
-  os_puts (s);
-
+  if (f)
+    {
+      ret = fwrite (s, vec_len (s), 1, f);
+    }
+  else
 #endif /* CLIB_UNIX */
+    {
+      ret = 0;
+      os_puts (s, vec_len (s), /* is_error */ 0);
+    }
 
   vec_free (s);
   return ret;
