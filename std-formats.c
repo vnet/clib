@@ -187,7 +187,7 @@ uword unformat_memory_size (unformat_input_t * input, va_list * va)
   uword amount, shift, c;
   uword * result = va_arg (*va, uword *);
 
-  if (! unformat (input, "%wd", &amount))
+  if (! unformat (input, "%wd%_", &amount))
     return 0;
 
   c = unformat_get_input (input);
