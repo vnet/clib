@@ -87,7 +87,7 @@ static always_inline u16x8 u16x8_mul_hi (u16x8 x, u16x8 y)
   static always_inline t##x##n			\
   t##x##n##_shift_##lr (t##x##n x, int i)	\
   {						\
-    if (__builtin_constant_p (n))		\
+    if (__builtin_constant_p (i))		\
       return __builtin_ia32_##f##i128 (x, i);	\
     else					\
       {						\
