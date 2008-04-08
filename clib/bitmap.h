@@ -379,26 +379,26 @@ clib_bitmap_random (uword n_bits, u32 * seed)
 
 /* Returns next set bit starting at bit i (~0 if not found). */
 static inline uword
-clib_bitmap_next_set(uword * ai, uword i)
+clib_bitmap_next_set (uword * ai, uword i)
 {
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
-  uword mask;
-  int k;
+  uword t;
   
-  if (i0 > vec_len (ai))
-    return ~0;
-  
-  /* set mask for first time thru the loop. */
-  mask = (~0 >> i1) << i1;
-  for (k = i0; k < vec_len (ai); k++, mask = ~0)
+  if (i0 < vec_len (ai))
     {
-      word ret;
-      ret = log2_first_set (ai[k] & mask);
-      if (~0 != ret)
-	return ret + k * BITS (ai[0]);
+      t = (ai[i0] >> i1) << i1;
+      if (t)
+	return log2_first_set (t) + i0 * BITS (ai[0]);
+
+      for (i0++; i0 < vec_len (ai); i0++)
+	{
+	  t = ai[i0];
+	  if (t)
+	    return log2_first_set (t) + i0 * BITS (ai[0]);
+	}
     }
-  
+
   return ~0;
 }
 
