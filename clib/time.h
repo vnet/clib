@@ -112,6 +112,7 @@ void clib_time_init (clib_time_t * c);
 
 #ifdef CLIB_UNIX
 
+#include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -132,6 +133,14 @@ static inline f64 unix_usage_now (void)
     + u.ru_stime.tv_sec + 1e-6*u.ru_stime.tv_usec;
 }
 
+static inline void unix_sleep (f64 dt)
+{
+  struct timespec t;
+  t.tv_sec = dt;
+  t.tv_nsec = 1e9 * dt;
+  nanosleep (&t, 0);
+}
+
 #else  /* ! CLIB_UNIX */
 
 static inline f64 unix_time_now (void)
@@ -139,6 +148,9 @@ static inline f64 unix_time_now (void)
 
 static inline f64 unix_usage_now (void)
 { return 0; }
+
+static inline void unix_sleep (f64 dt)
+{ }
 
 #endif
 
