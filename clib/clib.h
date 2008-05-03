@@ -51,6 +51,11 @@
 #define STRUCT_BITS_OF(t,f)   (BITS (_STRUCT_FIELD (t, f)))
 #define STRUCT_ARRAY_LEN(t,f) ARRAY_LEN (_STRUCT_FIELD (t, f))
 
+/* Stride in bytes between struct array elements. */
+#define STRUCT_STRIDE_OF(t,f)			\
+  (  ((uword) & (((t *) 0)[1].f))		\
+   - ((uword) & (((t *) 0)[0].f)))
+
 /* Used to pack structure elements. */
 #define PACKED(x)	x __attribute__ ((packed))
 #define UNUSED(x)	x __attribute__ ((unused)) 
@@ -243,6 +248,9 @@ static inline f64 flt_round_down (f64 x)
 
 static inline word flt_round_nearest (f64 x)
 { return (word) (x + .5); }
+
+static always_inline f64 flt_round_to_multiple (f64 x, f64 f)
+{ return f * flt_round_nearest (x / f); }
 
 #define clib_max(x,y)				\
 ({						\
