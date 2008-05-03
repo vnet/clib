@@ -244,6 +244,12 @@ u8 * format_unformat_input (u8 * s, va_list * va);
    to and unformat_input_t. */
 uword unformat_input (unformat_input_t * i, va_list * arg);
 
+/* Parse a line ending with \n and return it. */
+uword unformat_line (unformat_input_t * i, va_list * va);
+
+/* Parse a line ending with \n and return it as an unformat_input_t. */
+uword unformat_line_input (unformat_input_t * i, va_list * va);
+
 /* Parse a token containing given set of characters. */
 uword
 unformat_token (unformat_input_t * input,

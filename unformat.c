@@ -351,6 +351,32 @@ uword unformat_input (unformat_input_t * i, va_list * args)
   return 0;
 }
 
+/* Parse a line ending with \n and return it. */
+uword unformat_line (unformat_input_t * i, va_list * va)
+{
+  u8 * line = 0, ** result = va_arg (*va, u8 **);
+  uword c;
+
+  while ((c = unformat_get_input (i)) != '\n'
+	 && c != UNFORMAT_END_OF_INPUT)
+    {
+      vec_add1 (line, c);
+    }
+
+  *result = line;
+  return 1;
+}
+
+/* Parse a line ending with \n and return it as an unformat_input_t. */
+uword unformat_line_input (unformat_input_t * i, va_list * va)
+{
+  unformat_input_t * result = va_arg (*va, unformat_input_t *);
+  u8 * line;
+  unformat_user (i, unformat_line, &line);
+  unformat_init_vector (result, line);
+  return 1;
+}
+
 /* Values for is_signed. */
 #define UNFORMAT_INTEGER_SIGNED		1
 #define UNFORMAT_INTEGER_UNSIGNED	0
