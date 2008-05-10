@@ -96,9 +96,9 @@ do {						\
     (err)->code = (c);				\
 } while (0)
 
-extern void * _clib_error_free (clib_error_t * errors);
+extern void * clib_error_free_vector (clib_error_t * errors);
 
-#define clib_error_free(e) e = _clib_error_free(e)
+#define clib_error_free(e) e = clib_error_free_vector(e)
 
 extern clib_error_t *
 _clib_error_return (clib_error_t * errors,

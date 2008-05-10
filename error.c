@@ -162,7 +162,7 @@ clib_error_t * _clib_error_return (clib_error_t * errors,
   return errors;
 }
 
-void * _clib_error_free (clib_error_t * errors)
+void * clib_error_free_vector (clib_error_t * errors)
 {
   clib_error_t * e;
   vec_foreach (e, errors)
