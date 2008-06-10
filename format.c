@@ -601,7 +601,6 @@ static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
       expon10++;
     }
 
-  prec *= .5;
   if (x + prec >= 10)
     {
       x = 1;
