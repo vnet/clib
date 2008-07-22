@@ -126,6 +126,7 @@ nobase_include_HEADERS = \
     clib/vm_linux_kernel.h \
     clib/vm_standalone.h \
     clib/vm_unix.h \
+    clib/xy.h \
     clib/zvec.h
 
 CLIB_CORE = \
