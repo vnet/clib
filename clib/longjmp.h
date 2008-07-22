@@ -46,6 +46,16 @@
 /* FIXME */
 #define CLIB_ARCH_LONGJMP_REGS (10)
 
+#elif defined(__arm__)
+
+#ifndef __IWMMXT__
+/* v1-v6 sl fp sp lr */
+#define CLIB_ARCH_LONGJMP_REGS (10)
+#else
+/* For iwmmxt we save 6 extra 8 byte registers. */
+#define CLIB_ARCH_LONGJMP_REGS (10 + (6*2))
+#endif
+
 #else
 #error "unknown machine"
 #endif

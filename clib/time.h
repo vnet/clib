@@ -83,6 +83,16 @@ static always_inline u64 clib_cpu_time_now (void)
   return (u64) lo + ((u64) hi << (u64) 32);
 }
 
+#elif defined (__arm__)
+
+static always_inline u64 clib_cpu_time_now (void)
+{
+  u32 lo;
+  asm volatile ("mrc p15, 0, %[lo], c15, c12, 1"
+		: [lo] "=r" (lo));
+  return (u64) lo;
+}
+
 #else
 
 #error "don't know how to read CPU time stamp"

@@ -135,7 +135,7 @@ uword g_dump_period = ~0;
 
 static u8 * format_vec_op_type (u8 * s, va_list * args)
 {
-  op_t op = va_arg (*args, op_t);
+  op_t op = va_arg (*args, int);
 
   switch (op)
     {

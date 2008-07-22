@@ -380,6 +380,88 @@ clib_calljmp:
 	/* Return to caller. */
 	blr
 	
+#elif defined(__arm__)
+	
+	.global clib_setjmp
+	.align 4
+	.type clib_setjmp, %function
+clib_setjmp:
+	mov ip, r0		/* jmp buffer */
+
+	/* Save integer registers */
+	stmia ip!, {v1-v6, sl, fp, sp, lr}
+	
+#ifdef __IWMMXT__
+	/* Save the call-preserved iWMMXt registers.  */
+	wstrd wr10, [ip], #8
+	wstrd wr11, [ip], #8
+	wstrd wr12, [ip], #8
+	wstrd wr13, [ip], #8
+	wstrd wr14, [ip], #8
+	wstrd wr15, [ip], #8
+#endif
+
+	/* Give back user's return value. */
+	mov r1, r0
+	bx lr
+	
+	.global clib_longjmp
+	.align 4
+	.type clib_longjmp, %function
+clib_longjmp:	
+	mov ip, r0		/* jmp buffer */
+
+	/* Restore integer registers. */
+	ldmia     ip!,  {v1-v6, sl, fp, sp, lr}
+	
+#ifdef __IWMMXT__
+	/* Save the call-preserved iWMMXt registers.  */
+	wldrd wr10, [ip], #8
+	wldrd wr11, [ip], #8
+	wldrd wr12, [ip], #8
+	wldrd wr13, [ip], #8
+	wldrd wr14, [ip], #8
+	wldrd wr15, [ip], #8
+#endif
+	
+	/* Give back user's return value. */
+	mov r1, r0
+	bx lr
+
+	.global clib_calljmp
+	.align 4
+	.type clib_calljmp, %function
+clib_calljmp:	
+	/* Make sure stack is 8 byte aligned. */
+	bic r2, r2, #7
+	
+	/* Allocate space for stack/link pointer on new stack. */
+	sub r2, r2, #8	
+	
+	/* Save old stack/link pointer on new stack. */
+	str sp, [r2, #0]
+	str lr, [r2, #4]
+	
+	/* Switch stacks. */
+	mov sp, r2
+	
+	/* Save function to call. */
+	mov ip, r0
+	
+	/* Move argument into place. */
+	mov r0, r1
+	
+	/* Away we go. */
+	bx ip
+	
+	/* Switch back to old stack. */
+	ldr lr, [sp, #4]
+	ldr ip, [sp, #0]
+	mov sp, ip
+	
+	/* Return to caller. */
+	bx lr
+	
 #else
 #error "unknown machine"
 #endif	
