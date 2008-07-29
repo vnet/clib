@@ -70,10 +70,19 @@ static always_inline u8x8 u8x8_splat (u8 a)
 #define i8x8_splat u8x8_splat
 
 /* 64 bit shifts. */
+
+/* As of July 2008 the __builtin_arm shifts cause gcc-4.3.1 to crash
+   so we use asm versions. */
 #define _(t,lr,f)				\
   static always_inline t			\
   t##_shift_##lr (t x, int i)			\
-  { return __builtin_arm_##f (x, i); }
+  {						\
+    i16x4 y;					\
+    asm (#f " %[y], %[x], %[shift]"		\
+	 : [y] "=y" (y)				\
+	 : [x] "y" (x), [shift] "i" (i));	\
+    return y;					\
+  }
 
 _ (u16x4, left, wsllhi)
 _ (u32x2, left, wsllwi)
