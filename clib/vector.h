@@ -108,11 +108,11 @@ typedef u64 u64x _ (8);
 #if defined (CLIB_HAVE_VEC128)
 
 #if defined (__SSE2__) && __GNUC__ >= 4
-#include "vector_sse2.h"
+#include <clib/vector_sse2.h>
 #endif
 
 #endif
 
-#include "vector_funcs.h"
+#include <clib/vector_funcs.h>
 
 #endif /* included_clib_vector_h */
