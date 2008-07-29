@@ -28,11 +28,21 @@
 
 /* Vector types. */
 
-#ifdef __MMX__
+#if defined (__MMX__) || defined (__IWMMXT__)
 #define CLIB_HAVE_VEC64
 #endif
-#ifdef __SSE2__
+
+#if defined (__SSE2__)
 #define CLIB_HAVE_VEC128
+#endif
+
+/* 128 implies 64 */
+#ifdef CLIB_HAVE_VEC128
+#define CLIB_HAVE_VEC64
+#endif
+
+#if !(defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
+#error "vector types not supported."
 #endif
 
 #define _(n) __attribute__ ((vector_size (n)))
@@ -69,14 +79,40 @@ typedef f32 f32x4 _(16);
 typedef f64 f64x2 _(16);
 #endif /* CLIB_HAVE_VEC128 */
 
+/* Vector word sized types. */
+#ifdef CLIB_HAVE_VEC128
+typedef  i8  i8x _ (16);
+typedef i16 i16x _ (16);
+typedef i32 i32x _ (16);
+typedef i64 i64x _ (16);
+typedef  u8  u8x _ (16);
+typedef u16 u16x _ (16);
+typedef u32 u32x _ (16);
+typedef u64 u64x _ (16);
+#else /* CLIB_HAVE_VEC64 */
+typedef  i8  i8x _ (8);
+typedef i16 i16x _ (8);
+typedef i32 i32x _ (8);
+typedef i64 i64x _ (8);
+typedef  u8  u8x _ (8);
+typedef u16 u16x _ (8);
+typedef u32 u32x _ (8);
+typedef u64 u64x _ (8);
+#endif
+
 #undef _
+
+#define VECTOR_WORD_TYPE(t) t##x
+#define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
 
 #if defined (CLIB_HAVE_VEC128)
 
 #if defined (__SSE2__) && __GNUC__ >= 4
-#include <clib/vector_sse2.h>
+#include "vector_sse2.h"
 #endif
 
 #endif
+
+#include "vector_funcs.h"
 
 #endif /* included_clib_vector_h */

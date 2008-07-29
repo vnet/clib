@@ -24,28 +24,30 @@
 #ifndef included_vector_sse2_h
 #define included_vector_sse2_h
 
-static always_inline u8x16 u8x16_unpack_hi (u8x16 a, u8x16 b)
+#include <clib/error.h>		/* for ASSERT */
+
+static always_inline u8x16 u8x16_interleave_hi (u8x16 a, u8x16 b)
 { return __builtin_ia32_punpckhbw128 (a, b); }
 
-static always_inline u16x8 u16x8_unpack_hi (u16x8 a, u16x8 b)
+static always_inline u16x8 u16x8_interleave_hi (u16x8 a, u16x8 b)
 { return __builtin_ia32_punpckhwd128 (a, b); }
 
-static always_inline u32x4 u32x4_unpack_hi (u32x4 a, u32x4 b)
+static always_inline u32x4 u32x4_interleave_hi (u32x4 a, u32x4 b)
 { return __builtin_ia32_punpckhdq128 (a, b); }
 
-static always_inline u64x2 u64x2_unpack_hi (u64x2 a, u64x2 b)
+static always_inline u64x2 u64x2_interleave_hi (u64x2 a, u64x2 b)
 { return __builtin_ia32_punpckhqdq128 (a, b); }
 
-static always_inline u8x16 u8x16_unpack_lo (u8x16 a, u8x16 b)
+static always_inline u8x16 u8x16_interleave_lo (u8x16 a, u8x16 b)
 { return __builtin_ia32_punpcklbw128 (a, b); }
 
-static always_inline u16x8 u16x8_unpack_lo (u16x8 a, u16x8 b)
+static always_inline u16x8 u16x8_interleave_lo (u16x8 a, u16x8 b)
 { return __builtin_ia32_punpcklwd128 (a, b); }
 
-static always_inline u32x4 u32x4_unpack_lo (u32x4 a, u32x4 b)
+static always_inline u32x4 u32x4_interleave_lo (u32x4 a, u32x4 b)
 { return __builtin_ia32_punpckldq128 (a, b); }
 
-static always_inline u64x2 u64x2_unpack_lo (u64x2 a, u64x2 b)
+static always_inline u64x2 u64x2_interleave_lo (u64x2 a, u64x2 b)
 { return __builtin_ia32_punpcklqdq128 (a, b); }
 
 static always_inline u16x8 u16x8_pack (u32x4 lo, u32x4 hi)
@@ -102,6 +104,11 @@ _ (u64, 2, left, psllq);
 _ (u16, 8, right, psrlw);
 _ (u32, 4, right, psrld);
 _ (u64, 2, right, psrlq);
+_ (i16, 8, left, psllw);
+_ (i32, 4, left, pslld);
+_ (i64, 2, left, psllq);
+_ (i16, 8, right, psraw);
+_ (i32, 4, right, psrad);
 
 #undef _
 
@@ -236,8 +243,8 @@ _ (u64, 2, right, left);
 static always_inline u32x4 u32x4_splat (u32 a)
 {
   u32x4 x = {a};
-  x = u32x4_unpack_lo (x, x);
-  x = u64x2_unpack_lo (x, x);
+  x = u32x4_interleave_lo (x, x);
+  x = u64x2_interleave_lo (x, x);
   return x;
  }
 
@@ -257,9 +264,47 @@ static always_inline u8x16 u8x16_splat (u8 a)
 static always_inline u64x2 u64x2_splat (u64 a)
 {
   u64x2 x = {a};
-  x = u64x2_unpack_lo (x, x);
+  x = u64x2_interleave_lo (x, x);
+  return x;
+}
+
+static always_inline i32x4 i32x4_splat (i32 a)
+{
+  i32x4 x = {a};
+  x = u32x4_interleave_lo (x, x);
+  x = u64x2_interleave_lo (x, x);
   return x;
  }
+
+static always_inline i16x8 i16x8_splat (i16 a)
+{
+  i32 t = (i32) a | ((i32) a << 16);
+  return i32x4_splat (t);
+}
+
+static always_inline i8x16 i8x16_splat (i8 a)
+{
+  i32 t = (i32) a | ((i32) a << 8);
+  t |= t << 16;
+  return i16x8_splat (t);
+}
+
+static always_inline i64x2 i64x2_splat (i64 a)
+{
+  i64x2 x = {a};
+  x = u64x2_interleave_lo (x, x);
+  return x;
+}
+
+/* Word operations. */
+#define u8x_splat u8x16_splat
+#define i8x_splat i8x16_splat
+#define u16x_splat u16x8_splat
+#define i16x_splat i16x8_splat
+#define u32x_splat u32x4_splat
+#define i32x_splat i32x4_splat
+#define u64x_splat u64x2_splat
+#define i64x_splat i64x2_splat
 
 /* Compare operations. */
 #define _(t,b)						\
