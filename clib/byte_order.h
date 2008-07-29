@@ -39,9 +39,6 @@
 #define clib_arch_is_big_endian    CLIB_ARCH_IS_BIG_ENDIAN
 #define clib_arch_is_little_endian CLIB_ARCH_IS_LITTLE_ENDIAN
 
-#define _(x,n,i) \
-  ((((x) >> (8*(i))) & 0xff) << (8*((n)-(i)-1)))
-
 static always_inline u16
 clib_byte_swap_16 (u16 x)
 { return (x >> 8) | (x << 8); }
@@ -72,13 +69,14 @@ clib_byte_swap_64 (u64 x)
       return x;
     }
 #endif
+#define _(x,n,i) \
+  ((((x) >> (8*(i))) & 0xff) << (8*((n)-(i)-1)))
   return (_ (x, 8, 0) | _ (x, 8, 1)
 	  | _ (x, 8, 2) | _ (x, 8, 3)
 	  | _ (x, 8, 4) | _ (x, 8, 5)
 	  | _ (x, 8, 6) | _ (x, 8, 7));
-}
-
 #undef _
+}
 
 #define _(sex,n_bits)						\
 /* HOST -> SEX */						\
