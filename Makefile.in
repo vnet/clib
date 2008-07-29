@@ -479,6 +479,7 @@ nobase_include_HEADERS = \
     clib/vec.h \
     clib/vector.h \
     clib/vector_funcs.h \
+    clib/vector_iwmmxt.h \
     clib/vector_sse2.h \
     clib/vm_linux_kernel.h \
     clib/vm_standalone.h \

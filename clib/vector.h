@@ -114,12 +114,12 @@ typedef u64 u64x _vector_size (8);
 #define VECTOR_WORD_TYPE(t) t##x
 #define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
 
-#if defined (CLIB_HAVE_VEC128)
-
-#if defined (__SSE2__) && __GNUC__ >= 4
+#if defined (__SSE2__)
 #include <clib/vector_sse2.h>
 #endif
 
+#if defined (__IWMMXT__)
+#include <clib/vector_iwmmxt.h>
 #endif
 
 #include <clib/vector_funcs.h>
