@@ -108,21 +108,21 @@ pool_free_elts (void * v)
    First search free list.  If nothing is free extend vector of objects. */
 #define pool_get_aligned(P,E,A)						\
 do {									\
-  pool_header_t * _pool_var (p) = pool_header (P);				\
+  pool_header_t * _pool_var (p) = pool_header (P);			\
   uword _pool_var (l);							\
 									\
-  _pool_var (l) = 0;								\
+  _pool_var (l) = 0;							\
   if (P)								\
-    _pool_var (l) = vec_len (_pool_var (p)->free_indices);			\
+    _pool_var (l) = vec_len (_pool_var (p)->free_indices);		\
 									\
-  if (_pool_var (l) > 0)							\
+  if (_pool_var (l) > 0)						\
     {									\
       /* Return free element from free list. */				\
-      uword _pool_var (i) = _pool_var (p)->free_indices[_pool_var (l) - 1];		\
-      (E) = (P) + _pool_var (i);						\
-      _pool_var (p)->free_bitmap =						\
-	clib_bitmap_andnoti (_pool_var (p)->free_bitmap, _pool_var (i));		\
-      _vec_len (_pool_var (p)->free_indices) = _pool_var (l) - 1;			\
+      uword _pool_var (i) = _pool_var (p)->free_indices[_pool_var (l) - 1]; \
+      (E) = (P) + _pool_var (i);					\
+      _pool_var (p)->free_bitmap =					\
+	clib_bitmap_andnoti (_pool_var (p)->free_bitmap, _pool_var (i)); \
+      _vec_len (_pool_var (p)->free_indices) = _pool_var (l) - 1;	\
     }									\
   else									\
     {									\
@@ -139,11 +139,11 @@ do {									\
 #define pool_get(P,E) pool_get_aligned(P,E,0)
 
 /* Use free bitmap to query whether given element is free. */
-#define pool_is_free(P,E)								\
-({											\
-  pool_header_t * _pool_var (p) = pool_header (P);						\
-  uword _pool_var (i) = (E) - (P);								\
-  (_pool_var (i) < vec_len (P)) ? clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) : 1;	\
+#define pool_is_free(P,E)						\
+({									\
+  pool_header_t * _pool_var (p) = pool_header (P);			\
+  uword _pool_var (i) = (E) - (P);					\
+  (_pool_var (i) < vec_len (P)) ? clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) : 1; \
 })
   
 #define pool_is_free_index(P,I) pool_is_free((P),(P)+(I))
