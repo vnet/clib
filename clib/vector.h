@@ -45,62 +45,71 @@
 #error "vector types not supported."
 #endif
 
-#define _(n) __attribute__ ((vector_size (n)))
+#define _vector_size(n) __attribute__ ((vector_size (n)))
 
 #ifdef CLIB_HAVE_VEC64
 /* Signed 64 bit. */
-typedef i8 i8x8 _ (8);
-typedef i16 i16x4 _ (8);
-typedef i32 i32x2 _ (8);
+typedef i8 i8x8 _vector_size (8);
+typedef i16 i16x4 _vector_size (8);
+typedef i32 i32x2 _vector_size (8);
 
 /* Unsigned 64 bit. */
-typedef u8 u8x8 _ (8);
-typedef u16 u16x4 _ (8);
-typedef u32 u32x2 _ (8);
+typedef u8 u8x8 _vector_size (8);
+typedef u16 u16x4 _vector_size (8);
+typedef u32 u32x2 _vector_size (8);
 
 /* Floating point 64 bit. */
-typedef f32 f32x2 _ (8);
+typedef f32 f32x2 _vector_size (8);
 #endif /* CLIB_HAVE_VEC64 */
 
 #ifdef CLIB_HAVE_VEC128
 /* Signed 128 bit. */
-typedef i8 i8x16 _ (16);
-typedef i16 i16x8 _ (16);
-typedef i32 i32x4 _ (16);
-typedef i64 i64x2 _ (16);
+typedef i8 i8x16 _vector_size (16);
+typedef i16 i16x8 _vector_size (16);
+typedef i32 i32x4 _vector_size (16);
+typedef i64 i64x2 _vector_size (16);
 
 /* Unsigned 128 bit. */
-typedef u8 u8x16 _ (16);
-typedef u16 u16x8 _(16);
-typedef u32 u32x4 _(16);
-typedef u64 u64x2 _(16);
+typedef u8 u8x16 _vector_size (16);
+typedef u16 u16x8 _vector_size (16);
+typedef u32 u32x4 _vector_size (16);
+typedef u64 u64x2 _vector_size (16);
 
-typedef f32 f32x4 _(16);
-typedef f64 f64x2 _(16);
+typedef f32 f32x4 _vector_size (16);
+typedef f64 f64x2 _vector_size (16);
 #endif /* CLIB_HAVE_VEC128 */
 
 /* Vector word sized types. */
-#ifdef CLIB_HAVE_VEC128
-typedef  i8  i8x _ (16);
-typedef i16 i16x _ (16);
-typedef i32 i32x _ (16);
-typedef i64 i64x _ (16);
-typedef  u8  u8x _ (16);
-typedef u16 u16x _ (16);
-typedef u32 u32x _ (16);
-typedef u64 u64x _ (16);
+#ifndef CLIB_VECTOR_WORD_BITS
+# ifdef CLIB_HAVE_VEC128
+#  define CLIB_VECTOR_WORD_BITS 128
+# else
+#  define CLIB_VECTOR_WORD_BITS 64
+# endif
+#endif /* CLIB_VECTOR_WORD_BITS */
+
+/* Vector word sized types. */
+#if CLIB_VECTOR_WORD_BITS == 128
+typedef  i8  i8x _vector_size (16);
+typedef i16 i16x _vector_size (16);
+typedef i32 i32x _vector_size (16);
+typedef i64 i64x _vector_size (16);
+typedef  u8  u8x _vector_size (16);
+typedef u16 u16x _vector_size (16);
+typedef u32 u32x _vector_size (16);
+typedef u64 u64x _vector_size (16);
 #else /* CLIB_HAVE_VEC64 */
-typedef  i8  i8x _ (8);
-typedef i16 i16x _ (8);
-typedef i32 i32x _ (8);
-typedef i64 i64x _ (8);
-typedef  u8  u8x _ (8);
-typedef u16 u16x _ (8);
-typedef u32 u32x _ (8);
-typedef u64 u64x _ (8);
+typedef  i8  i8x _vector_size (8);
+typedef i16 i16x _vector_size (8);
+typedef i32 i32x _vector_size (8);
+typedef i64 i64x _vector_size (8);
+typedef  u8  u8x _vector_size (8);
+typedef u16 u16x _vector_size (8);
+typedef u32 u32x _vector_size (8);
+typedef u64 u64x _vector_size (8);
 #endif
 
-#undef _
+#undef _vector_size
 
 #define VECTOR_WORD_TYPE(t) t##x
 #define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
