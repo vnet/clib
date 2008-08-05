@@ -41,4 +41,8 @@ typedef __complex__ int i32xy_t;
 #define xy_x(x) __real__ (x)
 #define xy_y(x) __imag__ (x)
 
+/* Unit vectors in x/y directions. */
+#define xy_x_unit_vector (1)
+#define xy_y_unit_vector (1I)
+
 #endif /* included_clib_xy_h */

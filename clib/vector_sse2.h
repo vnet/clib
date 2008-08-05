@@ -51,9 +51,6 @@ static always_inline u64x2 u64x2_interleave_hi (u64x2 a, u64x2 b)
 static always_inline u64x2 u64x2_interleave_lo (u64x2 a, u64x2 b)
 { return __builtin_ia32_punpcklqdq128 (a, b); }
 
-static always_inline u16x8 u16x8_pack (u32x4 lo, u32x4 hi)
-{ return __builtin_ia32_packssdw128 (lo, hi); }
-
 /* 64 bit interleaves. */
 static always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
 { return __builtin_ia32_punpckhbw (a, b); }
@@ -72,6 +69,26 @@ static always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
 
 static always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
 { return __builtin_ia32_punpckldq (a, b); }
+
+/* 128 bit packs. */
+static always_inline u8x16 u16x8_pack (u16x8 lo, u16x8 hi)
+{ return __builtin_ia32_packuswb128 (lo, hi); }
+
+static always_inline i8x16 i16x8_pack (u16x8 lo, u16x8 hi)
+{ return __builtin_ia32_packsswb128 (lo, hi); }
+
+static always_inline i16x8 i32x4_pack (u32x4 lo, u32x4 hi)
+{ return __builtin_ia32_packssdw128 (lo, hi); }
+
+/* 64 bit packs. */
+static always_inline u8x8 u16x4_pack (u16x4 lo, u16x4 hi)
+{ return __builtin_ia32_packuswb (lo, hi); }
+
+static always_inline i8x8 i16x4_pack (u16x4 lo, u16x4 hi)
+{ return __builtin_ia32_packsswb (lo, hi); }
+
+static always_inline i16x4 i32x2_pack (u32x2 lo, u32x2 hi)
+{ return __builtin_ia32_packssdw (lo, hi); }
 
 /* Splats: replicate scalar value into vector. */
 static always_inline u64x2 u64x2_splat (u64 a)
@@ -129,6 +146,18 @@ static always_inline u8x8 u8x8_splat (u8 a)
 #define i32x2_splat u32x2_splat
 #define i16x4_splat u16x4_splat
 #define i8x8_splat u8x8_splat
+
+static always_inline u64x2 u64x2_read_lo (u64x2 x, u64 * a)
+{ return (u64x2) __builtin_ia32_loadlps ((f32x4) x, (i32x2 *) a); }
+
+static always_inline u64x2 u64x2_read_hi (u64x2 x, u64 * a)
+{ return (u64x2) __builtin_ia32_loadhps ((f32x4) x, (i32x2 *) a); }
+
+static always_inline void u64x2_write_lo (u64x2 x, u64 * a)
+{ __builtin_ia32_storehps ((i32x2 *) a, (f32x4) x); }
+
+static always_inline void u64x2_write_hi (u64x2 x, u64 * a)
+{ __builtin_ia32_storelps ((i32x2 *) a, (f32x4) x); }
 
 /* Addition. */
 #define _(t,n,f)							\
