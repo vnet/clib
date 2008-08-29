@@ -73,26 +73,41 @@ static always_inline u8x8 u8x8_splat (u8 a)
 
 /* As of July 2008 the __builtin_arm shifts cause gcc-4.3.1 to crash
    so we use asm versions. */
-#define _(t,lr,f)				\
+#define _(t,u,lr,f)				\
   static always_inline t			\
-  t##_shift_##lr (t x, int i)			\
+  t##_##lr (t x, int i)				\
   {						\
     i16x4 y;					\
     asm (#f " %[y], %[x], %[shift]"		\
 	 : [y] "=y" (y)				\
-	 : [x] "y" (x), [shift] "i" (i));	\
+	 : [x] "y" (x), [shift] "i" (i * u));	\
     return y;					\
   }
 
-_ (u16x4, left, wsllhi)
-_ (u32x2, left, wsllwi)
-_ (u16x4, right, wsrlhi)
-_ (u32x2, right, wsrlwi)
-_ (i16x4, left, wsllhi)
-_ (i32x2, left, wsllwi)
-_ (i16x4, right, wsrahi)
-_ (i32x2, right, wsrawi)
+_ (u16x4, 1, shift_left, wsllhi)
+_ (u32x2, 1, shift_left, wsllwi)
+_ (u16x4, 1, shift_right, wsrlhi)
+_ (u32x2, 1, shift_right, wsrlwi)
+_ (i16x4, 1, shift_left, wsllhi)
+_ (i32x2, 1, shift_left, wsllwi)
+_ (i16x4, 1, shift_right, wsrahi)
+_ (i32x2, 1, shift_right, wsrawi)
+
+/* Word shifts. */
+_ (u8x8, 8, word_shift_left, wslldi)
+_ (u16x4, 16, word_shift_left, wslldi)
+_ (u32x2, 32, word_shift_left, wslldi)
+_ (u8x8, 8, word_shift_right, wsrldi)
+_ (u16x4, 16, word_shift_right, wsrldi)
+_ (u32x2, 32, word_shift_right, wsrldi)
+_ (i8x8, 8, word_shift_left, wslldi)
+_ (i16x4, 16, word_shift_left, wslldi)
+_ (i32x2, 32, word_shift_left, wslldi)
+_ (i8x8, 8, word_shift_right, wsrldi)
+_ (i16x4, 16, word_shift_right, wsrldi)
+_ (i32x2, 32, word_shift_right, wsrldi)
 
 #undef _
+
 
 #endif /* included_vector_iwmmxt_h */
