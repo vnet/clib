@@ -265,7 +265,7 @@ static always_inline u64x2 u64x2_word_shift_left (u64x2 a, int n)
 
 /* Stupid compiler won't accept __builtin_ia32_pslldqi128 when not optimizing. */
 
-static always_inline u8x16 u8x16_word_shift_right (u8x16 x, int n_bits)
+static always_inline u8x16 _u8x16_word_shift_right (u8x16 x, int n_bits)
 {
   union {
     u8x16 v;
@@ -282,7 +282,7 @@ static always_inline u8x16 u8x16_word_shift_right (u8x16 x, int n_bits)
   return b.v;
 }
 
-static always_inline u8x16 u8x16_word_shift_left (u8x16 x, int n_bits)
+static always_inline u8x16 _u8x16_word_shift_left (u8x16 x, int n_bits)
 {
   union {
     u8x16 v;
@@ -299,23 +299,29 @@ static always_inline u8x16 u8x16_word_shift_left (u8x16 x, int n_bits)
   return b.v;
 }
 
+static always_inline u8x16 u8x16_word_shift_right (u8x16 a, int n)
+{ return _u8x16_word_shift_right (a, BITS (u8) * n); }
+
+static always_inline u8x16 u8x16_word_shift_left (u8x16 a, int n)
+{ return _u8x16_word_shift_left (a, BITS (u8) * n); }
+
 static always_inline u16x8 u16x8_word_shift_right (u16x8 a, int n)
-{ return u8x16_word_shift_right (a, BITS (u16) * n); }
+{ return _u8x16_word_shift_right (a, BITS (u16) * n); }
 
 static always_inline u16x8 u16x8_word_shift_left (u16x8 a, int n)
-{ return u8x16_word_shift_left (a, BITS (u16) * n); }
+{ return _u8x16_word_shift_left (a, BITS (u16) * n); }
 
 static always_inline u32x4 u32x4_word_shift_right (u32x4 a, int n)
-{ return u8x16_word_shift_right (a, BITS (u32) * n); }
+{ return _u8x16_word_shift_right (a, BITS (u32) * n); }
 
 static always_inline u32x4 u32x4_word_shift_left (u32x4 a, int n)
-{ return u8x16_word_shift_left (a, BITS (u32) * n); }
+{ return _u8x16_word_shift_left (a, BITS (u32) * n); }
 
 static always_inline u64x2 u64x2_word_shift_right (u64x2 a, int n)
-{ return u8x16_word_shift_right (a, BITS (u64) * n); }
+{ return _u8x16_word_shift_right (a, BITS (u64) * n); }
 
 static always_inline u64x2 u64x2_word_shift_left (u64x2 a, int n)
-{ return u8x16_word_shift_left (a, BITS (u64) * n); }
+{ return _u8x16_word_shift_left (a, BITS (u64) * n); }
 
 #endif
 
