@@ -26,6 +26,64 @@
 
 #include <clib/byte_order.h>
 
+/* Addition/subtraction. */
+#if CLIB_VECTOR_WORD_BITS == 128
+#define u8x_add u8x16_add
+#define u16x_add u16x8_add
+#define u32x_add u32x4_add
+#define u64x_add u64x2_add
+#define i8x_add i8x16_add
+#define i16x_add i16x8_add
+#define i32x_add i32x4_add
+#define i64x_add i64x2_add
+#define u8x_sub u8x16_sub
+#define u16x_sub u16x8_sub
+#define u32x_sub u32x4_sub
+#define u64x_sub u64x2_sub
+#define i8x_sub i8x16_sub
+#define i16x_sub i16x8_sub
+#define i32x_sub i32x4_sub
+#define i64x_sub i64x2_sub
+#endif
+
+#if CLIB_VECTOR_WORD_BITS == 64
+#define u8x_add u8x8_add
+#define u16x_add u16x4_add
+#define u32x_add u32x2_add
+#define i8x_add i8x8_add
+#define i16x_add i16x4_add
+#define i32x_add i32x2_add
+#define u8x_sub u8x8_sub
+#define u16x_sub u16x4_sub
+#define u32x_sub u32x2_sub
+#define i8x_sub i8x8_sub
+#define i16x_sub i16x4_sub
+#define i32x_sub i32x2_sub
+#endif
+
+/* Saturating addition/subtraction. */
+#if CLIB_VECTOR_WORD_BITS == 128
+#define u8x_add_saturate u8x16_add_saturate
+#define u16x_add_saturate u16x8_add_saturate
+#define i8x_add_saturate i8x16_add_saturate
+#define i16x_add_saturate i16x8_add_saturate
+#define u8x_sub_saturate u8x16_sub_saturate
+#define u16x_sub_saturate u16x8_sub_saturate
+#define i8x_sub_saturate i8x16_sub_saturate
+#define i16x_sub_saturate i16x8_sub_saturate
+#endif
+
+#if CLIB_VECTOR_WORD_BITS == 64
+#define u8x_add_saturate u8x8_add_saturate
+#define u16x_add_saturate u16x4_add_saturate
+#define i8x_add_saturate i8x8_add_saturate
+#define i16x_add_saturate i16x4_add_saturate
+#define u8x_sub_saturate u8x8_sub_saturate
+#define u16x_sub_saturate u16x4_sub_saturate
+#define i8x_sub_saturate i8x8_sub_saturate
+#define i16x_sub_saturate i16x4_sub_saturate
+#endif
+
 #define _vector_interleave(a,b,t)		\
 do {						\
   t _tmp_lo = t##_interleave_lo (a, b);		\

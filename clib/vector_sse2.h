@@ -164,10 +164,23 @@ static always_inline void u64x2_write_hi (u64x2 x, u64 * a)
   static always_inline t##x##n t##x##n##_add (t##x##n x, t##x##n y)	\
   { return __builtin_ia32_##f (x, y); }
 
-_ (u8,  16, paddb128);
-_ (u16,  8, paddw128);
-_ (u32,  4, paddd128);
-_ (u64,  2, paddq128);
+_ (u8,  16, paddb128)
+_ (u16,  8, paddw128)
+_ (u32,  4, paddd128)
+_ (u64,  2, paddq128)
+
+#undef _
+
+/* Addition with saturation. */
+
+#define _(t,n,f)							\
+  static always_inline t##x##n t##x##n##_add_saturate (t##x##n x, t##x##n y) \
+  { return __builtin_ia32_##f (x, y); }
+
+_ (u8, 16, paddusb128)
+_ (i8, 16, paddsb128)
+_ (u16, 8, paddusw128)
+_ (i16, 8, paddsw128)
 
 #undef _
 
@@ -176,10 +189,23 @@ _ (u64,  2, paddq128);
   static always_inline t##x##n t##x##n##_sub (t##x##n x, t##x##n y)	\
   { return __builtin_ia32_##f (x, y); }
 
-_ (u8,  16, psubb128);
-_ (u16,  8, psubw128);
-_ (u32,  4, psubd128);
-_ (u64,  2, psubq128);
+_ (u8,  16, psubb128)
+_ (u16,  8, psubw128)
+_ (u32,  4, psubd128)
+_ (u64,  2, psubq128)
+
+#undef _
+
+/* Subtraction with saturation. */
+
+#define _(t,n,f)							\
+  static always_inline t##x##n t##x##n##_sub_saturate (t##x##n x, t##x##n y) \
+  { return __builtin_ia32_##f (x, y); }
+
+_ (u8, 16, psubusb128)
+_ (i8, 16, psubsb128)
+_ (u16, 8, psubusw128)
+_ (i16, 8, psubsw128)
 
 #undef _
 
