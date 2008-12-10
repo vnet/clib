@@ -56,6 +56,11 @@
 #define CLIB_ARCH_LONGJMP_REGS (10 + (6*2))
 #endif
 
+#elif defined(__xtensa__)
+
+/* setjmp/longjmp not supported for the moment. */
+#define CLIB_ARCH_LONGJMP_REGS 0
+
 #else
 #error "unknown machine"
 #endif
