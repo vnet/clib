@@ -93,6 +93,12 @@ static always_inline u64 clib_cpu_time_now (void)
   return (u64) lo;
 }
 
+#elif defined (__xtensa__)
+
+/* Stub for now. */
+static always_inline u64 clib_cpu_time_now (void)
+{ return 0; }
+
 #else
 
 #error "don't know how to read CPU time stamp"
