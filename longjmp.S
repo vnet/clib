@@ -462,6 +462,26 @@ clib_calljmp:
 	/* Return to caller. */
 	bx lr
 	
+#elif defined(__xtensa__)
+	
+	.global clib_setjmp
+	.align 4
+	.type clib_setjmp, %function
+clib_setjmp:
+1:	j 1b
+
+	.global clib_longjmp
+	.align 4
+	.type clib_longjmp, @function
+clib_longjmp:	
+1:	j 1b
+	
+	.global clib_calljmp
+	.align 4
+	.type clib_calljmp, %function
+clib_calljmp:	
+1:	j 1b
+	
 #else
 #error "unknown machine"
 #endif	
