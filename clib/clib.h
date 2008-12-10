@@ -63,7 +63,7 @@
 #define never_inline __attribute__ ((__noinline__))
 
 #if DEBUG > 0
-#define always_inline __attribute__ ((used))
+#define always_inline inline
 #else
 #define always_inline inline __attribute__ ((always_inline))
 #endif
