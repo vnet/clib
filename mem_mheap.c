@@ -26,18 +26,20 @@
 #include <clib/os.h>
 
 /* Per CPU heaps. */
-static u8 * per_cpu_mheaps[32];
+static void * per_cpu_mheaps[32];
 
-static inline u8 * get_heap (void)
+static inline void * get_heap (void)
 {
   int cpu = os_get_cpu_number ();
   return per_cpu_mheaps[cpu];
 }
 
-static inline void set_heap (u8 * heap)
+static inline void * set_heap (u8 * new)
 {
   int cpu = os_get_cpu_number ();
-  per_cpu_mheaps[cpu] = heap;
+  void * old = per_cpu_mheaps[cpu];
+  per_cpu_mheaps[cpu] = new;
+  return old;
 }
 
 static void my_exit (void)
@@ -189,8 +191,8 @@ static void my_trace (int enable)
 static void * my_get_heap (void)
 { return get_heap (); }
 
-static void my_set_heap (void * heap)
-{ set_heap (heap); }
+static void * my_set_heap (void * heap)
+{ return set_heap (heap); }
 
 static clib_memfuncs_t m = {
   alloc: my_alloc,
