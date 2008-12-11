@@ -72,8 +72,8 @@ typedef struct {
   /* Return pointer to current heap. */
   void * (* get_heap) (void);
 
-  /* Sets current heap. */
-  void (* set_heap) (void *);
+  /* Sets current heap; returns previous value. */
+  void * (* set_heap) (void *);
 
   /* Format function for heap usage. */
   u8 * (* format_usage) (u8 * s, va_list * va);
@@ -256,10 +256,11 @@ static inline void * clib_mem_get_heap (void)
   return 0;
 }
 
-static inline void clib_mem_set_heap (void * heap)
+static inline void * clib_mem_set_heap (void * heap)
 {
-  if (clib_memfuncs->set_heap)
-    clib_memfuncs->set_heap (heap);
+  return clib_memfuncs->set_heap
+    ? clib_memfuncs->set_heap (heap)
+    : 0;
 }
 
 static inline void * clib_mem_init (void * heap, uword size)
