@@ -29,6 +29,11 @@
 #include <clib/mem.h>           /* clib_mem_usage_t */
 #include <clib/format.h>	/* for unformat_input_t */
 
+#ifdef CLIB_UNIX
+#include <pthread.h>		/* for pthread_mutex_t */
+#define MHEAP_LOCK_PTHREAD
+#endif
+
 typedef u32 mheap_size_t;
 
 /* Each element in heap is immediately followed by this struct. */
@@ -91,7 +96,11 @@ typedef struct {
 #define MHEAP_FLAG_FREE_LISTS_NEED_RESIZE	(1 << 0)
 #define MHEAP_FLAG_INHIBIT_FREE_LIST_SEARCH	(1 << 1)
 #define MHEAP_FLAG_TRACE			(1 << 2)
-#define MHEAP_FLAG_NO_VM			(1 << 3)
+#define MHEAP_FLAG_DISABLE_VM			(1 << 3)
+#define MHEAP_FLAG_THREAD_SAFE			(1 << 4)
+
+#define MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS \
+  (MHEAP_FLAG_TRACE)
 
   /* Number of allocated objects. */
   uword n_elts;
@@ -103,6 +112,11 @@ typedef struct {
   /* Maximum size (in bytes) this heap is allowed to grow to.
      Set to ~0 to grow heap (via vec_resize) arbitrarily. */
   uword max_size;
+
+#ifdef MHEAP_LOCK_PTHREAD
+  /* Global per-heap lock for thread-safe operation. */
+  pthread_mutex_t lock;
+#endif
 
   mheap_trace_main_t trace_main;
 } mheap_t;
@@ -217,6 +231,7 @@ void mheap_put (u8 * v, uword offset);
 
 /* Create allocation heap of given size. */
 u8 * mheap_alloc (void * memory, uword memory_bytes);
+u8 * mheap_alloc_with_flags (void * memory, uword memory_bytes, uword flags);
 
 #define mheap_free(v) (v) = _mheap_free(v)
 u8 * _mheap_free (u8 * v);

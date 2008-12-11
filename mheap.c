@@ -26,15 +26,59 @@
 #include <clib/format.h>
 #include <clib/os.h>
 
+static u8 * mheap_get_aligned_internal (u8 * v, uword size,
+					uword align,
+					uword align_offset,
+					uword * offset_return,
+					uword already_locked);
+static void mheap_put_internal (u8 * v, uword offset, uword already_locked);
+
 static void mheap_get_trace (u8 * v, uword offset, uword size);
 static void mheap_put_trace (u8 * v, uword offset, uword size);
 static int mheap_trace_sort (const void * t1, const void * t2);
 
-static inline uword
+static always_inline void mheap_lock_init (mheap_t * h)
+{
+#ifdef MHEAP_LOCK_PTHREAD
+  {
+    pthread_mutexattr_t attr;
+    int error = 0;
+    if (pthread_mutexattr_init (&attr))
+      error = 1;
+    if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
+      error = 1;
+    pthread_mutex_init (&h->lock, error ? (pthread_mutexattr_t *) 0 : &attr);
+  }
+#endif
+}
+
+static always_inline void mheap_maybe_lock (void * v)
+{
+  mheap_t * h = mheap_header (v);
+  if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
+    return;
+
+#ifdef MHEAP_LOCK_PTHREAD
+  pthread_mutex_lock (&h->lock);
+#endif
+}
+
+static always_inline void mheap_maybe_unlock (void * v)
+{
+  mheap_t * h = mheap_header (v);
+  if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
+    return;
+
+#ifdef MHEAP_LOCK_PTHREAD
+  pthread_mutex_unlock (&h->lock);
+#endif
+}
+
+static always_inline uword
 mheap_prev_is_free (mheap_elt_t * e)
 { return (e->prev_size & MHEAP_PREV_IS_FREE) != 0; }
 
-static inline uword
+static always_inline uword
 mheap_is_free (u8 * v, mheap_elt_t * e)
 {
   /* Final element is never free since it would have been
@@ -45,7 +89,7 @@ mheap_is_free (u8 * v, mheap_elt_t * e)
     return mheap_prev_is_free (mheap_next_elt (v, e));
 }
 
-static inline void
+static always_inline void
 mheap_elt_set_size (u8 * v, uword offset, uword size, uword flags)
 {
   mheap_elt_t * e = mheap_elt_at_offset (v, offset);
@@ -60,7 +104,7 @@ mheap_elt_set_size (u8 * v, uword offset, uword size, uword flags)
    to write a free element header. */
 #define MHEAP_MIN_SIZE (sizeof (mheap_elt_t) + mheap_round_size (1))
 
-static inline uword
+static always_inline uword
 size_to_bin (uword size)
 {
   uword bin;
@@ -86,7 +130,7 @@ size_to_bin (uword size)
   return bin;
 }
 
-static inline uword
+static always_inline uword
 bin_to_size (uword bin)
 {
   uword size;
@@ -112,7 +156,7 @@ bin_to_size (uword bin)
    and resize them then.  This way we ensure that mheap_{get,put}
    operations are not recursive. */
 
-static inline uword
+static always_inline uword
 free_list_length_needs_resize (uword current_len, uword max_len)
 {
   ASSERT (max_len >= current_len);
@@ -120,7 +164,7 @@ free_list_length_needs_resize (uword current_len, uword max_len)
 }
 
 /* Returns offset of free list vector for given bin. */
-static inline uword
+static always_inline uword
 free_list_offset (void * v, uword i)
 {
   mheap_t * h = mheap_header (v);
@@ -132,7 +176,7 @@ free_list_offset (void * v, uword i)
 
 /* Max number of free heap elements we can store in given
    free list bin. */
-static inline uword
+static always_inline uword
 free_list_max_len (void * v, uword i)
 {
   mheap_t * h = mheap_header (v);
@@ -175,10 +219,11 @@ free_list_resize (void * v)
 	  mheap_free_elt_t * f_new;
 	  uword new_offset;
 
-	  v = mheap_get_aligned (v,
-				 new_len * sizeof (f_new[0]) + sizeof (_vec_len (f_new)),
-				 1, 0,
-				 &new_offset);
+	  v = mheap_get_aligned_internal (v,
+					  new_len * sizeof (f_new[0]) + sizeof (_vec_len (f_new)),
+					  1, 0,
+					  &new_offset,
+					  /* already_locked */ 1);
 	  if (new_offset == ~0)
 	    clib_panic ("ran out of memory resizing free list");
 				       
@@ -200,13 +245,13 @@ free_list_resize (void * v)
 
   for (i = 0; i < ARRAY_LEN (h->free_lists); i++)
     if (old_offsets[i])
-      mheap_put (v, old_offsets[i]);
+      mheap_put_internal (v, old_offsets[i], /* already_locked */ 1);
 
  done:
   return v;
 }
 
-static inline mheap_free_elt_t *
+static always_inline mheap_free_elt_t *
 add_to_free_list (void * v, uword bin)
 {
   mheap_t * h = mheap_header (v);
@@ -225,14 +270,14 @@ add_to_free_list (void * v, uword bin)
   return f + l;
 }
 
-static inline void
+static always_inline void
 set_free_elt2 (u8 * v, mheap_elt_t * e, mheap_elt_t * n, uword fi)
 {
   *mheap_elt_data (v, e) = fi;
   n->prev_size |= MHEAP_PREV_IS_FREE;
 }
 
-static inline void
+static always_inline void
 set_free_elt (u8 * v, uword i, uword fi)
 {
   mheap_elt_t * e = mheap_elt_at_offset (v, i);
@@ -248,7 +293,7 @@ do {							\
   fi = *mheap_elt_data (v, e);				\
 } while (0)
 
-static inline void
+static always_inline void
 add_free_elt (u8 * v, uword offset, uword size)
 {
   mheap_t * h = mheap_header (v);
@@ -263,7 +308,7 @@ add_free_elt (u8 * v, uword offset, uword size)
   set_free_elt (v, f->offset, f - h->free_lists[bin]);
 }
 
-static inline void
+static always_inline void
 remove_free_elt (u8 * v, uword b, uword i)
 {
   mheap_t * h = mheap_header (v);
@@ -298,10 +343,10 @@ static uword mheap_vm_elt (u8 * v, uword flags, uword offset);
 
 static uword mheap_page_size;
 
-static inline uword mheap_page_round (uword addr)
+static always_inline uword mheap_page_round (uword addr)
 { return (addr + mheap_page_size - 1) &~ (mheap_page_size - 1); }
 
-static inline uword mheap_page_truncate (uword addr)
+static always_inline uword mheap_page_truncate (uword addr)
 { return addr &~ (mheap_page_size - 1); }
 
 /* Search free lists for object with given size and alignment. */
@@ -374,7 +419,7 @@ static uword mheap_get_search_free_list (u8 * v,
 	    continue;
 
 	  /* Need to make sure that relevant memory areas are mapped. */
-	  if (! (h->flags & MHEAP_FLAG_NO_VM)
+	  if (! (h->flags & MHEAP_FLAG_DISABLE_VM)
 	      && mheap_vm_elt (v, MHEAP_VM_NOMAP, f0))
 	    {
 	      mheap_elt_t * f0_elt = mheap_elt_at_offset (v, f0);
@@ -499,7 +544,7 @@ static u8 * mheap_get_extend_vector (u8 * v,
 
   _vec_len (v) = f1;
 
-  if (! (h->flags & MHEAP_FLAG_NO_VM))
+  if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
     {
       uword f0_page = mheap_page_round (pointer_to_uword (v + f0));
       uword f1_page = mheap_page_round (pointer_to_uword (v + f1));
@@ -522,13 +567,14 @@ static u8 * mheap_get_extend_vector (u8 * v,
   return v;
 }
 
-u8 * mheap_get_aligned (u8 * v, uword size,
-			uword align,
-			uword align_offset,
-			uword * offset_return)
+static u8 * mheap_get_aligned_internal (u8 * v, uword size,
+					uword align,
+					uword align_offset,
+					uword * offset_return,
+					uword already_locked)
 {
   mheap_t * h;
-  uword offset, trace_enabled;
+  uword offset, saved_flags;
 
   /* Include header overhead in size. */
   if (size == 0)
@@ -558,10 +604,14 @@ u8 * mheap_get_aligned (u8 * v, uword size,
   if (! v)
     v = mheap_alloc (0, 64 << 20);
 
+  if (! already_locked)
+    mheap_maybe_lock (v);
+
   h = mheap_header (v);
 
-  trace_enabled = (h->flags & MHEAP_FLAG_TRACE) != 0;
-  h->flags &= ~MHEAP_FLAG_TRACE;
+  /* Disable certain flags for recursive calls. */
+  saved_flags = h->flags & MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS;
+  h->flags &= ~MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS;
 
   v = free_list_resize (v);
 
@@ -586,15 +636,27 @@ u8 * mheap_get_aligned (u8 * v, uword size,
       h->n_elts++;
     }
 
-  if (trace_enabled && offset != ~0)
-    {
-      mheap_get_trace (v, offset, mheap_data_bytes (v, offset));
-      h->flags |= MHEAP_FLAG_TRACE;
-    }
+  if ((saved_flags & MHEAP_FLAG_TRACE) && offset != ~0)
+    mheap_get_trace (v, offset, mheap_data_bytes (v, offset));
+
+  /* Reset flags. */
+  h->flags |= saved_flags;
 
   *offset_return = offset;
 
+  if (! already_locked)
+    mheap_maybe_unlock (v);
+
   return v;
+}
+
+u8 * mheap_get_aligned (u8 * v, uword size,
+			       uword align,
+			       uword align_offset,
+			       uword * offset_return)
+{
+  return mheap_get_aligned_internal (v, size, align, align_offset, offset_return,
+				     /* already_locked */ 0);
 }
 
 static void free_last_elt (u8 * v,
@@ -603,21 +665,24 @@ static void combine_free_elts (u8 * v,
 			       mheap_elt_t * e0,
 			       mheap_elt_t * e1);
 
-void mheap_put (u8 * v, uword offset)
+static void mheap_put_internal (u8 * v, uword offset, uword already_locked)
 {
   mheap_t * h;
-  uword b, size, data_size, trace_enabled;
+  uword b, size, data_size, saved_flags;
   mheap_elt_t * e, * n, * p;
   mheap_free_elt_t * f;
 
   h = mheap_header (v);
 
+  if (! already_locked)
+    mheap_maybe_lock (v);
+
   ASSERT (offset < vec_len (v));
   ASSERT (h->n_elts > 0);
 
   h->n_elts--;
-  trace_enabled = (h->flags & MHEAP_FLAG_TRACE) != 0;
-  h->flags &= ~MHEAP_FLAG_TRACE;
+  saved_flags = h->flags & MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS;
+  h->flags &= ~MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS;
 
   v = free_list_resize (v);
 
@@ -658,12 +723,17 @@ void mheap_put (u8 * v, uword offset)
 
   h = mheap_header (v);
 
-  if (trace_enabled)
-    {
-      mheap_put_trace (v, offset, data_size);
-      h->flags |= MHEAP_FLAG_TRACE;
-    }
+  if (saved_flags & MHEAP_FLAG_TRACE)
+    mheap_put_trace (v, offset, data_size);
+
+  h->flags |= saved_flags;
+
+  if (! already_locked)
+    mheap_maybe_unlock (v);
 }
+
+void mheap_put (u8 * v, uword offset)
+{ mheap_put_internal (v, offset, /* already_locked */ 0); }
 
 static uword mheap_vm (u8 * v,
 		       uword flags,
@@ -674,7 +744,7 @@ static uword mheap_vm (u8 * v,
   clib_address_t start_page, end_page, end_addr;
   uword mapped_bytes;
 
-  ASSERT (! (h->flags & MHEAP_FLAG_NO_VM));
+  ASSERT (! (h->flags & MHEAP_FLAG_DISABLE_VM));
 
   end_addr = start_addr + size;
 
@@ -737,14 +807,14 @@ static void free_last_elt (u8 * v, mheap_elt_t * e)
 
   if (mheap_is_first (e))
     {
-      if (! (h->flags & MHEAP_FLAG_NO_VM))
+      if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
 	mheap_vm_elt (v, MHEAP_VM_UNMAP, 0);
       e->size = MHEAP_IS_FIRST | MHEAP_IS_LAST;
       _vec_len (v) = 0;
     }
   else
     {
-      if (! (h->flags & MHEAP_FLAG_NO_VM))
+      if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
 	mheap_vm_elt (v, MHEAP_VM_UNMAP, mheap_elt_offset (v, e));
       e->size = MHEAP_IS_LAST;
       _vec_len (v) = mheap_elt_offset (v, e);
@@ -797,32 +867,34 @@ static void combine_free_elts (u8 * v, mheap_elt_t * e0, mheap_elt_t * e1)
 
   mheap_elt_set_size (v, g->offset, total_size, MHEAP_PREV_IS_FREE);
   set_free_elt (v, g->offset, g - h->free_lists[b]);
-  if (! (h->flags & MHEAP_FLAG_NO_VM))
+  if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
     mheap_vm_elt (v, MHEAP_VM_UNMAP, g->offset);
 }
 
-static inline uword
+static always_inline uword
 mheap_vm_alloc_size (void * v)
 {
   mheap_t * h = mheap_header (v);
   return (u8 *) v + h->max_size - (u8 *) h;
 }
 
-u8 * mheap_alloc (void * memory, uword size)
+u8 * mheap_alloc_with_flags (void * memory, uword size, uword flags)
 {
   mheap_t * h;
   void * v;
-  uword memory_given;
 
   if (! mheap_page_size)
     mheap_page_size = clib_mem_get_page_size ();
 
-  memory_given = memory != 0;
-  if (! memory_given)
+  if (! memory)
     {
+      /* No memory given, try to VM allocate some. */
       memory = clib_mem_vm_alloc (size);
       if (! memory)
 	return 0;
+
+      /* No memory region implies we have virtual memory. */
+      flags &= ~MHEAP_FLAG_DISABLE_VM;
     }
 
   {
@@ -839,8 +911,9 @@ u8 * mheap_alloc (void * memory, uword size)
     memory = uword_to_pointer (n, void *);
   }
 
+  /* VM map header so we can use memory. */
   h = memory;
-  if (! memory_given)
+  if (! (flags & MHEAP_FLAG_DISABLE_VM))
     clib_mem_vm_map (h, sizeof (h[0]));
 
   v = mheap_vector (h);
@@ -854,16 +927,28 @@ u8 * mheap_alloc (void * memory, uword size)
   /* Force free list resize before first memory allocation from heap. */
   h->flags |= MHEAP_FLAG_FREE_LISTS_NEED_RESIZE;
 
-  if (memory_given)
-    h->flags |= MHEAP_FLAG_NO_VM;
+  /* Set flags based on those given less builtin-flags. */
+  flags &= ~MHEAP_FLAG_TRACE;
+  flags &= ~MHEAP_FLAG_INHIBIT_FREE_LIST_SEARCH;
+  h->flags |= flags;
 
-  if (! (h->flags & MHEAP_FLAG_NO_VM))
+  if (h->flags & MHEAP_FLAG_THREAD_SAFE)
+    mheap_lock_init (h);
+
+  /* Unmap remainder of heap until we will be ready to use it. */
+  if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
     mheap_vm (v, MHEAP_VM_UNMAP | MHEAP_VM_ROUND_UP,
 	      (clib_address_t) v, h->max_size);
 
   ASSERT (size == mheap_vm_alloc_size (v));
 
   return v;
+}
+
+u8 * mheap_alloc (void * memory, uword size)
+{
+  return mheap_alloc_with_flags (memory, size,
+				 /* flags */ memory != 0 ? MHEAP_FLAG_DISABLE_VM : 0);
 }
 
 u8 * _mheap_free (u8 * v)
@@ -889,9 +974,12 @@ void mheap_foreach (u8 * v,
   uword b, * free_list_objects;
   void * p;
   u8 * stack_heap, * clib_mem_mheap_save;
+  u8 tmp_heap_memory[16*1024];
+
+  mheap_maybe_lock (v);
 
   if (vec_len (v) == 0)
-    return;
+    goto done;
 
   clib_mem_mheap_save = 0;
   stack_heap = 0;
@@ -902,9 +990,7 @@ void mheap_foreach (u8 * v,
      of the heap we are looking at. */
   if (v == clib_mem_get_heap ())
     {
-      static u8 buffer[16*1024];
-      stack_heap = mheap_alloc (buffer, sizeof (buffer));
-
+      stack_heap = mheap_alloc (tmp_heap_memory, sizeof (tmp_heap_memory));
       clib_mem_mheap_save = v;
       clib_mem_set_heap (stack_heap);
     }
@@ -936,10 +1022,13 @@ void mheap_foreach (u8 * v,
   /* Restore main CLIB heap. */
   if (clib_mem_mheap_save)
     clib_mem_set_heap (clib_mem_mheap_save);
+
+ done:
+  mheap_maybe_unlock (v);
 }
 
 /* Bytes in mheap header overhead not including data bytes. */
-static inline uword
+static always_inline uword
 mheap_bytes_overhead (u8 * v)
 {
   mheap_t * h = mheap_header (v);
@@ -965,7 +1054,7 @@ mheap_bytes_overhead (u8 * v)
 uword mheap_bytes (u8 * v)
 { return mheap_bytes_overhead (v) + vec_bytes (v); }
 
-void mheap_usage (u8 * v, clib_mem_usage_t * usage)
+static void mheap_usage_no_lock (u8 * v, clib_mem_usage_t * usage)
 {
   mheap_t * h = mheap_header (v);
   uword used = 0, free = 0, free_vm_unmapped = 0;
@@ -982,7 +1071,7 @@ void mheap_usage (u8 * v, clib_mem_usage_t * usage)
 	  if (mheap_is_free (v, e))
 	    {
 	      free += size;
-	      if (! (h->flags & MHEAP_FLAG_NO_VM))
+	      if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
 		free_vm_unmapped +=
 		  mheap_vm_elt (v, MHEAP_VM_NOMAP, mheap_elt_offset (v, e));
 	    }
@@ -1000,6 +1089,13 @@ void mheap_usage (u8 * v, clib_mem_usage_t * usage)
   usage->bytes_free_reclaimed = free_vm_unmapped;
 }
 
+void mheap_usage (u8 * v, clib_mem_usage_t * usage)
+{
+  mheap_maybe_lock (v);
+  mheap_usage_no_lock (v, usage);
+  mheap_maybe_unlock (v);
+}
+
 static u8 * format_mheap_byte_count (u8 * s, va_list * va)
 {
   uword n_bytes = va_arg (*va, uword);
@@ -1014,7 +1110,7 @@ static mheap_elt_t * mheap_first_corrupt (u8 * v)
 {
   uword i, o, s;
 
-  if (! v)
+  if (vec_len (v) == 0)
     return 0;
 
   for (i = o = 0; 1; i++)
@@ -1043,23 +1139,21 @@ u8 * format_mheap (u8 * s, va_list * va)
   u8 * v = va_arg (*va, u8 *);
   int verbose = va_arg (*va, int);
 
-  mheap_t * h = mheap_header (v);
-  uword i, o, size;
-  uword n_elts = mheap_elts (v);
+  mheap_t * h;
+  uword i, o, size, saved_flags;
   clib_mem_usage_t usage;
   mheap_elt_t * first_corrupt;
-  int trace_enabled;
 
-  trace_enabled = 0;
-  if (v && (h->flags & MHEAP_FLAG_TRACE))
-    {
-      h->flags &= ~MHEAP_FLAG_TRACE;
-      trace_enabled = 1;
-    }
+  mheap_maybe_lock (v);
 
-  mheap_usage (v, &usage);
+  h = mheap_header (v);
 
-  s = format (s, "%6d objects, %U of %U used, %U free, %U reclaimed, %U overhead",
+  saved_flags = h->flags & MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS;
+  h->flags &= ~MHEAP_FLAG_DISABLE_FOR_RECURSIVE_CALLS;
+
+  mheap_usage_no_lock (v, &usage);
+
+  s = format (s, "%d objects, %U of %U used, %U free, %U reclaimed, %U overhead",
 	      usage.object_count,
 	      format_mheap_byte_count, usage.bytes_used,
 	      format_mheap_byte_count, usage.bytes_total,
@@ -1070,7 +1164,7 @@ u8 * format_mheap (u8 * s, va_list * va)
   if (usage.bytes_max != ~0)
     s = format (s, ", %U capacity", format_mheap_byte_count, usage.bytes_max);
 
-  if (trace_enabled && vec_len (h->trace_main.traces) > 0)
+  if ((saved_flags & MHEAP_FLAG_TRACE) && vec_len (h->trace_main.traces) > 0)
     {
       /* Make a copy of traces since we'll be sorting them. */
       mheap_trace_t * t, * traces_copy;
@@ -1124,6 +1218,8 @@ u8 * format_mheap (u8 * s, va_list * va)
      uses the same mheap as we are currently inspecting. */
   if (verbose > 1)
     {
+      uword n_elts = mheap_elts (v);
+
       s = format (s, "\n");
 
       for (i = o = 0; i < n_elts; i++)
@@ -1152,9 +1248,9 @@ u8 * format_mheap (u8 * s, va_list * va)
 	}
     }
 
-  /* Re-enable traceing. */
-  if (trace_enabled)
-    h->flags |= MHEAP_FLAG_TRACE;
+  h->flags |= saved_flags;
+
+  mheap_maybe_unlock (v);
 
   return s;
 }
@@ -1179,6 +1275,8 @@ clib_error_t * mheap_validate (u8 * v)
 
   if (! v)
     return 0;
+
+  mheap_maybe_lock (v);
 
   /* Validate number of elements and size. */
   free_size = free_count = 0;
@@ -1250,6 +1348,7 @@ clib_error_t * mheap_validate (u8 * v)
 #undef CHECK
 
  done:
+  mheap_maybe_unlock (v);
   return error;
 }
 
@@ -1362,7 +1461,7 @@ static int mheap_trace_sort (const void * _t1, const void * _t2)
   return cmp;
 }
 
-static inline void
+static always_inline void
 mheap_trace_main_free (mheap_trace_main_t * tm)
 {
   vec_free (tm->traces);
