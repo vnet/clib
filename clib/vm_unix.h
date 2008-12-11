@@ -54,10 +54,6 @@ static inline void * clib_mem_vm_unmap (void * addr, uword size)
   void * mmap_addr;
   uword flags = MAP_SHARED | MAP_FIXED;
 
-#ifdef MAP_ANONYMOUS
-  flags |= MAP_ANONYMOUS;
-#endif
-
   /* To unmap we "map" with no protection.  If we actually called
      munmap then other callers could steal the address space.  By
      changing to PROT_NONE the kernel can free up the pages which is
@@ -74,10 +70,6 @@ static inline void * clib_mem_vm_map (void * addr, uword size)
 {
   void * mmap_addr;
   uword flags = MAP_SHARED | MAP_FIXED;
-
-#ifdef MAP_ANONYMOUS
-  flags |= MAP_ANONYMOUS;
-#endif
 
   mmap_addr = mmap (addr, size,
 		    (PROT_READ | PROT_WRITE), flags, -1, 0);
