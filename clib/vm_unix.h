@@ -31,7 +31,7 @@
 static inline void * clib_mem_vm_alloc (uword size)
 {
   void * mmap_addr;
-  uword flags = MAP_PRIVATE;
+  uword flags = MAP_SHARED;
 
 #ifdef MAP_ANONYMOUS
   flags |= MAP_ANONYMOUS;
@@ -52,7 +52,7 @@ static inline void clib_mem_vm_free (void * addr, uword size)
 static inline void * clib_mem_vm_unmap (void * addr, uword size)
 {
   void * mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED;
+  uword flags = MAP_SHARED | MAP_FIXED;
 
 #ifdef MAP_ANONYMOUS
   flags |= MAP_ANONYMOUS;
@@ -73,7 +73,7 @@ static inline void * clib_mem_vm_unmap (void * addr, uword size)
 static inline void * clib_mem_vm_map (void * addr, uword size)
 {
   void * mmap_addr;
-  uword flags = MAP_PRIVATE | MAP_FIXED;
+  uword flags = MAP_SHARED | MAP_FIXED;
 
 #ifdef MAP_ANONYMOUS
   flags |= MAP_ANONYMOUS;
