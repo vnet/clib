@@ -87,7 +87,9 @@ clib_bitmap_set_no_check (uword * a, uword i)
   uword bit = (uword) 1 << (i % BITS (a[0]));
   uword ai;
 
-  ASSERT (i0 < vec_len (a));
+  /* Removed ASSERT since uword * a may not be a vector. */
+  // ASSERT (i0 < vec_len (a));
+
   ai = a[i0];
   a[i0] = ai | bit;
 
@@ -127,6 +129,15 @@ clib_bitmap_get (uword * ai, uword i)
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
   return i0 < vec_len (ai) && 0 != ((ai[i0] >> i1) & 1);
+}
+
+/* Fetch bit I. */
+static inline uword
+clib_bitmap_get_no_check (uword * ai, uword i)
+{
+  uword i0 = i / BITS (ai[0]);
+  uword i1 = i % BITS (ai[0]);
+  return 0 != ((ai[i0] >> i1) & 1);
 }
 
 /* Fetch bits I through I + N_BITS. */
