@@ -81,19 +81,22 @@ _clib_bitmap_remove_trailing_zeros (uword * a)
 
 /* Sets given bit.  Returns old value. */
 static inline uword
-clib_bitmap_set_no_check (uword * a, uword i)
+clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 {
   uword i0 = i / BITS (a[0]);
-  uword bit = (uword) 1 << (i % BITS (a[0]));
-  uword ai;
+  uword i1 = i % BITS (a[0]);
+  uword bit = (uword) 1 << i1;
+  uword ai, old_value;
 
   /* Removed ASSERT since uword * a may not be a vector. */
   // ASSERT (i0 < vec_len (a));
 
   ai = a[i0];
-  a[i0] = ai | bit;
-
-  return (ai & bit) != 0;
+  old_value = (ai & bit) != 0;
+  ai &= ~ bit;
+  ai |= ((uword) (new_value != 0)) << i1;
+  a[i0] = ai;
+  return old_value;
 }
 
 /* Set bit I to value (either non-zero or zero). */
