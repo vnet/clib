@@ -204,6 +204,12 @@ _ (26, 12) _ (27, 13) _ (28, 14) _ (29, 15) _ (30, 16) _ (31, 17)
 _ (20, 0) _ (21, 1) _ (22, 2) _ (23, 3) _ (24, 4)  _ (25, 5)	\
 _ (26, 6) _ (27, 7) _ (28, 8) _ (29, 9) _ (30, 10) _ (31, 11)
 	
+#ifdef __ALTIVEC__
+#define CLIB_POWERPC_ALTIVEC_N_REGS 12
+#else
+#define CLIB_POWERPC_ALTIVEC_N_REGS 0
+#endif
+
 _prologue (clib_setjmp)
 	mflr 0
 	std 0, 8*0(3)
@@ -212,7 +218,7 @@ _prologue (clib_setjmp)
 	mfcr 0
 	std 0, 8*3(3)
 	mfspr 0, 256
-	stw 0, 8*3(3)
+	stw 0, 8*4(3)
 	
 	/* gprs 14 - 31 */
 #define _(a,b) std a, 8*((b) + 4 + 18*0)(3) ; 
@@ -224,11 +230,13 @@ _prologue (clib_setjmp)
 	_foreach_14_31
 #undef _
 
+#if CLIB_POWERPC_ALTIVEC_N_REGS > 0
 	/* vrs 20 - 31 */
 	li 5, 8*(4 + 18*2)
 #define _(a,b) stvx a, 5, 3 ; addi 5, 5, 16 ;
 	_foreach_20_31
 #undef _
+#endif /* CLIB_POWERPC_ALTIVEC_N_REGS > 0 */
 	
 	/* Return value. */
 	mr 3, 4
@@ -236,22 +244,6 @@ _prologue (clib_setjmp)
 	blr
 	
 _prologue (clib_longjmp)
-	/* vrs 20 - 31 */
-	li 5, 8*(4 + 18*2)
-#define _(a,b) lvx a, 5, 3 ; addi 5, 5, 16 ;
-	_foreach_20_31
-#undef _
-	
-	/* fprs 14 - 31 */
-#define _(a,b) lfd a, 8*((b) + 4 + 18*1)(3) ; 
-	_foreach_14_31
-#undef _
-	
-	/* gprs 14 - 31 */
-#define _(a,b) ld a, 8*((b) + 4 + 18*0)(3) ; 
-	_foreach_14_31
-#undef _
-	
 	ld 0, 8*0(3)
 	mtlr 0
 	ld 1, 8*1(3)
@@ -260,6 +252,24 @@ _prologue (clib_longjmp)
 	mtcrf 0xff, 0
 	lwz 0, 8*3(3)
 	mtspr 256, 0
+	
+	/* gprs 14 - 31 */
+#define _(a,b) ld a, 8*((b) + 4 + 18*0)(3) ; 
+	_foreach_14_31
+#undef _
+	
+	/* fprs 14 - 31 */
+#define _(a,b) lfd a, 8*((b) + 4 + 18*1)(3) ; 
+	_foreach_14_31
+#undef _
+	
+#if CLIB_POWERPC_ALTIVEC_N_REGS > 0
+	/* vrs 20 - 31 */
+	li 5, 8*(4 + 18*2)
+#define _(a,b) lvx a, 5, 3 ; addi 5, 5, 16 ;
+	_foreach_20_31
+#undef _
+#endif /* CLIB_POWERPC_ALTIVEC_N_REGS > 0 */
 	
 	/* Return value. */
 	mr 3, 4
@@ -306,6 +316,16 @@ _ (14, 0)  _ (15, 1)  _ (16, 2)  _ (17, 3)  _ (18, 4)  _ (19, 5)	\
 _ (20, 6)  _ (21, 7)  _ (22, 8)  _ (23, 9)  _ (24, 10) _ (25, 11)	\
 _ (26, 12) _ (27, 13) _ (28, 14) _ (29, 15) _ (30, 16) _ (31, 17)
 
+#define _foreach_20_31						\
+_ (20, 0) _ (21, 1) _ (22, 2) _ (23, 3) _ (24, 4)  _ (25, 5)	\
+_ (26, 6) _ (27, 7) _ (28, 8) _ (29, 9) _ (30, 10) _ (31, 11)
+	
+#ifdef __ALTIVEC__
+#define CLIB_POWERPC_ALTIVEC_N_REGS 12
+#else
+#define CLIB_POWERPC_ALTIVEC_N_REGS 0
+#endif
+
 	.global clib_setjmp
 	.align 4
 	.type clib_setjmp, @function
@@ -315,12 +335,26 @@ clib_setjmp:
 	stw 1, 4*1(3)
 	mfcr 0
 	stw 0, 4*2(3)
+	mfspr 0, 256
+	stw 0, 4*3(3)
 	
-	/* gprs 14 - 31 */
-#define _(a,b) stw a, 4*((b) + 3)(3) ; 
+#if CLIB_POWERPC_ALTIVEC_N_REGS > 0
+	li 5, 4*4
+#define _(a,b) stvx a, 3, 5 ; addi 5, 5, 16 ;
+	_foreach_20_31
+#undef _
+#endif /* CLIB_POWERPC_ALTIVEC_N_REGS > 0 */
+	
+	/* gp 14 - 31 */
+#define _(a,b) stw a,  4*(1*(b) + 4 + 4*CLIB_POWERPC_ALTIVEC_N_REGS + 0*18)(3) ; 
 	_foreach_14_31
 #undef _
 	
+	/* fp 14 - 31 */
+#define _(a,b) stfd a, 4*(2*(b) + 4 + 4*CLIB_POWERPC_ALTIVEC_N_REGS + 1*18)(3) ;
+	_foreach_14_31
+#undef _
+
 	/* Return value. */
 	mr 3, 4
 	
@@ -331,17 +365,31 @@ clib_setjmp:
 	.type clib_longjmp, @function
 clib_longjmp:	
 	
-	/* gprs 14 - 31 */
-#define _(a,b) lwz a, 4*((b) + 3)(3) ; 
-	_foreach_14_31
-#undef _
-	
 	lwz 0, 4*0(3)
 	mtlr 0
 	lwz 1, 4*1(3)
 	lwz 0, 4*2(3)
 	mtcr 0
+	lwz 0, 4*3(3)
+	mtspr 256, 0
 	
+#if CLIB_POWERPC_ALTIVEC_N_REGS > 0
+	li 5, 4*4
+#define _(a,b) lvx a, 3, 5 ; addi 5, 5, 16 ;
+	_foreach_20_31
+#undef _
+#endif /* CLIB_POWERPC_ALTIVEC_N_REGS > 0 */
+	
+	/* gp 14 - 31 */
+#define _(a,b) lwz a, 4*(1*(b) + 4 + 4*CLIB_POWERPC_ALTIVEC_N_REGS + 0*18)(3) ;
+	_foreach_14_31
+#undef _
+	
+	/* fp 14 - 31 */
+#define _(a,b) lfd a, 4*(1*(b) + 4 + 4*CLIB_POWERPC_ALTIVEC_N_REGS + 1*18)(3) ;
+	_foreach_14_31
+#undef _
+
 	/* Return value. */
 	mr 3, 4
 	
@@ -464,6 +512,7 @@ clib_calljmp:
 	
 #elif defined(__xtensa__)
 	
+	/* FIXME implement if needed. */
 	.global clib_setjmp
 	.align 4
 	.type clib_setjmp, %function

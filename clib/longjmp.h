@@ -34,13 +34,24 @@
 /* ebx, ebp, esi, edi, eip, rsp */
 #define CLIB_ARCH_LONGJMP_REGS 6
 
-#elif defined(__powerpc64__)
-/* r1 r2 link condition+vsave regs 14-31 fp regs 14-31 vector regs 20-31 */
-#define CLIB_ARCH_LONGJMP_REGS (4 + 2*(31 - 14 + 1) + 2*(31 - 20 + 1))
+#elif (defined(__powerpc64__) || defined(__powerpc__))
 
-#elif defined(__powerpc__)
-/* r1 lr cr regs 14-31 */
-#define CLIB_ARCH_LONGJMP_REGS (3 + (31 - 14 + 1))
+#ifdef __ALTIVEC__
+#define CLIB_POWERPC_ALTIVEC_N_REGS 12
+#else
+#define CLIB_POWERPC_ALTIVEC_N_REGS 0
+#endif
+
+/* r1 r2 link condition+vsave regs 14-31 fp regs 14-31 vector regs 20-31 */
+#define CLIB_ARCH_LONGJMP_REGS				\
+  (/* r1 lr cr vrsave */				\
+   4							\
+   /* gp */						\
+   + (31 - 14 + 1)					\
+   /* fp */						\
+   + (sizeof (f64) / sizeof (uword)) * (31 - 14 + 1)	\
+   /* vector regs */					\
+   + (16 / sizeof (uword)) * CLIB_POWERPC_ALTIVEC_N_REGS)
 
 #elif defined(__SPU__)
 /* FIXME */
