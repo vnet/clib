@@ -184,7 +184,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
   uword l = vec_len (bitmap);
   uword t, m;
 
-  ASSERT (n_bits > 0 && n_bits <= BITS (value));
+  ASSERT (n_bits >= 0 && n_bits <= BITS (value));
 
   i0 = i / BITS (bitmap[0]);
   i1 = i % BITS (bitmap[0]);
