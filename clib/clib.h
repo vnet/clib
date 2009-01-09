@@ -56,6 +56,8 @@
   (  ((uword) & (((t *) 0)[1].f))		\
    - ((uword) & (((t *) 0)[0].f)))
 
+#define STRUCT_OFFSET_OF_VAR(v,f) ((uword) (&(v)->f) - (uword) (v))
+
 /* Used to pack structure elements. */
 #define PACKED(x)	x __attribute__ ((packed))
 #define UNUSED(x)	x __attribute__ ((unused)) 
@@ -89,11 +91,11 @@
 /* Use __builtin_clz if available. */
 #if __GNUC__ >= 3 && __GNUC_MINOR__ >= 4
 #if uword_bits == 64
-#define count_leading_zeros(count,x) \
-  count = __builtin_clzll (x)
+#define count_leading_zeros(count,x) count = __builtin_clzll (x)
+#define count_trailing_zeros(count,x) count = __builtin_ctzll (x)
 #else
-#define count_leading_zeros(count,x) \
-  count = __builtin_clzl (x)
+#define count_leading_zeros(count,x) count = __builtin_clzl (x)
+#define count_trailing_zeros(count,x) count = __builtin_ctzl (x)
 #endif
 #endif
 
@@ -144,14 +146,14 @@
 #endif /* count_leading_zeros */
 
 #if defined (count_leading_zeros)
-static inline uword min_log2 (uword x)
+static always_inline uword min_log2 (uword x)
 {
   uword n;
   count_leading_zeros (n, x);
   return BITS (uword) - n - 1;
 }
 #else
-static inline uword min_log2 (uword x)
+static always_inline uword min_log2 (uword x)
 {
   uword a = x, b = BITS(uword)/2, c = 0, r = 0;
 
@@ -186,7 +188,7 @@ static inline uword min_log2 (uword x)
 }
 #endif
 
-static inline uword max_log2 (uword x)
+static always_inline uword max_log2 (uword x)
 {
   uword l = min_log2 (x);
   if (x > ((uword) 1 << l))
@@ -194,45 +196,46 @@ static inline uword max_log2 (uword x)
   return l;
 }
 
-static inline u64 min_log2_u64 (u64 x)
+static always_inline u64 min_log2_u64 (u64 x)
 {
-    if (BITS (uword) == 64)
-	return min_log2 (x);
-    else {
-	uword l, y;
-	y = x;
-	l = 0;
-	if (y == 0) {
-	    l += 32;
-	    x >>= 32;
-	}
-	l += min_log2 (x);
-	return l;
+  if (BITS (uword) == 64)
+    return min_log2 (x);
+  else
+    {
+      uword l, y;
+      y = x;
+      l = 0;
+      if (y == 0) {
+	l += 32;
+	x >>= 32;
+      }
+      l += min_log2 (x);
+      return l;
     }
 }
 
-static inline uword pow2_mask (uword x)
+static always_inline uword pow2_mask (uword x)
 { return ((uword) 1 << x) - (uword) 1; }
 
-static inline uword max_pow2 (uword x)
+static always_inline uword max_pow2 (uword x)
 {
   word y = (word) 1 << min_log2 (x);
   if (x > y) y *= 2;
   return y;
 }
 
-static inline uword is_pow2 (uword x)
+static always_inline uword is_pow2 (uword x)
 { return 0 == (x & (x - 1)); }
 
-static inline uword round_pow2 (uword x, uword pow2)
+static always_inline uword round_pow2 (uword x, uword pow2)
 {
   return (x + pow2 - 1) &~ (pow2 - 1);
 }
 
-static inline uword first_set (uword x)
+static always_inline uword first_set (uword x)
 { return x & -x; }
 
-static inline uword log2_first_set (uword x)
+static always_inline uword log2_first_set (uword x)
 {
   uword result;
 #ifdef count_trailing_zeros
@@ -243,10 +246,10 @@ static inline uword log2_first_set (uword x)
   return result;
 }
 
-static inline f64 flt_round_down (f64 x)
+static always_inline f64 flt_round_down (f64 x)
 { return (int) x; }
 
-static inline word flt_round_nearest (f64 x)
+static always_inline word flt_round_nearest (f64 x)
 { return (word) (x + .5); }
 
 static always_inline f64 flt_round_to_multiple (f64 x, f64 f)

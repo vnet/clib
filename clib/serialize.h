@@ -60,7 +60,7 @@ typedef struct serialize_main_t {
   clib_longjmp_t error_longjmp;
 } serialize_main_t;
 
-static inline void
+static always_inline void
 serialize_error (serialize_main_t * m, clib_error_t * error)
 { clib_longjmp (&m->error_longjmp, pointer_to_uword (error)); }
 
@@ -69,7 +69,7 @@ typedef void (serialize_function_t) (serialize_main_t * m, va_list * va);
 void serialize_flush_buffer (serialize_main_t * m);
 void serialize_fill_buffer (serialize_main_t * m, u32 n_bytes);
 
-static inline void
+static always_inline void
 serialize_write (serialize_main_t * m, void * data, uword n_bytes)
 {
   word n;
@@ -80,7 +80,7 @@ serialize_write (serialize_main_t * m, void * data, uword n_bytes)
     serialize_flush_buffer (m);
 }
 
-static inline void *
+static always_inline void *
 serialize_read (serialize_main_t * m, uword n_bytes)
 {
   i32 n;
@@ -168,7 +168,7 @@ do {						\
   serialize_write (m, d, _l);			\
 } while (0)
 
-static inline void *
+static always_inline void *
 unserialize_data (serialize_main_t * m)
 {
   u8 * d, * v;

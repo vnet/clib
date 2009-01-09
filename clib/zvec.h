@@ -26,90 +26,79 @@
 
 #include <clib/clib.h>
 #include <clib/error.h>		/* for ASSERT */
+#include <clib/format.h>
 
-static inline uword
-zvec_decode1 (uword coding, uword zdata)
-{
-  uword c, d, result;
-  uword explicit_end, implicit_end, end;
+/* zvec: compressed vectors.
 
-  result = 0;
-  do {
-    c = first_set (coding);
-    implicit_end = c == coding;
-    explicit_end = (zdata & 1) &~ implicit_end;
-    end = explicit_end | implicit_end;
-    d = (zdata >> explicit_end) & (c - 1);
-    result += end ? d : c;
-    coding ^= c;
-    zdata >>= 1;
-  } while (! end);
+   Data is entropy coded with 32 bit "codings".
 
-  return result;
-}
+   Consider coding as bitmap, coding = 2^c_0 + 2^c_1 + ... + 2^c_n
+   With c_0 < c_1 < ... < c_n.  coding == 0 represents c_n = BITS (uword).
 
-static inline uword
-zvec_encode1 (uword coding,
-	      uword data,
-	      uword * n_result_bits)
-{
-  uword c, shift, result;
-  uword end, explicit_end, implicit_end;
+   Unsigned integers i = 0 ... are represented as follows:
 
-  /* Data must be in range.  Note special coding == 0
-     would break for data - 1 <= coding. */
-  ASSERT (data <= coding - 1);
+       0 <= i < 2^c_0       	(i << 1) | (1 << 0) binary:   i 1
+   2^c_0 <= i < 2^c_0 + 2^c_1   (i << 2) | (1 << 1) binary: i 1 0
+   ...                                              binary: i 0 ... 0
 
-  shift = 0;
-  while (1)
-    {
-      c = first_set (coding);
-      implicit_end = c == coding;
-      explicit_end = ((data & (c - 1)) == data) &~ implicit_end;
-      end = explicit_end | implicit_end;
-      if (end)
-	{
-	  result = ((data << explicit_end) | explicit_end) << shift;
-	  if (n_result_bits)
-	    *n_result_bits =
-	      /* data bits */ (c == 0 ? BITS (uword) : min_log2 (c))
-	      /* shift bits */ + shift + explicit_end;
-	  return result;
-	}
-      data -= c;
-      coding ^= c;
-      shift++;
-    }
-
-  /* Never reached. */
-  ASSERT (0);
-  return ~0;
-}
+   Smaller numbers use less bits.  Coding is chosen so that encoding
+   of given histogram of typical values gives smallest number of bits.
+   The number and position of coding bits c_i are used to best fit the
+   histogram of typical values.
+*/
 
 typedef struct {
+  /* Smallest coding for given histogram of typical data. */
   u32 coding;
-  u32 count;
+
+  /* Number of data in histogram. */
+  u32 n_data;
+
+  /* Number of codes (unique values) in histogram. */
   u32 n_codes;
+
+  /* Number of bits in smallest coding of data. */
   u32 min_coding_bits;
-  f32 ave_coding_length;
+
+  /* Average number of bits per code. */
+  f64 ave_coding_bits;
 } zvec_coding_t;
 
-#define zvec_coding_from_histogram(h,l,max_bits,zc) \
-  _zvec_coding_from_histogram ((h), (l), sizeof (h[0]), (max_bits), (zc))
+uword zvec_decode (uword coding, uword zdata);
+uword zvec_encode (uword coding,
+		   uword data,
+		   uword * n_result_bits);
+
+format_function_t format_zvec_coding;
+
+typedef u32 zvec_histogram_count_t;
+
+#define zvec_coding_from_histogram(h,count_field,len,zc)		\
+  _zvec_coding_from_histogram ((h), (len),				\
+			       STRUCT_OFFSET_OF_VAR (h, count_field),	\
+			       sizeof (h[0]),				\
+			       (zc))
 
 uword
 _zvec_coding_from_histogram (void * _histogram,
 			     uword histogram_len,
+			     uword histogram_elt_count_offset,
 			     uword histogram_elt_bytes,
-			     uword max_coding_bits,
 			     zvec_coding_t * coding_return);
 
-typedef struct {
-  u32 n_elts, n_bits;
-} zvec_header_t;
+#define _(TYPE,IS_SIGNED)						\
+  uword * zvec_encode_##TYPE (uword * zvec, uword * zvec_n_bits, uword coding, \
+			   void * data, uword data_stride, uword n_data);
 
-#define zvec_header(z) ((zvec_header_t *) vec_header (z, sizeof (zvec_header_t)))
-#define zvec_elts(z)   ((z) ? zvec_header(z)->n_elts : 0)
-#define zvec_n_bits(z) ((z) ? zvec_header(z)->n_bits : 0)
+_ (u8,  /* is_signed */ 0);
+_ (u16, /* is_signed */ 0);
+_ (u32, /* is_signed */ 0);
+_ (u64, /* is_signed */ 0);
+_ (i8,  /* is_signed */ 1);
+_ (i16, /* is_signed */ 1);
+_ (i32, /* is_signed */ 1);
+_ (i64, /* is_signed */ 1);
+
+#undef _
 
 #endif /* included_zvec_h */

@@ -61,12 +61,12 @@ int test_zvec_main (unformat_input_t * input)
 	limit = 1 << 16;
       for (data = 0; data <= limit; data++)
 	{
-	  d[0] = zvec_encode1 (coding, data, &n_zdata_bits);
+	  d[0] = zvec_encode (coding, data, &n_zdata_bits);
 
 	  if (coding != 0)
 	    ASSERT ((d[0] >> n_zdata_bits) == 0);
 
-	  d[1] = zvec_decode1 (coding, d[0]);
+	  d[1] = zvec_decode (coding, d[0]);
 	  ASSERT (data == d[1]);
 	}
     }

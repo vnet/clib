@@ -98,16 +98,45 @@ static f64 clock_frequency_from_proc_filesystem (void)
   return cpu_freq;
 }
 
+/* Fetch cpu frequency via reading /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq
+   Only works for Linux. */ 
+static f64 clock_frequency_from_sys_filesystem (void)
+{
+  f64 cpu_freq;
+  int fd;
+  unformat_input_t input;
+
+  cpu_freq = 0;
+  fd = open ("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", 0);
+  if (fd < 0)
+    goto done;
+
+  unformat_init_unix_file (&input, fd);
+  unformat (&input, "%f", &cpu_freq);
+  cpu_freq *= 1e3;		/* measured in kHz */
+  unformat_free (&input);
+ done:
+  close (fd);
+  return cpu_freq;
+}
+
 f64 os_cpu_clock_frequency (void)
 {
-  f64 cpu_freq = clock_frequency_from_proc_filesystem ();
+  f64 cpu_freq;
+
+  /* First try /sys version. */
+  cpu_freq = clock_frequency_from_sys_filesystem ();
+  if (cpu_freq != 0)
+    return cpu_freq;
+
+  /* Next try /proc version. */
+  cpu_freq = clock_frequency_from_proc_filesystem ();
+  if (cpu_freq != 0)
+    return cpu_freq;
 
   /* If /proc/cpuinfo fails (e.g. not running on Linux) fall back to
      gettimeofday based estimated clock frequency. */
-  if (cpu_freq == 0)
-    cpu_freq = estimate_clock_frequency ();
-
-  return cpu_freq;
+  return estimate_clock_frequency ();
 }
 
 #endif /* CLIB_UNIX */

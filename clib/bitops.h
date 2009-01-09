@@ -108,4 +108,17 @@ compress_bits (compress_main_t * cm, uword x)
   return r;
 }
 
+/* Returns snoob from Hacker's Delight.  Next highest number
+   with same number of set bits. */
+static always_inline uword
+next_with_same_number_of_set_bits (uword x)
+{
+  uword smallest, ripple, ones;
+  smallest = x & -x;
+  ripple = x + smallest;
+  ones = x ^ ripple;
+  ones = ones >> (2 + log2_first_set (x));
+  return ripple | ones;
+}
+
 #endif /* included_clib_bitops_h */
