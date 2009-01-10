@@ -150,7 +150,7 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
   uword i0, i1, result;
   uword l = vec_len (bitmap);
 
-  ASSERT (n_bits > 0 && n_bits <= BITS (result));
+  ASSERT (n_bits >= 0 && n_bits <= BITS (result));
 
   i0 = i / BITS (bitmap[0]);
   i1 = i % BITS (bitmap[0]);
@@ -169,7 +169,7 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
   if (i1 + n_bits > BITS (bitmap[0]) && i0 < l)
     {
       n_bits -= BITS (bitmap[0]) - i1;
-      result |= bitmap[i0] & (((uword) 1 << n_bits) - 1);
+      result |= (bitmap[i0] & (((uword) 1 << n_bits) - 1)) << (BITS (bitmap[0]) - i1);
     }
 
   return result;
@@ -180,9 +180,7 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
 static inline uword *
 clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 {
-  uword i0, i1;
-  uword l = vec_len (bitmap);
-  uword t, m;
+  uword i0, i1, l, t, m;
 
   ASSERT (n_bits >= 0 && n_bits <= BITS (value));
 
@@ -191,6 +189,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 
   /* Allocate bitmap. */
   vec_validate (bitmap, (i + n_bits) / BITS (bitmap[0]));
+  l = vec_len (bitmap);
 
   m = ~0;
   if (n_bits < BITS (value))
