@@ -49,7 +49,7 @@ int test_zvec_main (unformat_input_t * input)
 
   for (i = 0; i < n_iterations; i++)
     {
-      uword coding, data, d[2], limit, n_zdata_bits;
+      uword coding, data, d[2], limit, n_zdata_bits[2];
 
       if (seed)
 	coding = random_u32 (&seed);
@@ -61,13 +61,15 @@ int test_zvec_main (unformat_input_t * input)
 	limit = 1 << 16;
       for (data = 0; data <= limit; data++)
 	{
-	  d[0] = zvec_encode (coding, data, &n_zdata_bits);
+	  d[0] = zvec_encode (coding, data, &n_zdata_bits[0]);
 
 	  if (coding != 0)
-	    ASSERT ((d[0] >> n_zdata_bits) == 0);
+	    ASSERT ((d[0] >> n_zdata_bits[0]) == 0);
 
-	  d[1] = zvec_decode (coding, d[0]);
+	  d[1] = zvec_decode (coding, d[0], &n_zdata_bits[1]);
 	  ASSERT (data == d[1]);
+
+	  ASSERT (n_zdata_bits[0] == n_zdata_bits[1]);
 	}
     }
 

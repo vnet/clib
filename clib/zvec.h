@@ -64,10 +64,9 @@ typedef struct {
   f64 ave_coding_bits;
 } zvec_coding_t;
 
-uword zvec_decode (uword coding, uword zdata);
-uword zvec_encode (uword coding,
-		   uword data,
-		   uword * n_result_bits);
+/* Encode/decode data. */
+uword zvec_encode (uword coding, uword data, uword * n_result_bits);
+uword zvec_decode (uword coding, uword zdata, uword * n_zdata_bits);
 
 format_function_t format_zvec_coding;
 
@@ -89,6 +88,25 @@ _zvec_coding_from_histogram (void * _histogram,
 #define _(TYPE,IS_SIGNED)						\
   uword * zvec_encode_##TYPE (uword * zvec, uword * zvec_n_bits, uword coding, \
 			   void * data, uword data_stride, uword n_data);
+
+_ (u8,  /* is_signed */ 0);
+_ (u16, /* is_signed */ 0);
+_ (u32, /* is_signed */ 0);
+_ (u64, /* is_signed */ 0);
+_ (i8,  /* is_signed */ 1);
+_ (i16, /* is_signed */ 1);
+_ (i32, /* is_signed */ 1);
+_ (i64, /* is_signed */ 1);
+
+#undef _
+
+#define _(TYPE,IS_SIGNED)			\
+  void zvec_decode_##TYPE (uword * zvec,	\
+			   uword * zvec_n_bits,	\
+			   uword coding,	\
+			   void * data,		\
+			   uword data_stride,	\
+			   uword n_data)
 
 _ (u8,  /* is_signed */ 0);
 _ (u16, /* is_signed */ 0);
