@@ -62,7 +62,7 @@ typedef struct {
 
   /* Average number of bits per code. */
   f64 ave_coding_bits;
-} zvec_coding_t;
+} zvec_coding_info_t;
 
 /* Encode/decode data. */
 uword zvec_encode (uword coding, uword data, uword * n_result_bits);
@@ -83,7 +83,7 @@ _zvec_coding_from_histogram (void * _histogram,
 			     uword histogram_len,
 			     uword histogram_elt_count_offset,
 			     uword histogram_elt_bytes,
-			     zvec_coding_t * coding_return);
+			     zvec_coding_info_t * coding_info_return);
 
 #define _(TYPE,IS_SIGNED)						\
   uword * zvec_encode_##TYPE (uword * zvec, uword * zvec_n_bits, uword coding, \

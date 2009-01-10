@@ -361,7 +361,7 @@ _zvec_coding_from_histogram (void * histogram,
 			     uword histogram_len,
 			     uword histogram_elt_count_offset,
 			     uword histogram_elt_bytes,
-			     zvec_coding_t * coding_return)
+			     zvec_coding_info_t * coding_return)
 {
   uword coding, min_coding;
   uword min_coding_bits, coding_bits;
@@ -434,7 +434,7 @@ _zvec_coding_from_histogram (void * histogram,
 
 u8 * format_zvec_coding (u8 * s, va_list * args)
 {
-  zvec_coding_t * c = va_arg (*args, zvec_coding_t *);
+  zvec_coding_info_t * c = va_arg (*args, zvec_coding_info_t *);
   return format (s, "zvec coding 0x%x, %d elts, %d codes, %d bits total, %.4f ave bits/code",
 		 c->coding, c->n_data, c->n_codes, c->min_coding_bits, c->ave_coding_bits);
 }
