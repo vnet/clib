@@ -361,6 +361,7 @@ _zvec_coding_from_histogram (void * histogram,
 			     uword histogram_len,
 			     uword histogram_elt_count_offset,
 			     uword histogram_elt_bytes,
+			     uword max_value_to_encode,
 			     zvec_coding_info_t * coding_return)
 {
   uword coding, min_coding;
@@ -368,7 +369,6 @@ _zvec_coding_from_histogram (void * histogram,
   uword i, n_bits_set, total_count;
   uword * counts;
   zvec_histogram_count_t * h_count = histogram + histogram_elt_count_offset;
-  zvec_histogram_count_t last_count;
 
   if (histogram_len < 1)
     {
@@ -382,17 +382,11 @@ _zvec_coding_from_histogram (void * histogram,
 
   total_count = 0;
   counts = vec_new (uword, histogram_len);
-  last_count = ~0;
   for (i = 0; i < histogram_len; i++)
     {
       zvec_histogram_count_t this_count = h_count[0];
       total_count += this_count;
       counts[i] = total_count;
-
-      /* Histogram must be sorted in descending order by caller. */
-      ASSERT (this_count <= last_count);
-
-      last_count = this_count;
       h_count = (zvec_histogram_count_t *) ((void *) h_count + histogram_elt_bytes);
     }
 
@@ -400,7 +394,7 @@ _zvec_coding_from_histogram (void * histogram,
   min_coding_bits = ~0;
 
   {
-    uword base_coding = vec_len (counts);
+    uword base_coding = max_value_to_encode != ~0 ? (1 + max_value_to_encode) : vec_len (counts);
     uword max_coding = max_pow2 (2 * base_coding);
 
     for (n_bits_set = 1; n_bits_set <= 8; n_bits_set++)
