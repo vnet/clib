@@ -40,11 +40,15 @@
 #define clib_arch_is_little_endian CLIB_ARCH_IS_LITTLE_ENDIAN
 
 static always_inline u16
-clib_byte_swap_16 (u16 x)
+clib_byte_swap_u16 (u16 x)
 { return (x >> 8) | (x << 8); }
 
+static always_inline i16
+clib_byte_swap_i16 (i16 x)
+{ return clib_byte_swap_u16 (x); }
+
 static always_inline u32
-clib_byte_swap_32 (u32 x)
+clib_byte_swap_u32 (u32 x)
 {
 #if defined (i386) || defined (__x86_64__)
   if (! __builtin_constant_p (x))
@@ -59,8 +63,12 @@ clib_byte_swap_32 (u32 x)
 	  | (x >> 24));
 }
 
+static always_inline i32
+clib_byte_swap_i32 (i32 x)
+{ return clib_byte_swap_u32 (x); }
+
 static always_inline u64
-clib_byte_swap_64 (u64 x)
+clib_byte_swap_u64 (u64 x)
 {
 #if defined (__x86_64__)
   if (! __builtin_constant_p (x))
@@ -78,86 +86,105 @@ clib_byte_swap_64 (u64 x)
 #undef _
 }
 
-#define _(sex,n_bits)						\
+static always_inline i64
+clib_byte_swap_i64 (i64 x)
+{ return clib_byte_swap_u64 (x); }
+
+#define _(sex,type)						\
 /* HOST -> SEX */						\
-static always_inline u##n_bits					\
-clib_host_to_##sex##_##n_bits (u##n_bits x)			\
+static always_inline type					\
+clib_host_to_##sex##_##type (type x)				\
 {								\
   if (! clib_arch_is_##sex##_endian)				\
-    x = clib_byte_swap_##n_bits (x);				\
+    x = clib_byte_swap_##type (x);				\
   return x;							\
 }								\
 								\
-static always_inline u##n_bits					\
-clib_host_to_##sex##_mem_##n_bits (u##n_bits * x)		\
+static always_inline type					\
+clib_host_to_##sex##_mem_##type (type * x)			\
 {								\
-  u##n_bits v = x[0];						\
-  return clib_host_to_##sex##_##n_bits (v);			\
+  type v = x[0];						\
+  return clib_host_to_##sex##_##type (v);			\
 }								\
 								\
-static always_inline u##n_bits					\
-clib_host_to_##sex##_unaligned_mem_##n_bits (u##n_bits * x)	\
+static always_inline type					\
+clib_host_to_##sex##_unaligned_mem_##type (type * x)		\
 {								\
-  u##n_bits v = clib_mem_unaligned (x, u##n_bits);		\
-  return clib_host_to_##sex##_##n_bits (v);			\
+  type v = clib_mem_unaligned (x, type);			\
+  return clib_host_to_##sex##_##type (v);			\
 }								\
 								\
 /* SEX -> HOST */						\
-static always_inline u##n_bits					\
-clib_##sex##_to_host_##n_bits (u##n_bits x)			\
-{ return clib_host_to_##sex##_##n_bits (x); }			\
+static always_inline type					\
+clib_##sex##_to_host_##type (type x)				\
+{ return clib_host_to_##sex##_##type (x); }			\
 								\
-static always_inline u##n_bits					\
-clib_##sex##_to_host_mem_##n_bits (u##n_bits * x)		\
-{ return clib_host_to_##sex##_mem_##n_bits (x); }		\
+static always_inline type					\
+clib_##sex##_to_host_mem_##type (type * x)			\
+{ return clib_host_to_##sex##_mem_##type (x); }			\
 								\
-static always_inline u##n_bits					\
-clib_##sex##_to_host_unaligned_mem_##n_bits (u##n_bits * x)	\
-{ return clib_host_to_##sex##_unaligned_mem_##n_bits (x); }
+static always_inline type					\
+clib_##sex##_to_host_unaligned_mem_##type (type * x)		\
+{ return clib_host_to_##sex##_unaligned_mem_##type (x); }
 
-_ (little, 16)
-_ (little, 32)
-_ (little, 64)
-_ (big, 16)
-_ (big, 32)
-_ (big, 64)
+_ (little, u16)
+_ (little, u32)
+_ (little, u64)
+_ (little, i16)
+_ (little, i32)
+_ (little, i64)
+_ (big, u16)
+_ (big, u32)
+_ (big, u64)
+_ (big, i16)
+_ (big, i32)
+_ (big, i64)
 
 #undef _
 
 /* Network "net" alias for "big". */
-#define _(n_bits)				\
-static always_inline u##n_bits			\
-clib_net_to_host_##n_bits (u##n_bits x)		\
-{ return clib_big_to_host_##n_bits (x); }
+#define _(type)					\
+static always_inline type			\
+clib_net_to_host_##type (type x)		\
+{ return clib_big_to_host_##type (x); }
 
-_ (16);
-_ (32);
-_ (64);
+_ (u16);
+_ (i16);
+_ (u32);
+_ (i32);
+_ (u64);
+_ (i64);
 
 #undef _
 
-#define _(n_bits)					\
-static always_inline u##n_bits				\
-clib_net_to_host_##n_bits##u (u##n_bits * p)		\
-{							\
-  u##n_bits x = clib_mem_unaligned (p, u##n_bits);	\
-  return clib_big_to_host_##n_bits (x);			\
+#define _(type)					\
+static always_inline type			\
+clib_net_to_host_##type##_unaligned (type * p)	\
+{						\
+  type x = clib_mem_unaligned (p, type);	\
+  return clib_big_to_host_##type (x);		\
 }
 
-_ (16);
-_ (32);
-_ (64);
+_ (u16);
+_ (i16);
+_ (u32);
+_ (i32);
+_ (u64);
+_ (i64);
 
 #undef _
 
-#define _(n_bits)				\
-static always_inline u##n_bits			\
-clib_host_to_net_##n_bits (u##n_bits x)		\
-{ return clib_host_to_big_##n_bits (x); }
+#define _(type)					\
+static always_inline type			\
+clib_host_to_net_##type (type x)		\
+{ return clib_host_to_big_##type (x); }
 
-_ (16);
-_ (32);
-_ (64);
+_ (u16);
+_ (i16);
+_ (u32);
+_ (i32);
+_ (u64);
+_ (i64);
 
 #undef _
 
