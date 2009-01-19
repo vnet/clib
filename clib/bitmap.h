@@ -62,6 +62,8 @@ clib_bitmap_is_equal (uword * a, uword * b)
 #define clib_bitmap_alloc(v,n_bits) \
   v = vec_new (uword, ((n_bits) + BITS (uword) - 1) / BITS (uword))
 
+#define clib_bitmap_validate(v,n_bits) vec_validate ((v), (n_bits) / BITS (uword))
+
 static inline uword *
 _clib_bitmap_remove_trailing_zeros (uword * a)
 {
@@ -214,6 +216,47 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
       t &= ~m;
       t |= value;
       bitmap[i0] = t;
+    }
+
+  return bitmap;
+}
+
+/* For a multi-word region set all bits to given value. */
+static inline uword *
+clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
+{
+  uword a0, a1, b0, b1;
+  uword i_end, mask;
+
+  a0 = i / BITS (bitmap[0]);
+  a1 = i % BITS (bitmap[0]);
+
+  i_end = i + n_bits;
+  b0 = i_end / BITS (bitmap[0]);
+  b1 = i_end % BITS (bitmap[0]);
+
+  vec_validate (bitmap, b0);
+
+  /* First word. */
+  mask = n_bits < BITS (bitmap[0]) ? pow2_mask (n_bits) : ~0;
+  mask <<= a1;
+
+  if (value)
+    bitmap[a0] |= mask;
+  else
+    bitmap[a0] &= ~mask;
+
+  for (a0++; a0 < b0; a0++)
+    bitmap[a0] = value ? ~0 : 0;
+
+  if (a0 == b0)
+    {
+      word n_bits_left = n_bits - (BITS (bitmap[0]) - a1);
+      mask = pow2_mask (n_bits_left);
+      if (value)
+	bitmap[a0] |= mask;
+      else
+	bitmap[a0] &= ~mask;
     }
 
   return bitmap;

@@ -283,6 +283,16 @@ do {										\
 #define vec_add(V,E,N)           vec_add_ha(V,E,N,0,0)
 #define vec_add_aligned(V,E,N,A) vec_add_ha(V,E,N,0,A)
 
+/* Returns final element and decrements length. */
+#define vec_pop(V)				\
+({						\
+  uword _v(l) = vec_len (V);			\
+  ASSERT (_v(l) > 0);				\
+  _v(l) -= 1;					\
+  _vec_len (V) = _v (l);			\
+  (V)[_v(l)];					\
+})
+
 /* Resize vector by N elements starting from element M.
    Zero new elements. */
 #define vec_insert_init_empty_ha(V,N,M,INIT,H,A)	\
