@@ -30,20 +30,31 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+clib_error_t * unix_file_n_bytes (char * file, uword * result)
+{
+  struct stat s;
+
+  if (stat (file, &s) < 0)
+    return clib_error_return_unix (0, "stat `%s'", file);
+
+  if (S_ISREG (s.st_mode))
+    *result = s.st_size;
+  else
+    *result = 0;
+
+  return /* no error */ 0;
+}
+
 clib_error_t * unix_file_contents (char * file, u8 ** result)
 {
-  int fd;
-  struct stat s;
+  int fd = -1;
+  uword n_bytes, n_done, n_left;
   clib_error_t * error = 0;
-  u8 * v;
+  u8 * v = 0;
 
-  fd = -1;
-  v = 0;
-  if (stat (file, &s) < 0)
-    {
-      error = clib_error_return_unix (0, "stat `%s'", file);
-      goto done;
-    }
+  error = unix_file_n_bytes (file, &n_bytes);
+  if (error)
+    goto done;
 
   if ((fd = open (file, 0)) < 0)
     {
@@ -51,12 +62,29 @@ clib_error_t * unix_file_contents (char * file, u8 ** result)
       goto done;
     }
 
-  vec_resize (v, s.st_size);
-  if (read (fd, v, vec_len (v)) != vec_len (v))
+  vec_resize (v, n_bytes);
+
+  n_left = n_bytes;
+  n_done = 0;
+  while (n_left > 0)
     {
-      error = clib_error_return_unix (0, "open `%s'", file);
-      goto done;
+      int n_read;
+      if ((n_read = read (fd, v + n_done, n_left)) < 0)
+	{
+	  error = clib_error_return_unix (0, "open `%s'", file);
+	  goto done;
+	}
+
+      /* End of file. */
+      if (n_read == 0)
+	break;
+
+      n_left -= n_read;
+      n_done += n_read;
     }
+
+  if (v)
+    _vec_len (v) = n_done;
 
  done:
   close (fd);

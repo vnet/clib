@@ -26,6 +26,9 @@
 
 #include <clib/error.h>
 
+/* Number of bytes in a Unix file. */
+clib_error_t * unix_file_n_bytes (char * file, uword * result);
+
 /* Read and return contents of Unix file. */
 clib_error_t * unix_file_contents (char * file, u8 ** result);
 
