@@ -510,6 +510,8 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
       vec_add1 (h->free_lists[b], g.index);
       elt_insert_before (h, elt_at (h, f[0].index), elt_at (h, g.index));
     }
+  else
+    g.index = g.bin_index = 0;
 
   g_offset = elt_at (h, f[0].index)->offset;
 
