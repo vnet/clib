@@ -96,22 +96,22 @@ static void md5_transform (md5_context_t * m,
 #define S44 21
 
   /* Round 1 */
-  FF (a, b, c, d, clib_host_to_little_32 (x[ 0]), S11, 0xd76aa478); /* 1 */
-  FF (d, a, b, c, clib_host_to_little_32 (x[ 1]), S12, 0xe8c7b756); /* 2 */
-  FF (c, d, a, b, clib_host_to_little_32 (x[ 2]), S13, 0x242070db); /* 3 */
-  FF (b, c, d, a, clib_host_to_little_32 (x[ 3]), S14, 0xc1bdceee); /* 4 */
-  FF (a, b, c, d, clib_host_to_little_32 (x[ 4]), S11, 0xf57c0faf); /* 5 */
-  FF (d, a, b, c, clib_host_to_little_32 (x[ 5]), S12, 0x4787c62a); /* 6 */
-  FF (c, d, a, b, clib_host_to_little_32 (x[ 6]), S13, 0xa8304613); /* 7 */
-  FF (b, c, d, a, clib_host_to_little_32 (x[ 7]), S14, 0xfd469501); /* 8 */
-  FF (a, b, c, d, clib_host_to_little_32 (x[ 8]), S11, 0x698098d8); /* 9 */
-  FF (d, a, b, c, clib_host_to_little_32 (x[ 9]), S12, 0x8b44f7af); /* 10 */
-  FF (c, d, a, b, clib_host_to_little_32 (x[10]), S13, 0xffff5bb1); /* 11 */
-  FF (b, c, d, a, clib_host_to_little_32 (x[11]), S14, 0x895cd7be); /* 12 */
-  FF (a, b, c, d, clib_host_to_little_32 (x[12]), S11, 0x6b901122); /* 13 */
-  FF (d, a, b, c, clib_host_to_little_32 (x[13]), S12, 0xfd987193); /* 14 */
-  FF (c, d, a, b, clib_host_to_little_32 (x[14]), S13, 0xa679438e); /* 15 */
-  FF (b, c, d, a, clib_host_to_little_32 (x[15]), S14, 0x49b40821); /* 16 */
+  FF (a, b, c, d, clib_host_to_little_u32 (x[ 0]), S11, 0xd76aa478); /* 1 */
+  FF (d, a, b, c, clib_host_to_little_u32 (x[ 1]), S12, 0xe8c7b756); /* 2 */
+  FF (c, d, a, b, clib_host_to_little_u32 (x[ 2]), S13, 0x242070db); /* 3 */
+  FF (b, c, d, a, clib_host_to_little_u32 (x[ 3]), S14, 0xc1bdceee); /* 4 */
+  FF (a, b, c, d, clib_host_to_little_u32 (x[ 4]), S11, 0xf57c0faf); /* 5 */
+  FF (d, a, b, c, clib_host_to_little_u32 (x[ 5]), S12, 0x4787c62a); /* 6 */
+  FF (c, d, a, b, clib_host_to_little_u32 (x[ 6]), S13, 0xa8304613); /* 7 */
+  FF (b, c, d, a, clib_host_to_little_u32 (x[ 7]), S14, 0xfd469501); /* 8 */
+  FF (a, b, c, d, clib_host_to_little_u32 (x[ 8]), S11, 0x698098d8); /* 9 */
+  FF (d, a, b, c, clib_host_to_little_u32 (x[ 9]), S12, 0x8b44f7af); /* 10 */
+  FF (c, d, a, b, clib_host_to_little_u32 (x[10]), S13, 0xffff5bb1); /* 11 */
+  FF (b, c, d, a, clib_host_to_little_u32 (x[11]), S14, 0x895cd7be); /* 12 */
+  FF (a, b, c, d, clib_host_to_little_u32 (x[12]), S11, 0x6b901122); /* 13 */
+  FF (d, a, b, c, clib_host_to_little_u32 (x[13]), S12, 0xfd987193); /* 14 */
+  FF (c, d, a, b, clib_host_to_little_u32 (x[14]), S13, 0xa679438e); /* 15 */
+  FF (b, c, d, a, clib_host_to_little_u32 (x[15]), S14, 0x49b40821); /* 16 */
 
   /* Round 2 */
   GG (a, b, c, d, x[ 1], S21, 0xf61e2562); /* 17 */
@@ -174,10 +174,10 @@ static void md5_transform (md5_context_t * m,
 
   if (result)
     {
-      result[0] = clib_host_to_little_32 (a);
-      result[1] = clib_host_to_little_32 (b);
-      result[2] = clib_host_to_little_32 (c);
-      result[3] = clib_host_to_little_32 (d);
+      result[0] = clib_host_to_little_u32 (a);
+      result[1] = clib_host_to_little_u32 (b);
+      result[2] = clib_host_to_little_u32 (c);
+      result[3] = clib_host_to_little_u32 (d);
     }
   else
     {
@@ -285,7 +285,7 @@ void md5_finish (md5_context_t * c, u8 * digest)
   md5_add (c, padding, n_pad);
 
   c->input_buffer.b64[ARRAY_LEN (c->input_buffer.b64) - 1]
-    = clib_host_to_little_64 (n_bits_save);
+    = clib_host_to_little_u64 (n_bits_save);
 
   md5_transform (c, c->input_buffer.b32,
 		 (u32 *) digest,
