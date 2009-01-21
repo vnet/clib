@@ -1276,15 +1276,15 @@ static u8 * x86_insn_parse_number (u32 log2_n_bytes,
   switch (log2_n_bytes)
     {
     case 3:
-      x = clib_little_to_host_unaligned_mem_64 ((u64 *) code);
+      x = clib_little_to_host_unaligned_mem_u64 ((u64 *) code);
       break;
 
     case 2:
-      x = (i32) clib_little_to_host_unaligned_mem_32 ((u32 *) code);
+      x = (i32) clib_little_to_host_unaligned_mem_u32 ((u32 *) code);
       break;
 
     case 1:
-      x = (i16) clib_little_to_host_unaligned_mem_16 ((u16 *) code);
+      x = (i16) clib_little_to_host_unaligned_mem_u16 ((u16 *) code);
       break;
 
     case 0:
