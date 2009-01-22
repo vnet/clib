@@ -143,41 +143,30 @@ _ (big, i64)
 #undef _
 
 /* Network "net" alias for "big". */
-#define _(type)					\
-static always_inline type			\
-clib_net_to_host_##type (type x)		\
-{ return clib_big_to_host_##type (x); }
-
-_ (u16);
-_ (i16);
-_ (u32);
-_ (i32);
-_ (u64);
-_ (i64);
-
-#undef _
-
-#define _(type)					\
-static always_inline type			\
-clib_net_to_host_##type##_unaligned (type * p)	\
-{						\
-  type x = clib_mem_unaligned (p, type);	\
-  return clib_big_to_host_##type (x);		\
-}
-
-_ (u16);
-_ (i16);
-_ (u32);
-_ (i32);
-_ (u64);
-_ (i64);
-
-#undef _
-
-#define _(type)					\
-static always_inline type			\
-clib_host_to_net_##type (type x)		\
-{ return clib_host_to_big_##type (x); }
+#define _(type)						\
+static always_inline type				\
+clib_net_to_host_##type (type x)			\
+{ return clib_big_to_host_##type (x); }			\
+							\
+static always_inline type				\
+clib_net_to_host_mem_##type (type * x)			\
+{ return clib_big_to_host_mem_##type (x); }		\
+							\
+static always_inline type				\
+clib_net_to_host_##type##_unaligned_mem (type * x)	\
+{ return clib_big_to_host_unaligned_mem_##type (x); }	\
+							\
+static always_inline type				\
+clib_host_to_net_##type (type x)			\
+{ return clib_host_to_big_##type (x); }			\
+							\
+static always_inline type				\
+clib_host_to_net_mem_##type (type * x)			\
+{ return clib_host_to_big_mem_##type (x); }		\
+							\
+static always_inline type				\
+clib_host_to_net_unaligned_mem_##type (type * x)	\
+{ return clib_host_to_big_unaligned_mem_##type (x); }
 
 _ (u16);
 _ (i16);
