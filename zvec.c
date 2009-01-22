@@ -115,25 +115,6 @@ zvec_encode (uword coding,
   return ~0;
 }
 
-/* Signed <=> unsigned conversion.
-      -1, -2, -3, ... =>    1, 3, 5, ... odds
-   0, +1, +2, +3, ... => 0, 2, 4, 6, ... evens */
-static always_inline uword
-zvec_signed_to_unsigned (word s)
-{
-  uword a = s < 0;
-  s = 2*s + a;
-  return a ? -s : s;
-}
-
-static always_inline word
-zvec_unsigned_to_signed (uword u)
-{
-  uword a = u & 1;
-  u >>= 1;
-  return a ? -u : u;
-}
-
 static always_inline uword
 get_data (void * data, uword data_bytes, uword is_signed)
 {
