@@ -431,6 +431,10 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
   for (level_index = 0; level_index < advance_level_index; level_index++)
     {
       uword wi;
+
+      if (level_index >= vec_len (w->levels))
+	break;
+
       level = vec_elt_at_index (w->levels, level_index);
       clib_bitmap_foreach (wi, level->occupancy_bitmap, ({
 	    expired_user_data = advance_level (w, level_index, wi, expired_user_data);
