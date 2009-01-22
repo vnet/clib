@@ -26,6 +26,7 @@ TESTS	=  test_elog \
 	   test_random_isaac \
 	   test_socket \
 	   test_time \
+	   test_timing_wheel \
 	   test_vec \
 	   test_zvec
 check_PROGRAMS	= $(TESTS)
@@ -42,9 +43,10 @@ test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_random_isaac_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
@@ -61,6 +63,7 @@ test_qhash_LDADD =	libclib.la -lpthread
 test_random_isaac_LDADD =	libclib.la -lpthread
 test_socket_LDADD =	libclib.la -lpthread
 test_time_LDADD =	libclib.la -lm -lpthread
+test_timing_wheel_LDADD =	libclib.la -lm -lpthread
 test_vec_LDADD =	libclib.la -lpthread
 test_zvec_LDADD =	libclib.la -lpthread
 
@@ -78,6 +81,7 @@ CORE_UNIT_TEST_SOURCES = \
   test_qhash.c \
   test_random.c \
   test_random_isaac.c \
+  test_timing_wheel.c \
   test_vec.c \
   test_zvec.c \
   test_vec.h \
@@ -117,6 +121,7 @@ nobase_include_HEADERS = \
     clib/standalone_string.h \
     clib/string.h \
     clib/time.h \
+    clib/timing_wheel.h \
     clib/timer.h \
     clib/types.h \
     clib/unix.h \
@@ -153,6 +158,7 @@ CLIB_CORE = \
   std-formats.c \
   string.c \
   time.c \
+  timing_wheel.c \
   unformat.c \
   vec.c \
   zvec.c

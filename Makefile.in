@@ -89,6 +89,7 @@ am__objects_1 = libclibkernel_a-asm_x86.$(OBJEXT) \
 	libclibkernel_a-std-formats.$(OBJEXT) \
 	libclibkernel_a-string.$(OBJEXT) \
 	libclibkernel_a-time.$(OBJEXT) \
+	libclibkernel_a-timing_wheel.$(OBJEXT) \
 	libclibkernel_a-unformat.$(OBJEXT) \
 	libclibkernel_a-vec.$(OBJEXT) libclibkernel_a-zvec.$(OBJEXT)
 am__objects_2 = libclibkernel_a-test_elog.$(OBJEXT) \
@@ -101,6 +102,7 @@ am__objects_2 = libclibkernel_a-test_elog.$(OBJEXT) \
 	libclibkernel_a-test_qhash.$(OBJEXT) \
 	libclibkernel_a-test_random.$(OBJEXT) \
 	libclibkernel_a-test_random_isaac.$(OBJEXT) \
+	libclibkernel_a-test_timing_wheel.$(OBJEXT) \
 	libclibkernel_a-test_vec.$(OBJEXT) \
 	libclibkernel_a-test_zvec.$(OBJEXT)
 am_libclibkernel_a_OBJECTS = $(am__objects_1) $(am__objects_2) \
@@ -132,6 +134,7 @@ am__objects_3 = libclibstandalone_a-asm_x86.$(OBJEXT) \
 	libclibstandalone_a-std-formats.$(OBJEXT) \
 	libclibstandalone_a-string.$(OBJEXT) \
 	libclibstandalone_a-time.$(OBJEXT) \
+	libclibstandalone_a-timing_wheel.$(OBJEXT) \
 	libclibstandalone_a-unformat.$(OBJEXT) \
 	libclibstandalone_a-vec.$(OBJEXT) \
 	libclibstandalone_a-zvec.$(OBJEXT)
@@ -145,6 +148,7 @@ am__objects_4 = libclibstandalone_a-test_elog.$(OBJEXT) \
 	libclibstandalone_a-test_qhash.$(OBJEXT) \
 	libclibstandalone_a-test_random.$(OBJEXT) \
 	libclibstandalone_a-test_random_isaac.$(OBJEXT) \
+	libclibstandalone_a-test_timing_wheel.$(OBJEXT) \
 	libclibstandalone_a-test_vec.$(OBJEXT) \
 	libclibstandalone_a-test_zvec.$(OBJEXT)
 am_libclibstandalone_a_OBJECTS = $(am__objects_3) $(am__objects_4) \
@@ -159,7 +163,7 @@ am__objects_5 = asm_x86.lo backtrace.lo elog.lo error.lo fifo.lo \
 	format.lo hash.lo heap.lo longjmp.lo mheap.lo md5.lo \
 	mem_mheap.lo phash.lo qhash.lo random.lo random_buffer.lo \
 	random_isaac.lo serialize.lo std-formats.lo string.lo time.lo \
-	unformat.lo vec.lo zvec.lo
+	timing_wheel.lo unformat.lo vec.lo zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) mem_malloc.lo socket.lo \
 	timer.lo unix-formats.lo unix-misc.lo
 libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
@@ -169,7 +173,8 @@ am__EXEEXT_1 = test_elog$(EXEEXT) test_fifo$(EXEEXT) \
 	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
 	test_phash$(EXEEXT) test_qhash$(EXEEXT) \
 	test_random_isaac$(EXEEXT) test_socket$(EXEEXT) \
-	test_time$(EXEEXT) test_vec$(EXEEXT) test_zvec$(EXEEXT)
+	test_time$(EXEEXT) test_timing_wheel$(EXEEXT) \
+	test_vec$(EXEEXT) test_zvec$(EXEEXT)
 test_elog_SOURCES = test_elog.c
 test_elog_OBJECTS = test_elog-test_elog.$(OBJEXT)
 test_elog_DEPENDENCIES = libclib.la
@@ -210,6 +215,10 @@ test_socket_DEPENDENCIES = libclib.la
 test_time_SOURCES = test_time.c
 test_time_OBJECTS = test_time-test_time.$(OBJEXT)
 test_time_DEPENDENCIES = libclib.la
+test_timing_wheel_SOURCES = test_timing_wheel.c
+test_timing_wheel_OBJECTS =  \
+	test_timing_wheel-test_timing_wheel.$(OBJEXT)
+test_timing_wheel_DEPENDENCIES = libclib.la
 test_vec_SOURCES = test_vec.c
 test_vec_OBJECTS = test_vec-test_vec.$(OBJEXT)
 test_vec_DEPENDENCIES = libclib.la
@@ -234,13 +243,13 @@ SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
 	$(libclib_la_SOURCES) test_elog.c test_fifo.c test_format.c \
 	test_hash.c test_heap.c test_longjmp.c test_md5.c test_mheap.c \
 	test_phash.c test_qhash.c test_random_isaac.c test_socket.c \
-	test_time.c test_vec.c test_zvec.c
+	test_time.c test_timing_wheel.c test_vec.c test_zvec.c
 DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(libclibstandalone_a_SOURCES) $(libclib_la_SOURCES) \
 	test_elog.c test_fifo.c test_format.c test_hash.c test_heap.c \
 	test_longjmp.c test_md5.c test_mheap.c test_phash.c \
 	test_qhash.c test_random_isaac.c test_socket.c test_time.c \
-	test_vec.c test_zvec.c
+	test_timing_wheel.c test_vec.c test_zvec.c
 nobase_includeHEADERS_INSTALL = $(install_sh_DATA)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
@@ -384,6 +393,7 @@ TESTS = test_elog \
 	   test_random_isaac \
 	   test_socket \
 	   test_time \
+	   test_timing_wheel \
 	   test_vec \
 	   test_zvec
 
@@ -403,6 +413,7 @@ test_qhash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_socket_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_time_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
+test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_vec_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_elog_LDADD = libclib.la -lpthread
@@ -418,6 +429,7 @@ test_qhash_LDADD = libclib.la -lpthread
 test_random_isaac_LDADD = libclib.la -lpthread
 test_socket_LDADD = libclib.la -lpthread
 test_time_LDADD = libclib.la -lm -lpthread
+test_timing_wheel_LDADD = libclib.la -lm -lpthread
 test_vec_LDADD = libclib.la -lpthread
 test_zvec_LDADD = libclib.la -lpthread
 test_longjmp_LDFLAGS = -static -lpthread
@@ -434,6 +446,7 @@ CORE_UNIT_TEST_SOURCES = \
   test_qhash.c \
   test_random.c \
   test_random_isaac.c \
+  test_timing_wheel.c \
   test_vec.c \
   test_zvec.c \
   test_vec.h \
@@ -473,6 +486,7 @@ nobase_include_HEADERS = \
     clib/standalone_string.h \
     clib/string.h \
     clib/time.h \
+    clib/timing_wheel.h \
     clib/timer.h \
     clib/types.h \
     clib/unix.h \
@@ -509,6 +523,7 @@ CLIB_CORE = \
   std-formats.c \
   string.c \
   time.c \
+  timing_wheel.c \
   unformat.c \
   vec.c \
   zvec.c
@@ -719,6 +734,9 @@ test_socket$(EXEEXT): $(test_socket_OBJECTS) $(test_socket_DEPENDENCIES)
 test_time$(EXEEXT): $(test_time_OBJECTS) $(test_time_DEPENDENCIES) 
 	@rm -f test_time$(EXEEXT)
 	$(LINK) $(test_time_LDFLAGS) $(test_time_OBJECTS) $(test_time_LDADD) $(LIBS)
+test_timing_wheel$(EXEEXT): $(test_timing_wheel_OBJECTS) $(test_timing_wheel_DEPENDENCIES) 
+	@rm -f test_timing_wheel$(EXEEXT)
+	$(LINK) $(test_timing_wheel_LDFLAGS) $(test_timing_wheel_OBJECTS) $(test_timing_wheel_LDADD) $(LIBS)
 test_vec$(EXEEXT): $(test_vec_OBJECTS) $(test_vec_DEPENDENCIES) 
 	@rm -f test_vec$(EXEEXT)
 	$(LINK) $(test_vec_LDFLAGS) $(test_vec_OBJECTS) $(test_vec_LDADD) $(LIBS)
@@ -772,9 +790,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_random_isaac.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-test_zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-time.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-unformat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibkernel_a-zvec.Po@am__quote@
@@ -810,9 +830,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_random_isaac.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-test_zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-time.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-unformat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libclibstandalone_a-zvec.Po@am__quote@
@@ -842,10 +864,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_random_isaac-test_random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_socket-test_socket.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_time-test_time.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_timing_wheel-test_timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_vec-test_vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_zvec-test_zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timer.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timing_wheel.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unformat.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unix-formats.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unix-misc.Plo@am__quote@
@@ -1174,6 +1198,20 @@ libclibkernel_a-time.obj: time.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-time.obj `if test -f 'time.c'; then $(CYGPATH_W) 'time.c'; else $(CYGPATH_W) '$(srcdir)/time.c'; fi`
 
+libclibkernel_a-timing_wheel.o: timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-timing_wheel.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-timing_wheel.Tpo" -c -o libclibkernel_a-timing_wheel.o `test -f 'timing_wheel.c' || echo '$(srcdir)/'`timing_wheel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-timing_wheel.Tpo" "$(DEPDIR)/libclibkernel_a-timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timing_wheel.c' object='libclibkernel_a-timing_wheel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-timing_wheel.o `test -f 'timing_wheel.c' || echo '$(srcdir)/'`timing_wheel.c
+
+libclibkernel_a-timing_wheel.obj: timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-timing_wheel.obj -MD -MP -MF "$(DEPDIR)/libclibkernel_a-timing_wheel.Tpo" -c -o libclibkernel_a-timing_wheel.obj `if test -f 'timing_wheel.c'; then $(CYGPATH_W) 'timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/timing_wheel.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-timing_wheel.Tpo" "$(DEPDIR)/libclibkernel_a-timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timing_wheel.c' object='libclibkernel_a-timing_wheel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-timing_wheel.obj `if test -f 'timing_wheel.c'; then $(CYGPATH_W) 'timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/timing_wheel.c'; fi`
+
 libclibkernel_a-unformat.o: unformat.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-unformat.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-unformat.Tpo" -c -o libclibkernel_a-unformat.o `test -f 'unformat.c' || echo '$(srcdir)/'`unformat.c; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-unformat.Tpo" "$(DEPDIR)/libclibkernel_a-unformat.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-unformat.Tpo"; exit 1; fi
@@ -1355,6 +1393,20 @@ libclibkernel_a-test_random_isaac.obj: test_random_isaac.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_random_isaac.c' object='libclibkernel_a-test_random_isaac.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-test_random_isaac.obj `if test -f 'test_random_isaac.c'; then $(CYGPATH_W) 'test_random_isaac.c'; else $(CYGPATH_W) '$(srcdir)/test_random_isaac.c'; fi`
+
+libclibkernel_a-test_timing_wheel.o: test_timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-test_timing_wheel.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Tpo" -c -o libclibkernel_a-test_timing_wheel.o `test -f 'test_timing_wheel.c' || echo '$(srcdir)/'`test_timing_wheel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Tpo" "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_timing_wheel.c' object='libclibkernel_a-test_timing_wheel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-test_timing_wheel.o `test -f 'test_timing_wheel.c' || echo '$(srcdir)/'`test_timing_wheel.c
+
+libclibkernel_a-test_timing_wheel.obj: test_timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-test_timing_wheel.obj -MD -MP -MF "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Tpo" -c -o libclibkernel_a-test_timing_wheel.obj `if test -f 'test_timing_wheel.c'; then $(CYGPATH_W) 'test_timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/test_timing_wheel.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Tpo" "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibkernel_a-test_timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_timing_wheel.c' object='libclibkernel_a-test_timing_wheel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibkernel_a-test_timing_wheel.obj `if test -f 'test_timing_wheel.c'; then $(CYGPATH_W) 'test_timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/test_timing_wheel.c'; fi`
 
 libclibkernel_a-test_vec.o: test_vec.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibkernel_a-test_vec.o -MD -MP -MF "$(DEPDIR)/libclibkernel_a-test_vec.Tpo" -c -o libclibkernel_a-test_vec.o `test -f 'test_vec.c' || echo '$(srcdir)/'`test_vec.c; \
@@ -1706,6 +1758,20 @@ libclibstandalone_a-time.obj: time.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-time.obj `if test -f 'time.c'; then $(CYGPATH_W) 'time.c'; else $(CYGPATH_W) '$(srcdir)/time.c'; fi`
 
+libclibstandalone_a-timing_wheel.o: timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-timing_wheel.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-timing_wheel.Tpo" -c -o libclibstandalone_a-timing_wheel.o `test -f 'timing_wheel.c' || echo '$(srcdir)/'`timing_wheel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-timing_wheel.Tpo" "$(DEPDIR)/libclibstandalone_a-timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timing_wheel.c' object='libclibstandalone_a-timing_wheel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-timing_wheel.o `test -f 'timing_wheel.c' || echo '$(srcdir)/'`timing_wheel.c
+
+libclibstandalone_a-timing_wheel.obj: timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-timing_wheel.obj -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-timing_wheel.Tpo" -c -o libclibstandalone_a-timing_wheel.obj `if test -f 'timing_wheel.c'; then $(CYGPATH_W) 'timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/timing_wheel.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-timing_wheel.Tpo" "$(DEPDIR)/libclibstandalone_a-timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timing_wheel.c' object='libclibstandalone_a-timing_wheel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-timing_wheel.obj `if test -f 'timing_wheel.c'; then $(CYGPATH_W) 'timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/timing_wheel.c'; fi`
+
 libclibstandalone_a-unformat.o: unformat.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-unformat.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-unformat.Tpo" -c -o libclibstandalone_a-unformat.o `test -f 'unformat.c' || echo '$(srcdir)/'`unformat.c; \
 @am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-unformat.Tpo" "$(DEPDIR)/libclibstandalone_a-unformat.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-unformat.Tpo"; exit 1; fi
@@ -1887,6 +1953,20 @@ libclibstandalone_a-test_random_isaac.obj: test_random_isaac.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_random_isaac.c' object='libclibstandalone_a-test_random_isaac.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-test_random_isaac.obj `if test -f 'test_random_isaac.c'; then $(CYGPATH_W) 'test_random_isaac.c'; else $(CYGPATH_W) '$(srcdir)/test_random_isaac.c'; fi`
+
+libclibstandalone_a-test_timing_wheel.o: test_timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-test_timing_wheel.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Tpo" -c -o libclibstandalone_a-test_timing_wheel.o `test -f 'test_timing_wheel.c' || echo '$(srcdir)/'`test_timing_wheel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Tpo" "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_timing_wheel.c' object='libclibstandalone_a-test_timing_wheel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-test_timing_wheel.o `test -f 'test_timing_wheel.c' || echo '$(srcdir)/'`test_timing_wheel.c
+
+libclibstandalone_a-test_timing_wheel.obj: test_timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-test_timing_wheel.obj -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Tpo" -c -o libclibstandalone_a-test_timing_wheel.obj `if test -f 'test_timing_wheel.c'; then $(CYGPATH_W) 'test_timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/test_timing_wheel.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Tpo" "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Po"; else rm -f "$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_timing_wheel.c' object='libclibstandalone_a-test_timing_wheel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libclibstandalone_a-test_timing_wheel.obj `if test -f 'test_timing_wheel.c'; then $(CYGPATH_W) 'test_timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/test_timing_wheel.c'; fi`
 
 libclibstandalone_a-test_vec.o: test_vec.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libclibstandalone_a-test_vec.o -MD -MP -MF "$(DEPDIR)/libclibstandalone_a-test_vec.Tpo" -c -o libclibstandalone_a-test_vec.o `test -f 'test_vec.c' || echo '$(srcdir)/'`test_vec.c; \
@@ -2139,6 +2219,20 @@ test_time-test_time.obj: test_time.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_time.c' object='test_time-test_time.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_time_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_time-test_time.obj `if test -f 'test_time.c'; then $(CYGPATH_W) 'test_time.c'; else $(CYGPATH_W) '$(srcdir)/test_time.c'; fi`
+
+test_timing_wheel-test_timing_wheel.o: test_timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_timing_wheel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_timing_wheel-test_timing_wheel.o -MD -MP -MF "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Tpo" -c -o test_timing_wheel-test_timing_wheel.o `test -f 'test_timing_wheel.c' || echo '$(srcdir)/'`test_timing_wheel.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Tpo" "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Po"; else rm -f "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_timing_wheel.c' object='test_timing_wheel-test_timing_wheel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_timing_wheel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_timing_wheel-test_timing_wheel.o `test -f 'test_timing_wheel.c' || echo '$(srcdir)/'`test_timing_wheel.c
+
+test_timing_wheel-test_timing_wheel.obj: test_timing_wheel.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_timing_wheel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_timing_wheel-test_timing_wheel.obj -MD -MP -MF "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Tpo" -c -o test_timing_wheel-test_timing_wheel.obj `if test -f 'test_timing_wheel.c'; then $(CYGPATH_W) 'test_timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/test_timing_wheel.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Tpo" "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Po"; else rm -f "$(DEPDIR)/test_timing_wheel-test_timing_wheel.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_timing_wheel.c' object='test_timing_wheel-test_timing_wheel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_timing_wheel_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o test_timing_wheel-test_timing_wheel.obj `if test -f 'test_timing_wheel.c'; then $(CYGPATH_W) 'test_timing_wheel.c'; else $(CYGPATH_W) '$(srcdir)/test_timing_wheel.c'; fi`
 
 test_vec-test_vec.o: test_vec.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_vec_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT test_vec-test_vec.o -MD -MP -MF "$(DEPDIR)/test_vec-test_vec.Tpo" -c -o test_vec-test_vec.o `test -f 'test_vec.c' || echo '$(srcdir)/'`test_vec.c; \
