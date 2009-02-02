@@ -1,12 +1,13 @@
 #include <clib/bitmap.h>
 #include <clib/error.h>
 #include <clib/format.h>
-#include <clib/math.h>
 #include <clib/pool.h>
 #include <clib/random.h>
 #include <clib/time.h>
 #include <clib/timing_wheel.h>
 #include <clib/zvec.h>
+
+#include <math.h>
 
 typedef struct {
   uword n_iter;
