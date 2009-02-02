@@ -153,7 +153,7 @@ clib_net_to_host_mem_##type (type * x)			\
 { return clib_big_to_host_mem_##type (x); }		\
 							\
 static always_inline type				\
-clib_net_to_host_unaligned_mem_##type (type * x)	\
+clib_net_to_host_##type##_unaligned_mem (type * x)	\
 { return clib_big_to_host_unaligned_mem_##type (x); }	\
 							\
 static always_inline type				\

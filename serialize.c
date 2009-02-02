@@ -280,7 +280,7 @@ void unserialize_check_magic (serialize_main_t * m, void * magic,
     goto bad;
 }
 
-clib_error_t *
+static clib_error_t *
 va_serialize (serialize_main_t * m, va_list * va)
 {
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
@@ -364,7 +364,6 @@ void serialize_fill_buffer (serialize_main_t * m, u32 n_must_read)
     }
 
   vec_add2 (m->buffer, b, n);
-
   error = m->read (m, b, &n_read);
   if (error)
     {
