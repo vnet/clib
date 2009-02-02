@@ -95,6 +95,7 @@ nobase_include_HEADERS = \
     clib/byte_order.h \
     clib/cache.h \
     clib/clib.h \
+    clib/elf.h \
     clib/elog.h \
     clib/error.h \
     clib/fifo.h \
@@ -139,6 +140,7 @@ nobase_include_HEADERS = \
 CLIB_CORE = \
   asm_x86.c \
   backtrace.c \
+  elf.c \
   elog.c \
   error.c \
   fifo.c \
