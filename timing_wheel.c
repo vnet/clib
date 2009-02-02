@@ -320,7 +320,7 @@ advance_cpu_time_base (timing_wheel_t * w)
 static u32 *
 refill_level (timing_wheel_t * w,
 	      uword level_index,
-	      uword advance_time_index,
+	      u64 advance_time_index,
 	      uword from_wheel_index,
 	      uword to_wheel_index,
 	      u32 * expired_user_data)
@@ -392,7 +392,7 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 
   if (DEBUG > 0)
     /* Save advance time for debugging. */
-    w->advance_cpu_time = advance_cpu_time &~ pow2_mask (w->log2_clocks_per_bin);
+    w->advance_cpu_time = advance_cpu_time &~ (u64) pow2_mask (w->log2_clocks_per_bin);
 
   {
     u64 current_ti, advance_ti;

@@ -39,11 +39,11 @@ static void set_event (test_timing_wheel_main_t * tm, uword i)
   timing_wheel_t * w = &tm->timing_wheel;
   u64 cpu_time;
 
+  cpu_time = w->current_time_index << w->log2_clocks_per_bin;
   if (tm->synthetic_time)
-    cpu_time = (random_u32 (&tm->seed) % tm->n_iter) << w->log2_clocks_per_bin;
+    cpu_time += random_u32 (&tm->seed) % tm->n_iter;
   else
-    cpu_time = ((w->current_time_index << w->log2_clocks_per_bin)
-		+ (random_f64 (&tm->seed) * tm->max_time * tm->time.clocks_per_second));
+    cpu_time += random_f64 (&tm->seed) * tm->max_time * tm->time.clocks_per_second;
 
   timing_wheel_insert (w, cpu_time, i);
   timing_wheel_validate (w);

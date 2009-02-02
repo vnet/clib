@@ -70,6 +70,7 @@ static f64 estimate_clock_frequency (void)
 static f64 clock_frequency_from_proc_filesystem (void)
 {
   f64 cpu_freq;
+  f64 ppc_timebase;
   int fd;
   unformat_input_t input;
 
@@ -80,13 +81,13 @@ static f64 clock_frequency_from_proc_filesystem (void)
 
   unformat_init_unix_file (&input, fd);
 
+  ppc_timebase = 0;
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (&input, "cpu MHz : %f", &cpu_freq))
-	{
-	  cpu_freq *= 1e6;
-	  break;
-	}
+	cpu_freq *= 1e6;
+      else if (unformat (&input, "timebase : %f", &ppc_timebase))
+	;
       else
 	unformat_skip_line (&input);
     }
@@ -94,6 +95,10 @@ static f64 clock_frequency_from_proc_filesystem (void)
   unformat_free (&input);
  done:
   close (fd);
+
+  /* Override CPU frequency with time base for PPC. */
+  if (ppc_timebase != 0)
+    cpu_freq = ppc_timebase;
 
   return cpu_freq;
 }
