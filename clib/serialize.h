@@ -106,9 +106,9 @@ serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
   if (n_bytes == 1)
     p[0] = x;
   else if (n_bytes == 2)
-    clib_mem_unaligned (p, u16) = clib_host_to_little_u16 (x);
+    clib_mem_unaligned (p, u16) = clib_host_to_net_u16 (x);
   else if (n_bytes == 4)
-    clib_mem_unaligned (p, u32) = clib_host_to_little_u32 (x);
+    clib_mem_unaligned (p, u32) = clib_host_to_net_u32 (x);
   else
     ASSERT (0);
   if (PREDICT_FALSE (vec_len (m->buffer) > m->flush_threshold))
@@ -122,9 +122,9 @@ unserialize_integer (serialize_main_t * m, u32 * x, u32 n_bytes)
   if (n_bytes == 1)
     *x = p[0];
   else if (n_bytes == 2)
-    *x = clib_little_to_host_unaligned_mem_u16 ((u16 *) p);
+    *x = clib_net_to_host_unaligned_mem_u16 ((u16 *) p);
   else if (n_bytes == 4)
-    *x = clib_little_to_host_unaligned_mem_u32 ((u32 *) p);
+    *x = clib_net_to_host_unaligned_mem_u32 ((u32 *) p);
   else
     ASSERT (0);
 }
@@ -195,6 +195,7 @@ clib_error_t * unserialize_close (serialize_main_t * m);
 /* Main routines. */
 clib_error_t * serialize (serialize_main_t * m, ...);
 clib_error_t * unserialize (serialize_main_t * m, ...);
+clib_error_t * va_serialize (serialize_main_t * m, va_list * va);
 
 void unserialize_check_magic (serialize_main_t * m,
 			      void * magic, u32 magic_bytes);
