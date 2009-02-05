@@ -226,6 +226,14 @@ do {							\
 
 #define heap_elt_at_index(v,index) vec_elt_at_index(v,index)
 
+#define heap_elt_with_handle(v,handle)				\
+({								\
+  heap_t * _h = heap_header (v);				\
+  heap_elt_t * _e = vec_elt_at_index (_h->elts, (handle));	\
+  ASSERT (! heap_is_free (_e));					\
+  (v) + heap_offset (_e);					\
+})
+
 static always_inline uword
 heap_is_free_handle (void * v, uword heap_handle)
 {
