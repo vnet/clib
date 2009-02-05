@@ -4,6 +4,22 @@
 #include <clib/vec.h>
 #include <clib/elf.h>
 
+static always_inline u8
+elf_swap_u8 (elf_main_t * em, u8 x)
+{ return x; }
+
+static always_inline u16
+elf_swap_u16 (elf_main_t * em, u16 x)
+{ return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
+
+static always_inline u32
+elf_swap_u32 (elf_main_t * em, u32 x)
+{ return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
+
+static always_inline u64
+elf_swap_u64 (elf_main_t * em, u64 x)
+{ return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
+
 static u8 *
 format_elf_section_type (u8 * s, va_list * args)
 {
@@ -37,7 +53,7 @@ format_elf_section (u8 * s, va_list * args)
   s = format (s, "%-24s%=16U%8Ld%16Lx%16Ld",
 	      elf_section_name (em, h),
 	      format_elf_section_type, h->type,
-	      h->size_bytes,
+	      h->file_size,
 	      h->exec_address,
 	      h->file_offset);
 
@@ -320,30 +336,6 @@ elf_parse_section_header (elf_main_t * em, void * d, uword n)
     }
 }
 
-static void *
-elf_contents (void * data, uword size)
-{
-  u8 * result = 0;
-  vec_add (result, data, size);
-  return result;
-}
-
-static void *
-elf_section_contents (elf_main_t * em,
-		      void * data,
-		      uword section_index,
-		      uword elt_size)
-{
-  elf64_section_header_t * s;
-  u8 * v;
-
-  s = vec_elt_at_index (em->sections, section_index);
-  v = elf_contents (data + s->file_offset, s->size_bytes);
-  ASSERT (vec_len (v) % elt_size == 0);
-  _vec_len (v) /= elt_size;
-  return v;
-}
-
 static void
 add_symbol_table (elf_main_t * em, void * data, elf64_section_header_t * s)
 {
@@ -455,8 +447,6 @@ elf_parse (elf_main_t * em,
 	 && h->magic[2] == 'L'
 	 && h->magic[3] == 'F'))
     return clib_error_return (0, "bad magic");
-
-  memset (em, 0, sizeof (em[0]));
 
   em->need_byte_swap = 
       CLIB_ARCH_IS_BIG_ENDIAN != (h->data_encoding == ELF_TWOS_COMPLEMENT_BIG_ENDIAN);

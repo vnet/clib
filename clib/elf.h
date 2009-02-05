@@ -2,6 +2,8 @@
 #define included_clib_elf_h
 
 #include <clib/format.h>
+#include <clib/hash.h>
+#include <clib/vec.h>
 
 #define foreach_elf_file_class \
   _ (CLASS_NONE) _ (32BIT) _ (64BIT)
@@ -201,7 +203,7 @@ typedef struct {
   _ (u32, flags)				\
   _ (u32, exec_address)				\
   _ (u32, file_offset)				\
-  _ (u32, size_bytes)				\
+  _ (u32, file_size)				\
   _ (u32, link)					\
   _ (u32, additional_info)			\
   _ (u32, align)				\
@@ -213,7 +215,7 @@ typedef struct {
   _ (u64, flags)				\
   _ (u64, exec_address)				\
   _ (u64, file_offset)				\
-  _ (u64, size_bytes)				\
+  _ (u64, file_size)				\
   _ (u32, link)					\
   _ (u32, additional_info)			\
   _ (u64, align)				\
@@ -752,6 +754,14 @@ typedef struct {
   uword * symbol_by_name;
 } elf_symbol_table_t;
 
+static always_inline void
+elf_symbol_table_free (elf_symbol_table_t * s)
+{
+  vec_free (s->symbols);
+  vec_free (s->string_table);
+  hash_free (s->symbol_by_name);
+}
+
 static always_inline u8 *
 elf_symbol_name (elf_symbol_table_t * t, elf64_symbol_t * sym)
 { return vec_elt_at_index (t->string_table, sym->name); }
@@ -761,6 +771,12 @@ typedef struct {
 
   u32 section_index;
 } elf_relocation_table_t;
+
+static always_inline void
+elf_relocation_table_free (elf_relocation_table_t * r)
+{
+  vec_free (r->relocations);
+}
 
 typedef struct {
   u8 need_byte_swap;
@@ -787,25 +803,68 @@ typedef struct {
   elf_relocation_table_t * relocation_tables;
 } elf_main_t;
 
+static always_inline void
+elf_main_init (elf_main_t * em)
+{
+  memset (em, 0, sizeof (em[0]));
+}
+
+static always_inline void
+elf_main_free (elf_main_t * em)
+{
+  uword i;
+  vec_free (em->segments);
+  vec_free (em->sections);
+  vec_free (em->section_string_table);
+  hash_free (em->section_by_name);
+  for (i = 0; i < vec_len (em->symbol_tables); i++)
+    elf_symbol_table_free (em->symbol_tables + i);
+  for (i = 0; i < vec_len (em->relocation_tables); i++)
+    elf_relocation_table_free (em->relocation_tables + i);
+}
+
 static always_inline u8 *
 elf_section_name (elf_main_t * em, elf64_section_header_t * s)
 { return vec_elt_at_index (em->section_string_table, s->name); }
 
-static always_inline u8
-elf_swap_u8 (elf_main_t * em, u8 x)
-{ return x; }
+static always_inline void *
+elf_get_contents (elf_main_t * em,
+		  void * data,
+		  uword file_offset,
+		  uword file_size,
+		  uword elt_size)
+{
+  u8 * v = 0;
 
-static always_inline u16
-elf_swap_u16 (elf_main_t * em, u16 x)
-{ return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
+  vec_add (v, data + file_offset, file_size);
 
-static always_inline u32
-elf_swap_u32 (elf_main_t * em, u32 x)
-{ return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
+  ASSERT (vec_len (v) % elt_size == 0);
 
-static always_inline u64
-elf_swap_u64 (elf_main_t * em, u64 x)
-{ return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
+  _vec_len (v) /= elt_size;
+
+  return v;
+}
+
+static always_inline void *
+elf_section_contents (elf_main_t * em,
+		      void * data,
+		      uword section_index,
+		      uword elt_size)
+{
+  elf64_section_header_t * s;
+  s = vec_elt_at_index (em->sections, section_index);
+  return elf_get_contents (em, data, s->file_offset, s->file_size, elt_size);
+}
+
+static always_inline void *
+elf_segment_contents (elf_main_t * em,
+		      void * data,
+		      uword segment_index)
+{
+  elf64_segment_header_t * s;
+  s = vec_elt_at_index (em->segments, segment_index);
+  return elf_get_contents (em, data, s->file_offset, s->file_size, sizeof (u8));
+}
 
 format_function_t format_elf_main;
 

@@ -64,10 +64,12 @@ int main (int argc, char * argv[])
   {
     elf_main_t em;
 
+    elf_main_init (&em);
     elf_parse (&em, v, vec_len (v));
     vec_free (v);
 
     fformat (stdout, "%U", format_elf_main, &em);
+    elf_main_free (&em);
   }
 
   return 0;
