@@ -383,9 +383,6 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
   uword level_index, advance_rtime, advance_level_index, advance_wheel_index;
   u64 current_time_index, advance_time_index;
 
-  if (expired_user_data)
-    _vec_len (expired_user_data) = 0;
-
   /* Re-fill lower levels when time wraps. */
   current_time_index = w->current_time_index;
   advance_time_index = advance_cpu_time >> w->log2_clocks_per_bin;
