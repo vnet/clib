@@ -158,6 +158,17 @@ do {										\
 #define vec_resize(V,N)     vec_resize_ha(V,N,0,0)
 #define vec_resize_aligned(V,N,A) vec_resize_ha(V,N,0,A)
 
+/* Allocate space for N more elements but keep size the same. */
+#define vec_alloc_ha(V,N,H,A)			\
+do {						\
+    uword _v(l) = vec_len (V);			\
+    vec_resize_ha (V, N, H, A);			\
+    _vec_len (V) = _v(l);			\
+} while (0)
+
+#define vec_alloc(V,N) vec_alloc_ha(V,N,0,0)
+#define vec_alloc_aligned(V,N,A) vec_alloc_ha(V,N,0,A)
+
 /* Create new vector of given type and length. */
 #define vec_new_ha(T,N,H,A)					\
 ({								\
