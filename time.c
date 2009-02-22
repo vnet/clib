@@ -120,9 +120,8 @@ static f64 clock_frequency_from_sys_filesystem (void)
   unformat (&input, "%f", &cpu_freq);
   cpu_freq *= 1e3;		/* measured in kHz */
   unformat_free (&input);
-  close (fd);
-
  done:
+  close (fd);
   return cpu_freq;
 }
 
