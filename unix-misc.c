@@ -45,24 +45,18 @@ clib_error_t * unix_file_n_bytes (char * file, uword * result)
   return /* no error */ 0;
 }
 
-clib_error_t * unix_file_contents (char * file, u8 ** result)
+clib_error_t * unix_file_read_contents (char * file, u8 * result, uword n_bytes)
 {
   int fd = -1;
-  uword n_bytes, n_done, n_left;
+  uword n_done, n_left;
   clib_error_t * error = 0;
-  u8 * v = 0;
-
-  error = unix_file_n_bytes (file, &n_bytes);
-  if (error)
-    goto done;
+  u8 * v = result;
 
   if ((fd = open (file, 0)) < 0)
     {
       error = clib_error_return_unix (0, "open `%s'", file);
       goto done;
     }
-
-  vec_resize (v, n_bytes);
 
   n_left = n_bytes;
   n_done = 0;
@@ -83,11 +77,33 @@ clib_error_t * unix_file_contents (char * file, u8 ** result)
       n_done += n_read;
     }
 
-  if (v)
-    _vec_len (v) = n_done;
+  if (n_left > 0)
+    {
+      error = clib_error_return (0, " `%s' expected to read %wd bytes; read only %wd",
+				 file, n_bytes, n_bytes - n_left);
+      goto done;
+    }
 
  done:
   close (fd);
+  return error;
+}
+
+clib_error_t * unix_file_contents (char * file, u8 ** result)
+{
+  int fd = -1;
+  uword n_bytes, n_done, n_left;
+  clib_error_t * error = 0;
+  u8 * v;
+
+  if ((error = unix_file_n_bytes (file, &n_bytes)))
+    return error;
+
+  v = 0;
+  vec_resize (v, n_bytes);
+
+  error = unix_file_read_contents (file, v, n_bytes);
+
   if (error)
     vec_free (v);
   else
