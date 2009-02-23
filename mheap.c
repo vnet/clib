@@ -1273,7 +1273,7 @@ clib_error_t * mheap_validate (u8 * v)
 
 #define CHECK(x) if ((error = ERROR_ASSERT (x))) { mheap_validate_breakpoint (); goto done; }
 
-  if (! v)
+  if (vec_len (v) == 0)
     return 0;
 
   mheap_maybe_lock (v);
