@@ -55,7 +55,7 @@ static always_inline uword count_set_bits (uword x)
   x = x + (x >> (uword) 32);
 #endif
 
-  return x & (BITS (uword) - 1);
+  return x & (2*BITS (uword) - 1);
 }
 
 /* Based on "Hacker's Delight" code from GLS. */
