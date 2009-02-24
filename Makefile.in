@@ -16,6 +16,7 @@
 
 
 
+
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -40,6 +41,7 @@ build_triplet = @build@
 host_triplet = @host@
 @WITH_STANDALONE_TRUE@am__append_1 = libclibstandalone.a
 @WITH_LINUX_KERNEL_TRUE@am__append_2 = libclibkernel.a
+noinst_PROGRAMS = $(am__EXEEXT_1)
 check_PROGRAMS = $(am__EXEEXT_1)
 DIST_COMMON = README $(am__configure_deps) $(nobase_include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -176,6 +178,7 @@ am__EXEEXT_1 = test_elog$(EXEEXT) test_fifo$(EXEEXT) \
 	test_random_isaac$(EXEEXT) test_socket$(EXEEXT) \
 	test_time$(EXEEXT) test_timing_wheel$(EXEEXT) \
 	test_vec$(EXEEXT) test_zvec$(EXEEXT)
+PROGRAMS = $(noinst_PROGRAMS)
 test_elog_SOURCES = test_elog.c
 test_elog_OBJECTS = test_elog-test_elog.$(OBJEXT)
 test_elog_DEPENDENCIES = libclib.la
@@ -434,7 +437,22 @@ test_time_LDADD = libclib.la -lm -lpthread
 test_timing_wheel_LDADD = libclib.la -lm -lpthread
 test_vec_LDADD = libclib.la -lpthread
 test_zvec_LDADD = libclib.la -lpthread
-test_longjmp_LDFLAGS = -static -lpthread
+test_elog_LDFLAGS = -static
+test_fifo_LDFLAGS = -static
+test_format_LDFLAGS = -static
+test_hash_LDFLAGS = -static
+test_heap_LDFLAGS = -static
+test_longjmp_LDFLAGS = -static
+test_md5_LDFLAGS = -static
+test_mheap_LDFLAGS = -static
+test_phash_LDFLAGS = -static
+test_qhash_LDFLAGS = -static
+test_random_isaac_LDFLAGS = -static
+test_socket_LDFLAGS = -static
+test_time_LDFLAGS = -static
+test_timing_wheel_LDFLAGS = -static
+test_vec_LDFLAGS = -static
+test_zvec_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \
@@ -695,6 +713,13 @@ libclib.la: $(libclib_la_OBJECTS) $(libclib_la_DEPENDENCIES)
 
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
+
+clean-noinstPROGRAMS:
+	@list='$(noinst_PROGRAMS)'; for p in $$list; do \
 	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
@@ -2577,7 +2602,7 @@ check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
-all-am: Makefile $(LIBRARIES) $(LTLIBRARIES) $(HEADERS)
+all-am: Makefile $(LIBRARIES) $(LTLIBRARIES) $(PROGRAMS) $(HEADERS)
 installdirs:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"; do \
 	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
@@ -2609,7 +2634,8 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-checkPROGRAMS clean-generic clean-libLIBRARIES \
-	clean-libLTLIBRARIES clean-libtool mostlyclean-am
+	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
@@ -2663,14 +2689,15 @@ uninstall-am: uninstall-info-am uninstall-libLIBRARIES \
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-TESTS check-am \
 	clean clean-checkPROGRAMS clean-generic clean-libLIBRARIES \
-	clean-libLTLIBRARIES clean-libtool ctags dist dist-all \
-	dist-bzip2 dist-gzip dist-shar dist-tarZ dist-zip distcheck \
-	distclean distclean-compile distclean-generic distclean-hdr \
-	distclean-libtool distclean-tags distcleancheck distdir \
-	distuninstallcheck dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am install-exec \
-	install-exec-am install-info install-info-am \
-	install-libLIBRARIES install-libLTLIBRARIES install-man \
+	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS ctags \
+	dist dist-all dist-bzip2 dist-gzip dist-shar dist-tarZ \
+	dist-zip distcheck distclean distclean-compile \
+	distclean-generic distclean-hdr distclean-libtool \
+	distclean-tags distcleancheck distdir distuninstallcheck dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-exec install-exec-am \
+	install-info install-info-am install-libLIBRARIES \
+	install-libLTLIBRARIES install-man \
 	install-nobase_includeHEADERS install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \

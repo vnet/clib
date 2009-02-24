@@ -29,6 +29,8 @@ TESTS	=  test_elog \
 	   test_timing_wheel \
 	   test_vec \
 	   test_zvec
+
+noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
 # All unit tests use ASSERT for failure
@@ -67,7 +69,22 @@ test_timing_wheel_LDADD =	libclib.la -lm -lpthread
 test_vec_LDADD =	libclib.la -lpthread
 test_zvec_LDADD =	libclib.la -lpthread
 
-test_longjmp_LDFLAGS = -static -lpthread
+test_elog_LDFLAGS = -static
+test_fifo_LDFLAGS = -static
+test_format_LDFLAGS = -static
+test_hash_LDFLAGS = -static
+test_heap_LDFLAGS = -static
+test_longjmp_LDFLAGS = -static
+test_md5_LDFLAGS = -static
+test_mheap_LDFLAGS = -static
+test_phash_LDFLAGS = -static
+test_qhash_LDFLAGS = -static
+test_random_isaac_LDFLAGS = -static
+test_socket_LDFLAGS = -static
+test_time_LDFLAGS = -static
+test_timing_wheel_LDFLAGS = -static
+test_vec_LDFLAGS = -static
+test_zvec_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \
