@@ -207,7 +207,7 @@ static inline void remove_free_block (void * v, uword b, uword i)
   heap_t * h = heap_header (v);
   uword l;
 
-  ASSERT (b < HEAP_N_BINS);
+  ASSERT (b < vec_len (h->free_lists));
   ASSERT (i < vec_len (h->free_lists[b]));
 
   l = vec_len (h->free_lists[b]);
@@ -232,7 +232,7 @@ static heap_elt_t * search_free_list (void * v, uword size)
     return 0;
 
   /* Search free lists for bins >= given size. */
-  for (b = size_to_bin (size); b < ARRAY_LEN (h->free_lists); b++)
+  for (b = size_to_bin (size); b < vec_len (h->free_lists); b++)
     if ((l = vec_len (h->free_lists[b])) > 0)
       {
 	/* Find an object that is large enough.
@@ -273,7 +273,9 @@ static heap_elt_t * search_free_list (void * v, uword size)
 	  {
 	    if (fb < HEAP_N_BINS)
 	      {
-		uword i = vec_len (h->free_lists[fb]);
+		uword i;
+		vec_validate (h->free_lists, fb);
+		i = vec_len (h->free_lists[fb]);
 		vec_add1 (h->free_lists[fb], f - h->elts);
 		set_free_elt (v, f, i);
 	      }
@@ -296,6 +298,7 @@ static inline void dealloc_elt (void * v, heap_elt_t * e)
   heap_elt_t * n, * p;
 
   b = size_to_bin (heap_elt_size (v, e));
+  vec_validate (h->free_lists, b);
   l = vec_len (h->free_lists[b]);
   vec_add1 (h->free_lists[b], e - h->elts);
   set_free_elt (v, e, l);
@@ -316,8 +319,12 @@ static inline void dealloc_elt (void * v, heap_elt_t * e)
 /* Heap vector elements are always cache aligned. */
 #define HEAP_DATA_ALIGN (CLIB_CACHE_LINE_BYTES)
 
-void * _heap_alloc (void * v, uword size, uword align, uword v_bytes,
-		    uword * offset_return, uword * handle_return)
+void * _heap_alloc (void * v,
+		    uword size,
+		    uword align,
+		    uword elt_bytes,
+		    uword * offset_return,
+		    uword * handle_return)
 {
   uword offset = 0, align_size;
   heap_t * h;
@@ -348,29 +355,23 @@ void * _heap_alloc (void * v, uword size, uword align, uword v_bytes,
       offset = vec_len (v);
       max_len = heap_get_max_len (v);
 
-      if (offset + align_size > max_len)
+      if (max_len && offset + align_size > max_len)
 	goto error;
 
       h = heap_header (v);
       if (! v || ! (h->flags & HEAP_IS_STATIC))
-	{
-	  /* Header must be odd number of words on 32 bit machines
-	     for _vec_resize to work.  FIXME. */
-	  ASSERT ((sizeof (heap_t) / sizeof (uword)) % 2 == 1);
-
-	  v = _vec_resize (v, align_size, v_bytes, sizeof (h[0]),
-			   HEAP_DATA_ALIGN);
-	}
+	v = _vec_resize (v,
+			 align_size,
+			 (offset + align_size) * elt_bytes,
+			 sizeof (h[0]),
+			 HEAP_DATA_ALIGN);
       else
 	_vec_len (v) += align_size;
 
-      /* Set default max elts to infinity. */
       if (offset == 0)
 	{
 	  h = heap_header (v);
-	  if (max_len == ~0)
-	    h->max_len = ~0;
-	  h->elt_bytes = v_bytes / align_size;
+	  h->elt_bytes = elt_bytes;
 	}
     }
 
@@ -479,6 +480,9 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
 
       get_free_elt (v, e, tb, ti);
 
+      ASSERT (tb < vec_len (h->free_lists));
+      ASSERT (ti < vec_len (h->free_lists[tb]));
+
       f[i].index = h->free_lists[tb][ti];
       f[i].bin = tb;
       f[i].bin_index = ti;
@@ -495,6 +499,7 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
   /* Compute combined bin.  See if all objects can be
      combined into existing bin. */
   b = size_to_bin (total_size);
+  g.index = g.bin_index = 0;
   for (i = 0; i <= i_last; i++)
     if (b == f[i].bin)
       {
@@ -506,12 +511,11 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
   if (i > i_last)
     {
       g.index = elt_new (h) - h->elts;
+      vec_validate (h->free_lists, b);
       g.bin_index = vec_len (h->free_lists[b]);
       vec_add1 (h->free_lists[b], g.index);
       elt_insert_before (h, elt_at (h, f[0].index), elt_at (h, g.index));
     }
-  else
-    g.index = g.bin_index = 0;
 
   g_offset = elt_at (h, f[0].index)->offset;
 
@@ -547,8 +551,9 @@ void * _heap_free (void * v)
     return v;
 
   clib_bitmap_free (h->used_elt_bitmap);
-  for (b = 0; b < HEAP_N_BINS; b++)
+  for (b = 0; b < vec_len (h->free_lists); b++)
     vec_free (h->free_lists[b]);
+  vec_free (h->free_lists);
   vec_free (h->elts);
   vec_free (h->free_elts);
   if (! (h->flags & HEAP_IS_STATIC))
@@ -566,8 +571,9 @@ uword heap_bytes (void * v)
 
   bytes = sizeof (h[0]);
   bytes += vec_len (v) * sizeof (h->elt_bytes);
-  for (b = 0; b < ARRAY_LEN (h->free_lists); b++)
+  for (b = 0; b < vec_len (h->free_lists); b++)
     bytes += vec_capacity (h->free_lists[b], 0);
+  bytes += vec_bytes (h->free_lists);
   bytes += vec_capacity (h->elts, 0);
   bytes += vec_capacity (h->free_elts, 0);
   bytes += vec_bytes (h->used_elt_bitmap);
@@ -662,7 +668,7 @@ void heap_validate (void * v)
 
   /* Validate number of elements and size. */
   free_size = free_count = 0;
-  for (i = 0; i < HEAP_N_BINS; i++)
+  for (i = 0; i < vec_len (h->free_lists); i++)
     {
       free_count += vec_len (h->free_lists[i]);
       for (o = 0; o < vec_len (h->free_lists[i]); o++)
@@ -721,7 +727,7 @@ void heap_validate (void * v)
 	  uword fb, fi;
 	  get_free_elt (v, e, fb, fi);
 
-	  ASSERT (fb < ARRAY_LEN (h->free_lists));
+	  ASSERT (fb < vec_len (h->free_lists));
 	  ASSERT (fi < vec_len (h->free_lists[fb]));
 	  ASSERT (h->free_lists[fb][fi] == e - h->elts);
 

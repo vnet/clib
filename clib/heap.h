@@ -101,21 +101,20 @@ typedef struct {
   /* First and last element of doubly linked chain of elements. */
   uword head, tail;
 
-  u32 * free_lists[HEAP_N_BINS];
+  u32 ** free_lists;
 
-  uword used_count, max_len, elt_bytes;
+  u32 used_count, max_len;
+
+  u16 elt_bytes;
 
   uword * used_elt_bitmap;
 
   format_function_t * format_elt;
 
-  uword flags;
+  u16 flags;
   /* Static heaps are made from external memory given to
      us by user. */
 #define HEAP_IS_STATIC (1)
-
-  /* FIXME please. */
-  uword kludge_padding_to_avoid_other_bug;
 } heap_t;
 
 static always_inline heap_t * heap_header (void * v)
@@ -128,7 +127,8 @@ static always_inline void heap_dup_header (heap_t * old, heap_t * new)
   new[0] = old[0];
   new->elts = vec_dup (new->elts);
   new->free_elts = vec_dup (new->free_elts);
-  for (i = 0; i < ARRAY_LEN (new->free_lists); i++)
+  new->free_lists = vec_dup (new->free_lists);
+  for (i = 0; i < vec_len (new->free_lists); i++)
     new->free_lists[i] = vec_dup (new->free_lists[i]);
   new->used_elt_bitmap = clib_bitmap_dup (new->used_elt_bitmap);
 }
@@ -179,7 +179,7 @@ static always_inline void * heap_set_max_len (void * v, uword max_len)
 }
 
 static always_inline uword heap_get_max_len (void * v)
-{ return v ? heap_header (v)->max_len : ~0; }
+{ return v ? heap_header (v)->max_len : 0; }
 
 /* Create fixed size heap with given block of memory. */
 static always_inline void *
@@ -246,7 +246,7 @@ extern uword heap_len (void * v, word handle);
 
 /* Low level allocation call. */
 extern void * _heap_alloc (void * v, uword size, uword alignment,
-			   uword v_bytes,
+			   uword elt_bytes,
 			   uword * offset, uword * handle);
 
 #define heap_alloc_aligned(v,size,align,handle)			\
@@ -254,9 +254,7 @@ extern void * _heap_alloc (void * v, uword size, uword alignment,
   uword _o, _h;							\
   uword _a = (align);						\
   uword _s = (size);						\
-  (v) = _heap_alloc ((v), _s, _a,				\
-		   ((vec_len (v) + _s + _a) * sizeof ((v)[0])),	\
-		   &_o, &_h);					\
+  (v) = _heap_alloc ((v), _s, _a, sizeof ((v)[0]), &_o, &_h);	\
   (handle) = _h;						\
   _o;								\
 })
