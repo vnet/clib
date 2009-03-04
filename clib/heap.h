@@ -105,13 +105,13 @@ typedef struct {
 
   u32 used_count, max_len;
 
-  u16 elt_bytes;
+  u32 elt_bytes;
 
   uword * used_elt_bitmap;
 
   format_function_t * format_elt;
 
-  u16 flags;
+  u32 flags;
   /* Static heaps are made from external memory given to
      us by user. */
 #define HEAP_IS_STATIC (1)
@@ -119,6 +119,9 @@ typedef struct {
 
 static always_inline heap_t * heap_header (void * v)
 { return vec_header (v, sizeof (heap_t)); }
+
+static always_inline uword heap_header_bytes ()
+{ return vec_header_bytes_ha (sizeof (heap_t), /* align */ 0); }
 
 static always_inline void heap_dup_header (heap_t * old, heap_t * new)
 {
