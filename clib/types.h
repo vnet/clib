@@ -28,8 +28,8 @@
 
 /* Define signed and unsigned 8, 16, 32, and 64 bit types
    and machine signed/unsigned word for all architectures. */
-typedef char i8;
-typedef short i16;
+typedef signed char i8;
+typedef signed short i16;
 
 typedef __complex__ short ci16;
 typedef __complex__ int ci32;
