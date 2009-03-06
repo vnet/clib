@@ -68,15 +68,12 @@ static inline uword *
 _clib_bitmap_remove_trailing_zeros (uword * a)
 {
   word i;
-  for (i = vec_len (a) - 1; i >= 0; i--)
-    if (a[i] != 0)
-      break;
   if (a)
     {
-      if (i >= 0)
-	_vec_len (a) = i + 1;
-      else
-	vec_free (a);
+      for (i = _vec_len (a) - 1; i >= 0; i--)
+	if (a[i] != 0)
+	  break;
+      _vec_len (a) = i + 1;
     }
   return a;
 }
@@ -322,38 +319,28 @@ clib_bitmap_count_set_bits (uword * ai)
 }
 
 /* ALU function definition macro for functions taking two bitmaps. */
-#define _(name, body, check_zero)		\
-static inline uword *				\
-clib_bitmap_##name (uword * ai, uword * bi)	\
-{						\
-  uword i, a, b, bi_len, n_trailing_zeros;	\
-						\
-  n_trailing_zeros = 0;				\
-  bi_len = vec_len (bi);			\
-  if (bi_len > 0)				\
-    vec_validate (ai, bi_len - 1);		\
-  for (i = 0; i < vec_len (ai); i++)		\
-    {						\
-      a = ai[i];				\
-      b = i < bi_len ? bi[i] : 0;		\
-      do { body; } while (0);			\
-      ai[i] = a;				\
-      if (check_zero)				\
-	{					\
-	  if (a == 0)				\
-	    n_trailing_zeros++;			\
-	  else					\
-	    n_trailing_zeros = 0;		\
-	}					\
-    }						\
-  if (check_zero)				\
-    {						\
-      if (n_trailing_zeros == vec_len (ai))	\
-	vec_free (ai);				\
-      else if (n_trailing_zeros > 0)		\
-	_vec_len (ai) -= n_trailing_zeros;	\
-    }						\
-  return ai;					\
+#define _(name, body, check_zero)				\
+static inline uword *						\
+clib_bitmap_##name (uword * ai, uword * bi)			\
+{								\
+  uword i, a, b, bi_len, n_trailing_zeros;			\
+								\
+  n_trailing_zeros = 0;						\
+  bi_len = vec_len (bi);					\
+  if (bi_len > 0)						\
+    vec_validate (ai, bi_len - 1);				\
+  for (i = 0; i < vec_len (ai); i++)				\
+    {								\
+      a = ai[i];						\
+      b = i < bi_len ? bi[i] : 0;				\
+      do { body; } while (0);					\
+      ai[i] = a;						\
+      if (check_zero)						\
+	n_trailing_zeros = a ? 0 : (n_trailing_zeros + 1);	\
+    }								\
+  if (check_zero)						\
+    _vec_len (ai) -= n_trailing_zeros;				\
+  return ai;							\
 }
 
 /* ALU functions: */
