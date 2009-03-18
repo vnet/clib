@@ -98,6 +98,7 @@ _ (format_hostname);
 _ (format_timeval);
 _ (format_time_float);
 _ (format_signal);
+_ (format_ucontext_pc);
 #endif
 
 #undef _

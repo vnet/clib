@@ -31,6 +31,10 @@
 # include <unistd.h>
 # include <signal.h>
 
+#define __USE_GNU		/* to get REG_* in ucontext.h */
+# include <ucontext.h>
+#undef __USE_GNU
+
 #include <time.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -736,4 +740,35 @@ u8 * format_signal (u8 * s, va_list * args)
   vec_add (s, t, strlen (t));
   return s;
 }
+
+u8 * format_ucontext_pc (u8 * s, va_list * args)
+{
+  ucontext_t * uc = va_arg (*args, ucontext_t *);
+  unsigned long * regs = 0;
+  uword reg_no = 0;
+
+#if defined (powerpc)
+  regs = &uc->uc_mcontext.uc_regs->gregs[0];
+#elif defined (powerpc64)
+  regs = &uc->uc_mcontext.uc_regs->gp_regs[0];
+#else
+  regs = &uc->uc_mcontext.gregs[0];
+#endif
+
+#if defined (powerpc) || defined (powerpc64)
+  reg_no = PT_NIP;
+#elif defined (i386)
+  reg_no = REG_EIP;
+#elif defined (__x86_64__)
+  reg_no = REG_RIP;
+#else
+  regs = 0;
+#endif
+
+  if (! regs)
+    return format (s, "unsupported");
+  else
+    return format (s, "%p", regs[reg_no]);
+}
+
 #endif /* __KERNEL__ */
