@@ -689,7 +689,7 @@ u8 * format_time_float (u8 * s, va_list * args)
 u8 * format_signal (u8 * s, va_list * args)
 {
   uword signum = va_arg (*args, uword);
-  char * t = "unknown";
+  char * t = 0;
   switch (signum)
     {
 #define _(x) case x: t = #x; break;
@@ -729,7 +729,10 @@ u8 * format_signal (u8 * s, va_list * args)
       _ (SIGSYS);
 #endif
 #undef _
+    default:
+      return format (s, "unknown %d", signum);
     }
+
   vec_add (s, t, strlen (t));
   return s;
 }
