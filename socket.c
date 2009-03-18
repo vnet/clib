@@ -349,6 +349,8 @@ clib_error_t * socket_accept (socket_t * server, socket_t * client)
   clib_error_t	* err = 0;
   socklen_t	len = 0;
   
+  memset (client, 0, sizeof (client[0]));
+
   /* Accept the new socket connection. */
   client->fd = accept (server->fd, 0, 0);
   if (client->fd < 0) 
