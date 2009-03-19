@@ -710,7 +710,9 @@ typedef struct
    word 2: minor version of the ABI
    word 3: subminor version of the ABI
 */
+#ifndef ELF_NOTE_ABI
 #define ELF_NOTE_ABI		1
+#endif
 
 /* Known OSes.  These value can appear in word 0 of an ELF_NOTE_ABI
    note section entry.  */
@@ -791,7 +793,7 @@ typedef struct {
 
   u32 file_version;
 
-  u64 entry_point;
+  elf64_file_header_t file_header;
 
   elf64_segment_header_t * segments;
 
@@ -832,10 +834,9 @@ elf_get_contents (elf_main_t * em,
 		  void * data,
 		  uword file_offset,
 		  uword file_size,
-		  uword elt_size)
+		  uword elt_size,
+		  u8 * v)
 {
-  u8 * v = 0;
-
   vec_add (v, data + file_offset, file_size);
 
   ASSERT (vec_len (v) % elt_size == 0);
@@ -849,28 +850,34 @@ static always_inline void *
 elf_section_contents (elf_main_t * em,
 		      void * data,
 		      uword section_index,
-		      uword elt_size)
+		      uword elt_size,
+		      void * v)
 {
   elf64_section_header_t * s;
   s = vec_elt_at_index (em->sections, section_index);
-  return elf_get_contents (em, data, s->file_offset, s->file_size, elt_size);
+  return elf_get_contents (em, data, s->file_offset, s->file_size, elt_size, v);
 }
 
 static always_inline void *
 elf_segment_contents (elf_main_t * em,
 		      void * data,
-		      uword segment_index)
+		      uword segment_index,
+		      void * v)
 {
   elf64_segment_header_t * s;
   s = vec_elt_at_index (em->segments, segment_index);
-  return elf_get_contents (em, data, s->file_offset, s->file_size, sizeof (u8));
+  return elf_get_contents (em, data, s->file_offset, s->file_size, sizeof (u8), v);
 }
 
 format_function_t format_elf_main;
 
+/* Read headers: sections + segments but no symbols/relocations. */
 clib_error_t *
 elf_parse (elf_main_t * em,
 	   void * data,
 	   uword data_bytes);
+
+/* Read symbols & relocations. */
+void elf_parse_symbols (elf_main_t * em, void * data);
 
 #endif /* included_clib_elf_h */
