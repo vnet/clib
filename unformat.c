@@ -768,27 +768,36 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
   uword input_matches_format;
   uword default_skip_input_white_space;
   uword n_input_white_space_skipped;
+  uword last_non_white_space_match_percent;
 
   vec_add1 (input->buffer_marks, input->index);
 
   f = fmt;
   default_skip_input_white_space = 1;
   input_matches_format = 0;
+  last_non_white_space_match_percent = 0;
   
   while (1)
     {
       char cf;
-      uword is_percent, skip_white_space;
+      uword is_percent, skip_input_white_space;
 
       cf = *f;
       is_percent = 0;
-      skip_white_space = 0;
+
+      /* Always skip input white space at start of format string.
+	 Otherwise use default skip value which can be changed by %_ 
+	 (see below). */
+      skip_input_white_space = f == fmt || default_skip_input_white_space;
 
       /* Spaces in format request skipping input white space. */
-      if (cf == ' ')
+      if (is_white_space (cf))
 	{
-	  skip_white_space = 1;
-	  while (*++f == ' ')
+	  skip_input_white_space = 1;
+
+	  /* Multiple format spaces are equivalent to a single white
+	     space. */
+	  while (is_white_space (*++f))
 	    ;
 	}
       else if (cf == '%')
@@ -799,8 +808,8 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 	    case '_':
 	      default_skip_input_white_space = !default_skip_input_white_space;
 	      f++;
-	      /* For transition from no-skip to skip in middle of format
-		 string skip white space.  For example, the following matches:
+	      /* For transition from skip to no-skip in middle of format
+		 string, skip input white space.  For example, the following matches:
 		    fmt = "%_%d.%d%_->%_%d.%d%_"
 		    input "1.2 -> 3.4"
 		 Without this the space after -> does not get skipped. */
@@ -823,27 +832,30 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 	    }
 	}
 
-      if (! skip_white_space)
-	skip_white_space = default_skip_input_white_space;
-
       n_input_white_space_skipped = 0;
-      if (skip_white_space)
+      if (skip_input_white_space)
 	n_input_white_space_skipped = unformat_skip_white_space (input);
 
       /* End of format string. */
       if (cf == 0)
 	{
-	  /* Force parse error when format string ends
-	     and input is not white or at end. */
-	  if (skip_white_space
+	  /* Force parse error when format string ends and input is
+	     not white or at end.  As an example, this is to prevent
+	     format "foo" from matching input "food".
+	     The last_non_white_space_match_percent is to make
+	     "foo %d" match input "foo 10,bletch" with %d matching 10. */
+	  if (skip_input_white_space
+	      && ! last_non_white_space_match_percent
 	      && n_input_white_space_skipped == 0
 	      && input->index != UNFORMAT_END_OF_INPUT)
 	    goto parse_fail;
 	  break;
 	}
 
+      last_non_white_space_match_percent = is_percent;
+
       /* Explicit spaces in format must match input white space. */
-      else if (cf == ' ')
+      if (cf == ' ' && !default_skip_input_white_space)
 	{
 	  if (n_input_white_space_skipped == 0)
 	    goto parse_fail;
