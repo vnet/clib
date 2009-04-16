@@ -36,6 +36,10 @@
 #define CLIB_HAVE_VEC128
 #endif
 
+#if defined (__ALTIVEC__)
+#define CLIB_HAVE_VEC128
+#endif
+
 /* 128 implies 64 */
 #ifdef CLIB_HAVE_VEC128
 #define CLIB_HAVE_VEC64
