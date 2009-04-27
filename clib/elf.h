@@ -169,7 +169,7 @@ typedef struct {
   elf_architecture_t architecture : 16;
 
   u32 file_version;
-} elf_file_header_t;
+} elf_first_header_t;
 
 /* 32/64 bit file header following basic file header. */
 #define foreach_elf32_file_header		\
@@ -781,24 +781,28 @@ elf_relocation_table_free (elf_relocation_table_t * r)
 }
 
 typedef struct {
+  elf64_section_header_t header;
+
+  void * contents;
+} elf_section_t;
+
+typedef struct {
+  elf64_segment_header_t header;
+
+  u8 * contents;
+} elf_segment_t;
+
+typedef struct {
   u8 need_byte_swap;
 
-  elf_file_class_t file_class : 8;
-
-  elf_abi_t abi : 8;
-  u8 abi_version;
-
-  elf_file_type_t file_type : 16;
-  elf_architecture_t architecture : 16;
-
-  u32 file_version;
+  elf_first_header_t first_header;
 
   elf64_file_header_t file_header;
 
-  elf64_segment_header_t * segments;
+  elf_segment_t * segments;
 
-  elf64_section_header_t * sections;
-  u8 * section_string_table;
+  elf_section_t * sections;
+
   uword * section_by_name;
 
   elf_symbol_table_t * symbol_tables;
@@ -815,9 +819,15 @@ static always_inline void
 elf_main_free (elf_main_t * em)
 {
   uword i;
+
+  for (i = 0; i < vec_len (em->segments); i++)
+    vec_free (em->segments[i].contents);
   vec_free (em->segments);
+
+  for (i = 0; i < vec_len (em->sections); i++)
+    vec_free (em->sections[i].contents);
   vec_free (em->sections);
-  vec_free (em->section_string_table);
+
   hash_free (em->section_by_name);
   for (i = 0; i < vec_len (em->symbol_tables); i++)
     elf_symbol_table_free (em->symbol_tables + i);
@@ -825,23 +835,21 @@ elf_main_free (elf_main_t * em)
     elf_relocation_table_free (em->relocation_tables + i);
 }
 
-static always_inline u8 *
-elf_section_name (elf_main_t * em, elf64_section_header_t * s)
-{ return vec_elt_at_index (em->section_string_table, s->name); }
-
 static always_inline void *
 elf_get_contents (elf_main_t * em,
 		  void * data,
 		  uword file_offset,
 		  uword file_size,
-		  uword elt_size,
-		  u8 * v)
+		  uword elt_size)
 {
-  vec_add (v, data + file_offset, file_size);
+  u8 * v = 0;
 
-  ASSERT (vec_len (v) % elt_size == 0);
-
-  _vec_len (v) /= elt_size;
+  if (file_size > 0)
+    {
+      vec_add (v, data + file_offset, file_size);
+      ASSERT (vec_len (v) % elt_size == 0);
+      _vec_len (v) /= elt_size;
+    }
 
   return v;
 }
@@ -850,23 +858,32 @@ static always_inline void *
 elf_section_contents (elf_main_t * em,
 		      void * data,
 		      uword section_index,
-		      uword elt_size,
-		      void * v)
+		      uword elt_size)
 {
-  elf64_section_header_t * s;
+  elf_section_t * s;
   s = vec_elt_at_index (em->sections, section_index);
-  return elf_get_contents (em, data, s->file_offset, s->file_size, elt_size, v);
+  if (! s->contents)
+    s->contents = elf_get_contents (em, data, s->header.file_offset, s->header.file_size, elt_size);
+  return s->contents;
 }
 
 static always_inline void *
 elf_segment_contents (elf_main_t * em,
 		      void * data,
-		      uword segment_index,
-		      void * v)
+		      uword segment_index)
 {
-  elf64_segment_header_t * s;
+  elf_segment_t * s;
   s = vec_elt_at_index (em->segments, segment_index);
-  return elf_get_contents (em, data, s->file_offset, s->file_size, sizeof (u8), v);
+  if (! s->contents)
+    s->contents = elf_get_contents (em, data, s->header.file_offset, s->header.file_size, sizeof (u8));
+  return s->contents;
+}
+
+static always_inline u8 *
+elf_section_name (elf_main_t * em, elf_section_t * s)
+{
+  elf_section_t * es = vec_elt_at_index (em->sections, em->file_header.section_header_string_table_index);
+  return vec_elt_at_index (es->contents, s->header.name);
 }
 
 format_function_t format_elf_main;
@@ -879,5 +896,16 @@ elf_parse (elf_main_t * em,
 
 /* Read symbols & relocations. */
 void elf_parse_symbols (elf_main_t * em, void * data);
+
+clib_error_t * elf_read_file (elf_main_t * em, char * file_name);
+clib_error_t * elf_write_file (elf_main_t * em, char * file_name);
+clib_error_t * elf_delete_named_section (elf_main_t * em, char * section_name);
+void
+elf_create_section_with_contents (elf_main_t * em,
+				  char * section_name,
+				  elf64_section_header_t * header,
+				  void * contents,
+				  uword n_content_bytes);
+uword elf_delete_segment_with_type (elf_main_t * em, elf_segment_type_t segment_type);
 
 #endif /* included_clib_elf_h */
