@@ -335,7 +335,9 @@ clib_setjmp:
 	stw 1, 4*1(3)
 	mfcr 0
 	stw 0, 4*2(3)
+#if CLIB_POWERPC_ALTIVEC_N_REGS > 0
 	mfspr 0, 256
+#endif
 	stw 0, 4*3(3)
 	
 #if CLIB_POWERPC_ALTIVEC_N_REGS > 0
@@ -371,7 +373,9 @@ clib_longjmp:
 	lwz 0, 4*2(3)
 	mtcr 0
 	lwz 0, 4*3(3)
+#if CLIB_POWERPC_ALTIVEC_N_REGS > 0
 	mtspr 256, 0
+#endif
 	
 #if CLIB_POWERPC_ALTIVEC_N_REGS > 0
 	li 5, 4*4

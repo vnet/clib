@@ -45,10 +45,6 @@
 #define CLIB_HAVE_VEC64
 #endif
 
-#if !(defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
-#error "vector types not supported."
-#endif
-
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 
 #ifdef CLIB_HAVE_VEC64
@@ -126,6 +122,8 @@ typedef u64 u64x _vector_size (8);
 #include <clib/vector_iwmmxt.h>
 #endif
 
+#if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
 #include <clib/vector_funcs.h>
+#endif
 
 #endif /* included_clib_vector_h */
