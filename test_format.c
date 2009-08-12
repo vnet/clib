@@ -76,7 +76,7 @@ int test_format_main (unformat_input_t * input)
   ret |= expectation ("  center  ", "%=10s", "center");
   ret |= expectation ("     right", "%+10s", "right");
   ret |= expectation ("123456", "%.0f", 123456.);
-  ret |= expectation ("1234567.", "%.1f", 1234567.);
+  ret |= expectation ("1234567.0", "%.1f", 1234567.);
   ret |= expectation ("foo", "%.*s", 3, "food");
   ret |= expectation ("food      ", "%.*s", 10, "food          ");
   ret |= expectation ("(nil)", "%.*s", 3, (void *) 0);

@@ -573,6 +573,7 @@ static f64 times_power_of_ten (f64 x, int n)
   
 }
 
+/* Write x = y * 10^expon with 1 < y < 10. */
 static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
 {
   word sign, expon2, expon10;
@@ -613,32 +614,44 @@ static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
   return x;
 }
 
-static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_style)
+static u8 * add_some_zeros (u8 * s, uword n_zeros)
+{
+  while (n_zeros > 0)
+    {
+      vec_add1 (s, '0');
+      n_zeros--;
+    }
+  return s;
+}
+
+/* Format a floating point number with the given number of fractional
+   digits (e.g. 1.2345 with 2 fraction digits yields "1.23") and output style. */
+static u8 *
+format_float (u8 * s, f64 x,
+	      uword n_fraction_digits,
+	      uword output_style)
 {
   f64 prec;
-  word sign, expon, decimal_point, n_digits_printed;
+  word sign, expon, n_fraction_done, added_decimal_point;
+  /* Position of decimal point relative to where we are. */
+  word decimal_point;
+
+  /* Default number of digits to print when its not specified. */
+  if (n_fraction_digits == ~0)
+    n_fraction_digits = 7;
+  n_fraction_done = 0;
+  decimal_point = 0;
+  added_decimal_point = 0;
+  sign = expon = 0;
 
   /* Special case: zero. */
   if (x == 0)
     {
+    do_zero:
       vec_add1 (s, '0');
-      if (n_digits_to_print != ~0 && n_digits_to_print > 0)
-	{
-	  vec_add1 (s, '.');
-	  while (n_digits_to_print > 0)
-	    {
-	      vec_add1 (s, '0');
-	      n_digits_to_print--;
-	    }
-	}
-      return s;
+      goto done;
     }
 	  
-  /* Default number of digits to print when its not specified. */
-  if (n_digits_to_print == ~0)
-    n_digits_to_print = 7;
-
-  sign = expon = 0;
   if (x < 0)
     {
       x = -x;
@@ -652,32 +665,24 @@ static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_s
   x = normalize (x, &expon, &prec);
 
   /* Not enough digits to print anything: so just print 0 */
-  if ((word) -expon > (word) n_digits_to_print
+  if ((word) -expon > (word) n_fraction_digits
       && (output_style == 'f' || (output_style == 'g')))
-    {
-      vec_add1 (s, '0');
-      vec_add1 (s, '.');
-      while (n_digits_to_print--)
-	vec_add1 (s, '0');
-      return s;
-    }
+    goto do_zero;
 
   if (sign)
     vec_add1 (s, '-');
 
-  n_digits_printed = 0;
   if (output_style == 'f'
       || (output_style == 'g' && expon > -10 && expon < 10))
     {
       if (expon < 0)
 	{
+	  /* Add decimal point and leading zeros. */
 	  vec_add1 (s, '.');
-	  decimal_point = expon;
-	  while (++decimal_point)
-	    {
-	      vec_add1 (s, '0');
-	      n_digits_printed++;
-	    }
+	  n_fraction_done = clib_min (-(expon + 1), n_fraction_digits);
+	  s = add_some_zeros (s, n_fraction_done);
+	  decimal_point = -n_fraction_done;
+	  added_decimal_point = 1;
 	}
       else
 	decimal_point = expon + 1;
@@ -693,6 +698,7 @@ static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_s
     {
       uword digit;
 
+      /* Number is smaller than precision: call it zero. */
       if (x < prec)
 	break;
 
@@ -706,28 +712,43 @@ static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_s
 
       /* Round last printed digit. */
       if (decimal_point <= 0
-	  && n_digits_printed + 1 == n_digits_to_print
+	  && n_fraction_done + 1 == n_fraction_digits
 	  && digit < 9)
 	digit += x >= .5;
 
       vec_add1 (s, '0' + digit);
 
+      /* Move rightwards towards/away from decimal point. */
       decimal_point--;
 
-      n_digits_printed += decimal_point < 0;
+      n_fraction_done += decimal_point < 0;
       if (decimal_point <= 0
-	  && n_digits_printed >= n_digits_to_print)
+	  && n_fraction_done >= n_fraction_digits)
 	break;
 
       if (decimal_point == 0 && x != 0)
-	vec_add1 (s, '.');
+	{
+	  vec_add1 (s, '.');
+	  added_decimal_point = 1;
+	}
 
       x *= 10;
       prec *= 10;
     }
   
-  while (--decimal_point >= 0)
-    vec_add1 (s, '0');
+ done:
+  if (decimal_point > 0)
+    {
+      s = add_some_zeros (s, decimal_point);
+      decimal_point = 0;
+    }
+
+  if (n_fraction_done < n_fraction_digits)
+    {
+      if (! added_decimal_point)
+	vec_add1 (s, '.');
+      s = add_some_zeros (s, n_fraction_digits - n_fraction_done);
+    }
 
   if (output_style == 'e')
     s = format (s, "e%wd", expon);
