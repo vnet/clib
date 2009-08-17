@@ -245,6 +245,10 @@ static inline uword key_sum (hash_t * h, uword key)
       sum = hash_uword (* uword_to_pointer (key, u32 *));
       break;
 
+    case KEY_FUNC_STRING:
+      sum = string_key_sum (h, key);  
+      break;
+
     default:
       sum = h->key_sum (h, key);
       break;
@@ -266,6 +270,10 @@ static inline uword key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 
     case KEY_FUNC_POINTER_U32:
       e = * uword_to_pointer (key1, u32 *) == * uword_to_pointer (key2, u32 *);
+      break;
+
+    case KEY_FUNC_STRING:
+      e = string_key_equal (h, key1, key2);  
       break;
 
     default:
