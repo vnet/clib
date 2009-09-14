@@ -171,6 +171,26 @@ _ (u64,  2, paddq128)
 
 #undef _
 
+/* Unaligned loads/stores. */
+
+#define _(t)							\
+  static always_inline void t##_store_unaligned (t x, t * a)	\
+  { __builtin_ia32_storedqu ((char *) a, (u8x16) x); }		\
+  static always_inline t t##_load_unaligned (t * a)		\
+  { return (t) __builtin_ia32_loaddqu ((char *) a); }
+
+_ (u8x16)
+_ (u16x8)
+_ (u32x4)
+_ (u64x2)
+_ (i8x16)
+_ (i16x8)
+_ (i32x4)
+_ (i64x2)
+
+#undef _
+
+
 /* Addition with saturation. */
 
 #define _(t,n,f)							\
