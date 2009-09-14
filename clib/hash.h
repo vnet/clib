@@ -62,6 +62,7 @@ typedef struct hash_header {
 #define KEY_FUNC_NONE		(0) /* sum = key */
 #define KEY_FUNC_POINTER_UWORD	(1) /* sum = *(uword *) key */
 #define KEY_FUNC_POINTER_U32	(2) /* sum = *(u32 *) key */
+#define KEY_FUNC_STRING         (3) /* sum = string_key_sum, etc. */
 
   hash_key_equal_function_t * key_equal;
 
@@ -399,9 +400,11 @@ extern uword string_key_sum (hash_t * h, uword key);
 extern uword string_key_equal (hash_t * h, uword key1, uword key2);
 extern u8 * string_key_format_pair (u8 * s, va_list * args);
 
-#define hash_create_string(elts,value_bytes)    \
-  hash_create2((elts),0,(value_bytes),          \
-               string_key_sum,string_key_equal,string_key_format_pair,0);
+#define hash_create_string(elts,value_bytes)                    \
+  hash_create2((elts),0,(value_bytes),                          \
+               (hash_key_sum_function_t *) KEY_FUNC_STRING,     \
+               (hash_key_equal_function_t *)KEY_FUNC_STRING,    \
+               0, 0)
 
 #define hash_create(elts,value_bytes)				\
   hash_create2((elts),0,(value_bytes),				\
