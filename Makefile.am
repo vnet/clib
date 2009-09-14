@@ -145,6 +145,7 @@ nobase_include_HEADERS = \
     clib/unix.h \
     clib/vec.h \
     clib/vector.h \
+    clib/vector_altivec.h \
     clib/vector_funcs.h \
     clib/vector_iwmmxt.h \
     clib/vector_sse2.h \

@@ -118,6 +118,10 @@ typedef u64 u64x _vector_size (8);
 #include <clib/vector_sse2.h>
 #endif
 
+#if defined (__ALTIVEC__)
+#include <clib/vector_altivec.h>
+#endif
+
 #if defined (__IWMMXT__)
 #include <clib/vector_iwmmxt.h>
 #endif
