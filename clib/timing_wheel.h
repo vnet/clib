@@ -70,6 +70,9 @@ typedef struct {
 
   timing_wheel_elt_t * unexpired_elts_pending_insert;
 
+  /* Hash table of user data values which have been deleted but not yet re-inserted. */
+  uword * deleted_user_data_hash;
+
   /* Enable validation for debugging. */
   u32 validate;
 
@@ -101,6 +104,9 @@ void timing_wheel_init (timing_wheel_t * w,
 
 /* Insert user data on wheel at given CPU time stamp. */
 void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data);
+
+/* Delete user data from wheel (until it is again inserted). */
+void timing_wheel_delete (timing_wheel_t * w, u32 user_data);
 
 /* Advance wheel and return any expired user data in vector. */
 u32 * timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_user_data);

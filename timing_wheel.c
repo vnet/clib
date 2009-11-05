@@ -1,4 +1,5 @@
 #include <clib/bitmap.h>
+#include <clib/hash.h>
 #include <clib/pool.h>
 #include <clib/timing_wheel.h>
 
@@ -201,7 +202,7 @@ insert_helper (timing_wheel_t * w,
 }
 
 /* Insert user data on wheel at given CPU time stamp. */
-void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
+static void timing_wheel_insert_helper (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
 {
   timing_wheel_elt_t * e;
   u64 dt;
@@ -226,11 +227,90 @@ void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data
     }
 }
 
+static always_inline uword
+elt_is_deleted (timing_wheel_t * w, u32 user_data)
+{
+  return (hash_elts (w->deleted_user_data_hash) > 0
+	  && hash_get (w->deleted_user_data_hash, user_data));
+}
+
+static timing_wheel_elt_t *
+delete_user_data (timing_wheel_elt_t * elts, u32 user_data)
+{
+  uword found_match = 0;
+  timing_wheel_elt_t * e, * new_elts;
+
+  new_elts = 0;
+  vec_foreach (e, elts)
+    {
+      if (e->user_data != user_data)
+	continue;
+
+      if (! found_match)
+	{
+	  if (e > elts)
+	    vec_add (new_elts, elts, e - elts - 1);
+	}
+      else
+	vec_add1 (new_elts, e[0]);
+      found_match = 1;
+    }
+
+  if (found_match)
+    {
+      vec_free (elts);
+      elts = new_elts;
+    }
+  return elts;
+}
+
+/* Insert user data on wheel at given CPU time stamp. */
+void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
+{
+  /* Un-do previous delete if present. */
+  if (elt_is_deleted (w, user_data))
+    {
+      timing_wheel_level_t * l;
+      timing_wheel_elt_t * e;
+      uword wi;
+
+      /* Delete elts with given user data so that stale events don't expire. */
+      vec_foreach (l, w->levels)
+	{
+	  clib_bitmap_foreach (wi, l->occupancy_bitmap, ({
+	    l->elts[wi] = delete_user_data (l->elts[wi], user_data);
+	    if (vec_len (l->elts[wi]) == 0)
+	      l->occupancy_bitmap = clib_bitmap_andnoti (l->occupancy_bitmap, wi);
+	  }));
+	}
+
+      {
+	timing_wheel_overflow_elt_t * oe;
+	pool_foreach (oe, w->overflow_pool, ({
+	  if (oe->user_data == user_data)
+	    pool_put (w->overflow_pool, oe);
+	}));
+      }
+
+      hash_unset (w->deleted_user_data_hash, user_data);
+    }
+
+  timing_wheel_insert_helper (w, insert_cpu_time, user_data);
+}
+
+void timing_wheel_delete (timing_wheel_t * w, u32 user_data)
+{
+  if (! w->deleted_user_data_hash)
+    w->deleted_user_data_hash = hash_create (/* capacity */ 0, /* value bytes */ 0);
+
+  hash_set1 (w->deleted_user_data_hash, user_data);
+}
+
 static always_inline void
 insert_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
 {
   u64 t = w->cpu_time_base + e->cpu_time_relative_to_base;
-  timing_wheel_insert (w, t, e->user_data);
+  timing_wheel_insert_helper (w, t, e->user_data);
 }
 
 static always_inline u64
@@ -258,17 +338,24 @@ static u32 * advance_level (timing_wheel_t * w,
   timing_wheel_level_t * level = vec_elt_at_index (w->levels, level_index);
   timing_wheel_elt_t * e;
   u32 * x;
-  uword i, e_len;
+  uword i, j, e_len;
 
   e = vec_elt (level->elts, wheel_index);
   e_len = vec_len (e);
 
   vec_add2 (expired_user_data, x, e_len);
-  for (i = 0; i < e_len; i++)
+  for (i = j = 0; i < e_len; i++)
     {
       validate_expired_elt (w, &e[i]);
-      x[i] = e[i].user_data;
+      x[j] = e[i].user_data;
+
+      /* Only advance if elt is not to be deleted. */
+      j += ! elt_is_deleted (w, e[i].user_data);
     }
+
+  /* Adjust for deleted elts. */
+  if (j < e_len)
+    _vec_len (x) -= e_len - j;
 
   free_elt_vector (w, e);
 
@@ -310,7 +397,7 @@ advance_cpu_time_base (timing_wheel_t * w)
       /* It fits now into 32 bits. */
       if (0 == ((oe->cpu_time - w->cpu_time_base) >> BITS (e->cpu_time_relative_to_base)))
 	{
-	  timing_wheel_insert (w, oe->cpu_time, oe->user_data);
+	  timing_wheel_insert_helper (w, oe->cpu_time, oe->user_data);
 	  pool_put (w->overflow_pool, oe);
 	}
     }));
@@ -355,7 +442,8 @@ refill_level (timing_wheel_t * w,
 	      if (ti <= advance_time_index)
 		{
 		  validate_expired_elt (w, e);
-		  vec_add1 (expired_user_data, e->user_data);
+		  if (! elt_is_deleted (w, e->user_data))
+		    vec_add1 (expired_user_data, e->user_data);
 		}
 	      else
 		vec_add1 (to_insert, e[0]);
