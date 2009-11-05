@@ -33,6 +33,15 @@ typedef struct {
 
   /* Random buffer. */
   uword * buffer;
+
+  /* Cache up to 1 word worth of bytes for random data
+     less than one word at a time. */
+  uword n_cached_bytes;
+
+  union {
+    u8 cached_bytes[sizeof (uword)];
+    uword cached_word;
+  };
 } clib_random_buffer_t;
 
 static inline void
@@ -51,7 +60,14 @@ void clib_random_buffer_init (clib_random_buffer_t * b, uword seed);
 static inline void *
 clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
 {
-  uword n_words, i;
+  uword n_words, i, l;
+
+  l = b->n_cached_bytes;
+  if (n_bytes <= l)
+    {
+      b->n_cached_bytes = l - n_bytes;
+      return &b->cached_bytes[l];
+    }
 
   n_words = n_bytes / sizeof (uword);
   if (n_bytes % sizeof (uword))
@@ -63,7 +79,15 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
 
   i = vec_len (b->buffer) - n_words;
   _vec_len (b->buffer) = i;
-  return b->buffer + i;
+
+  if (n_bytes < sizeof (uword))
+    {
+      b->cached_word = b->buffer[i];
+      b->n_cached_bytes = sizeof (uword) - n_bytes;
+      return b->cached_bytes;
+    }
+  else
+    return b->buffer + i;
 }
 
 #endif /* included_clib_random_buffer_h */
