@@ -24,6 +24,8 @@
 #include <clib/mheap.h>
 #include <clib/format.h>
 #include <clib/os.h>
+#include <clib/valgrind.h>
+#include <clib/memcheck.h>
 
 /* Per CPU heaps. */
 static void * per_cpu_mheaps[32];
@@ -107,7 +109,13 @@ static void * my_alloc (uword size, uword align, uword align_offset)
       return 0;
     }
   else
-    return heap + offset;
+    {
+#if DEBUG > 0
+      VALGRIND_MALLOCLIKE_BLOCK(heap+offset, mheap_data_bytes(heap,offset),
+                                0, 0);
+#endif
+      return heap + offset;
+    }
 }
 
 static uword my_is_heap_object (void * p)
@@ -138,6 +146,9 @@ static void my_free (void * p)
   ASSERT (my_is_heap_object (p));
 
   mheap_put (heap, (u8 *) p - heap);
+#if DEBUG > 0
+  VALGRIND_FREELIKE_BLOCK(p, 0);
+#endif
 }
 
 static uword my_size (void * p)
