@@ -28,22 +28,6 @@
 #include <clib/serialize.h>
 #include <clib/unix.h>
 
-typedef enum {
-  ELOG_FOO, ELOG_BAR, ELOG_ZAP,
-} my_type_t;
-
-static elog_event_type_t types[] = {
-  [ELOG_FOO] = {
-    .format = "foo %d",
-    .n_data_bytes = sizeof (u32),
-  },
-  [ELOG_BAR] = {
-    .format = "bar %d.%d.%d.%d",
-    .format_args = "0000",
-    .n_data_bytes = 4 * sizeof (u8),
-  },
-};
-
 int test_elog_main (unformat_input_t * input)
 {
   clib_error_t * error = 0;
@@ -95,8 +79,18 @@ int test_elog_main (unformat_input_t * input)
   else
 #endif /* CLIB_UNIX */
     {
+      static elog_event_type_t foo_type = {
+	.format = "foo %d",
+	.n_data_bytes = sizeof (u32),
+      };
+      static elog_event_type_t bar_type = {
+	.format = "bar %d.%d.%d.%d",
+	.format_args = "0000",
+	.n_data_bytes = 4 * sizeof (u8),
+      };
+
       elog_init (em, max_events);
-      type = elog_register_event_types (em, types, ARRAY_LEN (types));
+      elog_enable_disable (em, 1);
 
       for (i = 0; i < n_iter; i++)
 	{
@@ -107,10 +101,10 @@ int test_elog_main (unformat_input_t * input)
 	  for (j = 0; j < n; j++)
 	    sum += random_u32 (&seed);
 
-	  elog_data (em, type + ELOG_FOO, sum);
-
+	  elog (em, &foo_type, sum);
+	  
 	  {
-	    u8 * d = elog (em, type + ELOG_BAR);
+	    u8 * d = elog_data (em, &bar_type);
 	    d[0] = i + 0;
 	    d[1] = i + 1;
 	    d[2] = i + 2;

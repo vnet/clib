@@ -316,9 +316,6 @@ static inline void dealloc_elt (void * v, heap_elt_t * e)
     combine_free_blocks (v, p, n);
 }
 
-/* Heap vector elements are always cache aligned. */
-#define HEAP_DATA_ALIGN (CLIB_CACHE_LINE_BYTES)
-
 void * _heap_alloc (void * v,
 		    uword size,
 		    uword align,

@@ -111,6 +111,9 @@ void timing_wheel_delete (timing_wheel_t * w, u32 user_data);
 /* Advance wheel and return any expired user data in vector. */
 u32 * timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_user_data);
 
+/* Returns upper-bound for time offset in clock cycles of next expiring element. */
+u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w, u64 current_cpu_time);
+
 /* Format a timing wheel. */
 format_function_t format_timing_wheel;
 

@@ -48,6 +48,7 @@
 #define included_heap_h
 
 #include <clib/clib.h>
+#include <clib/cache.h>
 #include <clib/hash.h>
 #include <clib/format.h>
 #include <clib/bitmap.h>
@@ -117,11 +118,14 @@ typedef struct {
 #define HEAP_IS_STATIC (1)
 } heap_t;
 
+/* Start of heap elements is always cache aligned. */
+#define HEAP_DATA_ALIGN (CLIB_CACHE_LINE_BYTES)
+
 static always_inline heap_t * heap_header (void * v)
-{ return vec_header (v, sizeof (heap_t)); }
+{ return vec_header_ha (v, sizeof (heap_t), HEAP_DATA_ALIGN); }
 
 static always_inline uword heap_header_bytes ()
-{ return vec_header_bytes_ha (sizeof (heap_t), /* align */ 0); }
+{ return vec_header_bytes_ha (sizeof (heap_t), HEAP_DATA_ALIGN); }
 
 static always_inline void heap_dup_header (heap_t * old, heap_t * new)
 {

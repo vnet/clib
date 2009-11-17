@@ -267,7 +267,7 @@ delete_user_data (timing_wheel_elt_t * elts, u32 user_data)
 /* Insert user data on wheel at given CPU time stamp. */
 void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
 {
-  /* Un-do previous delete if present. */
+  /* Remove previously deleted elements. */
   if (elt_is_deleted (w, user_data))
     {
       timing_wheel_level_t * l;
@@ -306,6 +306,29 @@ void timing_wheel_delete (timing_wheel_t * w, u32 user_data)
   hash_set1 (w->deleted_user_data_hash, user_data);
 }
 
+/* Returns upper-bound for time offset in clock cycles of next expiring element. */
+u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w, u64 current_cpu_time)
+{
+  timing_wheel_level_t * l;
+  uword li, wi, wi_non_empty, rtime, d;
+
+  li = get_level_and_relative_time (w, current_cpu_time, &rtime);
+  for (l = w->levels + li; l < vec_end (w->levels); l++)
+    {
+      if (clib_bitmap_is_zero (l->occupancy_bitmap))
+	continue;
+
+      wi_non_empty = clib_bitmap_first_set (l->occupancy_bitmap);
+      wi = rtime_to_wheel_index (w, l - w->levels, rtime);
+
+      /* Number of bins in the future. */
+      d = (wi - wi_non_empty) & w->bins_per_wheel_mask;
+      return (u64) (d + 1) << (u64) (w->log2_clocks_per_bin + li*w->log2_bins_per_wheel);
+    }
+
+  return ~0ULL;
+}
+
 static always_inline void
 insert_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
 {
@@ -330,10 +353,11 @@ validate_expired_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
     }
 }
 
-static u32 * advance_level (timing_wheel_t * w,
-			    uword level_index,
-			    uword wheel_index,
-			    u32 * expired_user_data)
+static u32 *
+advance_level (timing_wheel_t * w,
+	       uword level_index,
+	       uword wheel_index,
+	       u32 * expired_user_data)
 {
   timing_wheel_level_t * level = vec_elt_at_index (w->levels, level_index);
   timing_wheel_elt_t * e;
@@ -355,7 +379,7 @@ static u32 * advance_level (timing_wheel_t * w,
 
   /* Adjust for deleted elts. */
   if (j < e_len)
-    _vec_len (x) -= e_len - j;
+    _vec_len (expired_user_data) -= e_len - j;
 
   free_elt_vector (w, e);
 
