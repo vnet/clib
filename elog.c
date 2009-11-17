@@ -164,12 +164,12 @@ static uword elog_ievent_range (elog_main_t * em, uword * lo)
   /* Ring never wrapped? */
   if (i <= (u64) ring_len)
     {
-      *lo = 0;
+      if (lo) *lo = 0;
       return i;
     }
   else
     {
-      *lo = elog_next_ievent_index (em, i);
+      if (lo) *lo = elog_next_ievent_index (em, i);
       return ring_len;
     }
 }
@@ -283,38 +283,39 @@ void
 serialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
-  uword i, j, n;
+  uword i, n;
 
   serialize_cstring (m, elog_serialize_magic);
 
-  serialize_integer (m, vec_len (em->ievent_ring), sizeof (u32));
-  serialize (m, serialize_64, &em->n_total_ievents);
+  serialize_integer (m, em->ievent_ring_size, sizeof (u32));
+  serialize (m, serialize_64, em->n_total_ievents);
   serialize (m, serialize_f64, em->cpu_timer.seconds_per_clock);
 
   vec_serialize (m, em->event_types, serialize_elog_type);
 
-  n = elog_ievent_range (em, &j);
-  for (i = 0; i < n; i++, j = elog_next_ievent_index (em, j))
-    serialize (m, serialize_elog_ievent, &em->ievent_ring[j]);
+  n = elog_ievent_range (em, 0);
+  for (i = 0; i < n; i++)
+    serialize (m, serialize_elog_ievent, &em->ievent_ring[i]);
 }
 
 void
 unserialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
-  u32 i, n_ievents;
+  uword i, n;
 
   unserialize_check_magic (m, elog_serialize_magic,
 			   strlen (elog_serialize_magic));
 
-  unserialize_integer (m, &n_ievents, sizeof (n_ievents));
-  elog_init (em, n_ievents);
+  unserialize_integer (m, &em->ievent_ring_size, sizeof (em->ievent_ring_size));
+  elog_init (em, em->ievent_ring_size);
 
   unserialize (m, unserialize_64, &em->n_total_ievents);
   unserialize (m, unserialize_f64, &em->cpu_timer.seconds_per_clock);
 
   vec_unserialize (m, &em->event_types, unserialize_elog_type);
 
-  for (i = 0; i < n_ievents; i++)
+  n = elog_ievent_range (em, 0);
+  for (i = 0; i < n; i++)
     unserialize (m, unserialize_elog_ievent, &em->ievent_ring[i]);
 }
