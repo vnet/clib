@@ -80,7 +80,7 @@ int test_elog_main (unformat_input_t * input)
 #endif /* CLIB_UNIX */
     {
       static elog_event_type_t foo_type = {
-	.format = "foo %d",
+	.format = "foo 0x%x",
 	.n_data_bytes = sizeof (u32),
       };
       static elog_event_type_t bar_type = {

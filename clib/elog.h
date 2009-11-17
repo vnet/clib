@@ -42,7 +42,7 @@ typedef union {
     /* Time difference in clock cycles from last event collected. */
     u32 dt_lo;
 
-    /* Up to 8 bytes of event data. */
+    /* Up to 8 bytes of event data.  8 byte aligned. */
     u32 data[2];
   };
 
@@ -110,15 +110,18 @@ typedef struct {
      time difference between current and previous events. */
   u64 cpu_time_last_event;
 
-  /* Vector of ievents (circular buffer). */
-  elog_ievent_t * ievents;
+  /* Vector of ievents (circular buffer).  Power of 2 size. */
+  elog_ievent_t * ievent_ring;
 
-  /* Current index in event buffer. */
-  u32 ievent_index;
+  /* Total number of ievents inserted into buffer. */
+  u64 n_total_ievents;
 
-  /* Number of events = number of ievents - n_long_ievents
-     since long events take up 2 ievents. */
-  u32 n_long_ievents;
+  /* When count reaches limit logging is disabled.  This is
+     used for event triggers. */
+  u64 n_total_ievents_disable_limit;
+
+  /* Power of 2 number of elements in circular buffer. */
+  u32 ievent_ring_size;
 
   /* Set/unset to globally enable/disable logging of events. */
   u32 is_enabled;
@@ -133,14 +136,22 @@ typedef struct {
   elog_event_t * events;
 } elog_main_t;
 
-/* Number of real events in log: total short form - # long form. */
-static always_inline u32
-elog_n_events_from_ievents (elog_main_t * em)
-{ return em->ievent_index - em->n_long_ievents; }
-
 static always_inline void
 elog_enable_disable (elog_main_t * em, int is_enabled)
 { em->is_enabled = is_enabled; }
+
+/* Disable logging after specified number of ievents have been logged.
+   This is used as a "debug trigger" when a certain event has occurred.
+   Events will be logged both before and after the "event" but the
+   event will not be lost as long as N < RING_SIZE. */
+static always_inline void
+elog_disable_after_events (elog_main_t * em, uword n)
+{ em->n_total_ievents_disable_limit = em->n_total_ievents + n; }
+
+/* Signal a trigger. */
+static always_inline void
+elog_disable_trigger (elog_main_t * em)
+{ em->n_total_ievents_disable_limit = em->n_total_ievents + em->ievent_ring_size / 2; }
 
 /* External function to register types. */
 word elog_event_type_register (elog_main_t * em, elog_event_type_t * t);
@@ -158,12 +169,14 @@ elog_event_data (elog_main_t * em,
 {
   elog_ievent_t * e;
   i64 dt;
-  u32 i = em->ievent_index;
-  word type_index = t->type_index_plus_one - 1;
-  uword tt, is_long_form;
+  word type_index = (word) t->type_index_plus_one - 1;
+  uword i, tt, is_long_form;
 
   if (PREDICT_FALSE (type_index < 0))
     type_index = elog_event_type_register (em, t);
+
+  ASSERT (type_index < vec_len (em->event_types));
+  ASSERT (track < (1 << 15));
 
   /* Return the user dummy memory to scribble data into. */
   if (PREDICT_FALSE (! em->is_enabled))
@@ -173,14 +186,15 @@ elog_event_data (elog_main_t * em,
   ASSERT (dt >= 0);
   em->cpu_time_last_event = cpu_time;
 
-  e = vec_elt_at_index (em->ievents, i);
+  ASSERT (is_pow2 (em->ievent_ring_size));
 
-  ASSERT (type_index < vec_len (em->event_types));
-  ASSERT (track < (1 << 15));
+  e = vec_elt_at_index (em->ievent_ring,
+			em->n_total_ievents & (em->ievent_ring_size - 1));
 
   e->dt_lo = dt;
   is_long_form = e->dt_lo != dt || n_data_bytes > sizeof (e->data);
 
+  /* Encode type track and long/short form flag. */
   tt = type_index + (track << 16);
   e->type_and_track = is_long_form ? ~tt : tt;
 
@@ -189,8 +203,11 @@ elog_event_data (elog_main_t * em,
 
   /* Circular buffer indexing. For long form events (2 slots) at end of
      circular buffer we reserve an extra slot. */
-  i += 1 + is_long_form;
-  i = i >= vec_len (em->ievents) ? 0 : i;
+  em->n_total_ievents += 1 + (is_long_form && e + 1 - em->ievent_ring < em->ievent_ring_size);
+
+  /* Keep logging enabled as long as we are below trigger limit. */
+  ASSERT (em->n_total_ievents_disable_limit != 0);
+  em->is_enabled &= em->n_total_ievents < em->n_total_ievents_disable_limit;
 
   /* Return user data for caller to fill in. */
   return e->data;

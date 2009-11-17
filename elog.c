@@ -124,15 +124,17 @@ u8 * format_elog_event (u8 * s, va_list * va)
 
 void elog_alloc (elog_main_t * em, u32 n_ievents)
 {
-  if (em->ievents)
-    vec_free_aligned (em->ievents, CLIB_CACHE_LINE_BYTES);
+  if (em->ievent_ring)
+    vec_free_aligned (em->ievent_ring, CLIB_CACHE_LINE_BYTES);
   
+  n_ievents = max_pow2 (n_ievents);
+
   /* Leave an empty ievent at end so we can always speculatively write
      and event there (possibly a long form event). */
-  vec_resize_aligned (em->ievents, n_ievents + 1, CLIB_CACHE_LINE_BYTES);
+  vec_resize_aligned (em->ievent_ring, n_ievents + 1, CLIB_CACHE_LINE_BYTES);
 
-  /* Set length not including last slot. */
-  _vec_len (em->ievents) = n_ievents;
+  /* Set ring size but don't include last element. */
+  em->ievent_ring_size = n_ievents;
 }
 
 void elog_init (elog_main_t * em, u32 n_events)
@@ -143,48 +145,82 @@ void elog_init (elog_main_t * em, u32 n_events)
     elog_alloc (em, n_events);
 
   clib_time_init (&em->cpu_timer);
+  em->n_total_ievents_disable_limit = ~0ULL;
 }
 
-static always_inline elog_ievent_t *
+static always_inline uword
+elog_next_ievent_index (elog_main_t * em, uword i)
+{
+  ASSERT (i < vec_len (em->ievent_ring));
+  i += 1;
+  return i >= vec_len (em->ievent_ring) ? 0 : i;
+}
+
+static uword elog_ievent_range (elog_main_t * em, uword * lo)
+{
+  uword ring_len = em->ievent_ring_size;
+  u64 i = em->n_total_ievents;
+
+  /* Ring never wrapped? */
+  if (i <= (u64) ring_len)
+    {
+      *lo = 0;
+      return i;
+    }
+  else
+    {
+      *lo = elog_next_ievent_index (em, i);
+      return ring_len;
+    }
+}
+
+static always_inline uword
 elog_ievent_to_event (elog_main_t * em,
-		      elog_ievent_t * i,
+		      elog_ievent_t * ie,
 		      elog_event_t * e,
 		      u64 * elapsed_time_return)
 {
   u64 elapsed_time = *elapsed_time_return;
-  u32 j, is_long;
+  uword i, is_long;
 
-  is_long = elog_ievent_is_long_form (i);
-  e->type = elog_ievent_get_type (i);
-  e->track = elog_ievent_get_track (i);
+  is_long = elog_ievent_is_long_form (ie);
+  e->type = elog_ievent_get_type (ie);
+  e->track = elog_ievent_get_track (ie);
 
-  elapsed_time += i->dt_lo;
+  elapsed_time += ie->dt_lo;
 
-  for (j = 0; j < ARRAY_LEN (i->data); j++)
-    e->data[j] = i->data[j];
+  for (i = 0; i < ARRAY_LEN (ie->data); i++)
+    e->data[i] = ie->data[i];
 
   if (is_long)
     {
-      for (j = 0; j < ARRAY_LEN (i->data_continued); j++)
-	e->data[ARRAY_LEN (i->data) + j] = i[1].data_continued[j];
-      elapsed_time += (u64) i->dt_hi << (u64) 32;
+      for (i = 0; i < ARRAY_LEN (ie->data_continued); i++)
+	e->data[ARRAY_LEN (ie->data) + i] = ie[1].data_continued[i];
+      elapsed_time += (u64) ie[1].dt_hi << (u64) 32;
     }
 
   e->time = elapsed_time * em->cpu_timer.seconds_per_clock;
   *elapsed_time_return = elapsed_time;
-  return i + 1 + is_long;
+
+  return is_long;
 }
 
 void elog_normalize_events (elog_main_t * em)
 {
   u64 elapsed_time = 0;
   elog_event_t * e;
-  elog_ievent_t * i;
+  elog_ievent_t * ie;
+  uword i, j, n, is_long = 0;
 
-  em->events = vec_new (elog_event_t, elog_n_events_from_ievents (em));
-  i = em->ievents;
-  vec_foreach (e, em->events)
-    i = elog_ievent_to_event (em, i, e, &elapsed_time);
+  n = elog_ievent_range (em, &j);
+  for (i = 0; i < n; i += 1 + is_long)
+    {
+      vec_add2 (em->events, e, 1);
+      ie = vec_elt_at_index (em->ievent_ring, j);
+      is_long = elog_ievent_to_event (em, ie, e, &elapsed_time);
+      j += 1 + is_long;
+      j = j >= vec_len (em->ievent_ring) ? 0 : j;
+    }
 }
 
 static void
@@ -247,18 +283,19 @@ void
 serialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
-  u32 i;
+  uword i, j, n;
 
   serialize_cstring (m, elog_serialize_magic);
 
-  serialize_integer (m, em->ievent_index, sizeof (em->ievent_index));
+  serialize_integer (m, vec_len (em->ievent_ring), sizeof (u32));
+  serialize (m, serialize_64, &em->n_total_ievents);
   serialize (m, serialize_f64, em->cpu_timer.seconds_per_clock);
-  serialize_integer (m, em->n_long_ievents, sizeof (em->n_long_ievents));
 
   vec_serialize (m, em->event_types, serialize_elog_type);
 
-  for (i = 0; i < em->ievent_index; i++)
-    serialize (m, serialize_elog_ievent, &em->ievents[i]);
+  n = elog_ievent_range (em, &j);
+  for (i = 0; i < n; i++, j = elog_next_ievent_index (em, j))
+    serialize (m, serialize_elog_ievent, &em->ievent_ring[j]);
 }
 
 void
@@ -273,13 +310,11 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
   unserialize_integer (m, &n_ievents, sizeof (n_ievents));
   elog_init (em, n_ievents);
 
-  em->ievent_index = n_ievents;
-
+  unserialize (m, unserialize_64, &em->n_total_ievents);
   unserialize (m, unserialize_f64, &em->cpu_timer.seconds_per_clock);
-  unserialize_integer (m, &em->n_long_ievents, sizeof (em->n_long_ievents));
 
   vec_unserialize (m, &em->event_types, unserialize_elog_type);
 
   for (i = 0; i < n_ievents; i++)
-    unserialize (m, unserialize_elog_ievent, &em->ievents[i]);
+    unserialize (m, unserialize_elog_ievent, &em->ievent_ring[i]);
 }
