@@ -142,9 +142,24 @@ typedef struct {
   elog_event_t * events;
 } elog_main_t;
 
+static always_inline uword
+elog_n_events_in_buffer (elog_main_t * em)
+{ return clib_max (em->n_total_ievents, em->ievent_ring_size); }
+
+static always_inline uword
+elog_buffer_capacity (elog_main_t * em)
+{ return em->ievent_ring_size; }
+
 static always_inline void
 elog_enable_disable (elog_main_t * em, int is_enabled)
 { em->is_enabled = is_enabled; }
+
+static always_inline void
+elog_reset_buffer (elog_main_t * em)
+{
+  em->n_total_ievents = 0;
+  em->n_total_ievents_disable_limit = ~0ULL;
+}
 
 /* Disable logging after specified number of ievents have been logged.
    This is used as a "debug trigger" when a certain event has occurred.
@@ -176,7 +191,7 @@ elog_event_data (elog_main_t * em,
   elog_ievent_t * e;
   i64 dt;
   word type_index = (word) t->type_index_plus_one - 1;
-  uword i, tt, is_long_form;
+  uword tt, is_long_form;
 
   if (PREDICT_FALSE (type_index < 0))
     type_index = elog_event_type_register (em, t);
@@ -275,9 +290,8 @@ elog_data (elog_main_t * em, elog_event_type_t * t, uword track)
 /* Shorthand with track 0. */
 #define ELOG_DATA(em,f) ELOG_DATA2 (em, f, /* track */ 0)
 
-/* Converts ievents in buffer can be both long and short form to
-   generic events with floating point time. */
-void elog_normalize_events (elog_main_t * em);
+/* Convert ievents to events and return them as a vector. */
+elog_event_t * elog_get_events (elog_main_t * em);
 
 /* Merge two logs. */
 void elog_merge (elog_main_t * dst, elog_main_t * src);
@@ -287,6 +301,8 @@ u8 * format_elog_event (u8 * s, va_list * va);
 
 void serialize_elog_main (serialize_main_t * m, va_list * va);
 void unserialize_elog_main (serialize_main_t * m, va_list * va);
+
+void elog_init (elog_main_t * em, u32 n_ievents);
 
 #ifdef CLIB_UNIX
 static always_inline clib_error_t *

@@ -135,7 +135,7 @@ int test_elog_main (unformat_input_t * input)
     }
 #endif
 
-  elog_normalize_events (em);
+  em->events = elog_get_events (em);
 
   if (verbose)
     {

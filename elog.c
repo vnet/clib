@@ -163,7 +163,7 @@ u8 * format_elog_event (u8 * s, va_list * va)
   return s;
 }
 
-void elog_alloc (elog_main_t * em, u32 n_ievents)
+static void elog_alloc (elog_main_t * em, u32 n_ievents)
 {
   if (em->ievent_ring)
     vec_free_aligned (em->ievent_ring, CLIB_CACHE_LINE_BYTES);
@@ -246,26 +246,24 @@ elog_ievent_to_event (elog_main_t * em,
   return is_long;
 }
 
-void elog_normalize_events (elog_main_t * em)
+elog_event_t * elog_get_events (elog_main_t * em)
 {
   u64 elapsed_time = 0;
-  elog_event_t * e;
+  elog_event_t * e, * es = 0;
   elog_ievent_t * ie;
   uword i, j, n, is_long = 0;
 
   n = elog_ievent_range (em, &j);
   for (i = 0; i < n; i += 1 + is_long)
     {
-      vec_add2 (em->events, e, 1);
+      vec_add2 (es, e, 1);
       ie = vec_elt_at_index (em->ievent_ring, j);
       is_long = elog_ievent_to_event (em, ie, e, &elapsed_time);
       j += 1 + is_long;
       j = j >= vec_len (em->ievent_ring) ? 0 : j;
     }
 
-  vec_free (em->ievent_ring);
-  em->n_total_ievents = 0;
-  em->n_total_ievents_disable_limit = ~0ULL;
+  return es;
 }
 
 void elog_merge (elog_main_t * dst, elog_main_t * src)
@@ -274,7 +272,7 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
   elog_event_t * e;
   uword l;
 
-  elog_normalize_events (src);
+  src->events = elog_get_events (src);
 
   l = vec_len (dst->events);
   vec_add (dst->events, src->events, vec_len (src->events));
