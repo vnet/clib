@@ -90,7 +90,11 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
   t = em->event_types + l;
 
   /* Make copies of strings for hashing etc. */
-  t->format = format (0, "%s%c", t->format, 0);
+  if (t->function)
+    t->format = format (0, "%s %s%c", t->function, t->format, 0);
+  else
+    t->format = format (0, "%s%c", t->format, 0);
+
   t->format_args = format (0, "%s%c", t->format_args, 0);
 
   new_event_type (em, l);

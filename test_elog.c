@@ -94,10 +94,9 @@ int test_elog_main (unformat_input_t * input)
   else
 #endif /* CLIB_UNIX */
     {
-      static elog_event_type_t foo_type = {
-	.format = "foo 0x%x",
-      };
-      static elog_event_type_t bar_type = {
+      ELOG_TYPE_XF (foo);
+      ELOG_TYPE_XF (zap);
+      ELOG_TYPE_DECLARE (bar) = {
 	.format = "bar %d.%d.%d.%d",
 	.format_args = "0000",
 	.n_data_bytes = 4 * sizeof (u8),
@@ -115,10 +114,11 @@ int test_elog_main (unformat_input_t * input)
 	  for (j = 0; j < n; j++)
 	    sum += random_u32 (&seed);
 
-	  elog (em, &foo_type, sum);
+	  ELOG (em, foo, sum);
+	  ELOG (em, zap, sum + 1);
 	  
 	  {
-	    u8 * d = elog_data (em, &bar_type);
+	    u8 * d = ELOG_DATA (em, bar);
 	    d[0] = i + 0;
 	    d[1] = i + 1;
 	    d[2] = i + 2;

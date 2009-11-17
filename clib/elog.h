@@ -98,6 +98,9 @@ typedef struct {
      E.g. "22" => event data is 2 32 bit numbers. */
   char * format_args;
 
+  /* Function name generating event. */
+  char * function;
+
   /* Negative type index assigned to this type.
      This is used to mark type as seen. */
   u32 type_index_plus_one;
@@ -228,16 +231,49 @@ elog (elog_main_t * em, elog_event_type_t * t, u32 data)
   d[0] = data;
 }
 
-/* Most common form: log a single 32 bit datum. */
 static always_inline void *
-elog_data (elog_main_t * em, elog_event_type_t * t)
+elog_data (elog_main_t * em, elog_event_type_t * t, uword track)
 {
   return elog_event_data (em,
 			  t,
 			  clib_cpu_time_now (),
-			  /* track */ 0,
+			  track,
 			  t->n_data_bytes);
 }
+
+/* Macro shorthands for generating/declaring events. */
+#define __ELOG_TYPE_VAR(f) __elog_type_##f
+
+#define ELOG_TYPE_DECLARE(f) static elog_event_type_t __ELOG_TYPE_VAR(f)
+
+#define ELOG_TYPE_DECLARE_HELPER(f,fmt,func)		\
+  static elog_event_type_t __ELOG_TYPE_VAR(f) = {	\
+    .format = fmt,					\
+    .function = func,					\
+  }
+
+#define ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt) \
+  ELOG_TYPE_DECLARE_HELPER (f, fmt, (char *) __FUNCTION__)
+#define ELOG_TYPE_DECLARE_FORMAT(f,fmt) \
+  ELOG_TYPE_DECLARE_HELPER (f, fmt, 0)
+
+/* Shorthands with and without __FUNCTION__.
+   D for decimal; X for hex.  F for __FUNCTION__. */
+#define ELOG_TYPE_D(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " %d")
+#define ELOG_TYPE_X(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " 0x%x")
+#define ELOG_TYPE_DF(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " %d")
+#define ELOG_TYPE_XF(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " 0x%x")
+#define ELOG_TYPE_FD(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " %d")
+#define ELOG_TYPE_FX(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " 0x%x")
+
+/* Log 32 bits of data. */
+#define ELOG(em,f,data) elog (em, &__ELOG_TYPE_VAR(f), data)
+
+/* Return data pointer to fill in. */
+#define ELOG_DATA2(em,f,track) elog_data (em, &__ELOG_TYPE_VAR(f), track)
+
+/* Shorthand with track 0. */
+#define ELOG_DATA(em,f) ELOG_DATA2 (em, f, /* track */ 0)
 
 /* Converts ievents in buffer can be both long and short form to
    generic events with floating point time. */
