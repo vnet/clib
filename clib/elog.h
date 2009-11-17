@@ -129,6 +129,9 @@ typedef struct {
   /* Vector of event types. */
   elog_event_type_t * event_types;
 
+  /* Hash table mapping type format to type index. */
+  uword * event_type_by_format;
+
   /* Place holder for CPU clock frequency. */
   clib_time_t cpu_timer;
 
@@ -240,10 +243,42 @@ elog_data (elog_main_t * em, elog_event_type_t * t)
    generic events with floating point time. */
 void elog_normalize_events (elog_main_t * em);
 
+/* Merge two logs. */
+void elog_merge (elog_main_t * dst, elog_main_t * src);
+
 /* 2 arguments elog_main_t and elog_event_t to format. */
 u8 * format_elog_event (u8 * s, va_list * va);
 
 void serialize_elog_main (serialize_main_t * m, va_list * va);
 void unserialize_elog_main (serialize_main_t * m, va_list * va);
+
+#ifdef CLIB_UNIX
+static always_inline clib_error_t *
+elog_write_file (elog_main_t * em, char * unix_file)
+{
+  serialize_main_t m;
+  clib_error_t * error;
+
+  if ((error = serialize_open_unix_file (&m, unix_file)))
+    return error;
+  if ((error = serialize (&m, serialize_elog_main, em)))
+    return error;
+  return serialize_close (&m);
+}
+
+static always_inline clib_error_t *
+elog_read_file (elog_main_t * em, char * unix_file)
+{
+  serialize_main_t m;
+  clib_error_t * error;
+
+  if ((error = unserialize_open_unix_file (&m, unix_file)))
+    return error;
+  if ((error = unserialize (&m, unserialize_elog_main, em)))
+    return error;
+  return unserialize_close (&m);
+}
+
+#endif /* CLIB_UNIX */
 
 #endif /* included_clib_elog_h */

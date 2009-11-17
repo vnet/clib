@@ -34,7 +34,7 @@ int test_elog_main (unformat_input_t * input)
   u32 i, type, n_iter, seed, max_events;
   elog_main_t _em, * em = &_em;
   u32 verbose;
-  char * dump_file, * load_file;
+  char * dump_file, * load_file, * merge_file, ** merge_files;
 
   n_iter = 100;
   max_events = 100000;
@@ -42,6 +42,7 @@ int test_elog_main (unformat_input_t * input)
   verbose = 0;
   dump_file = 0;
   load_file = 0;
+  merge_files = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "iter %d", &n_iter))
@@ -52,6 +53,9 @@ int test_elog_main (unformat_input_t * input)
 	;
       else if (unformat (input, "load %s", &load_file))
 	;
+      else if (unformat (input, "merge %s", &merge_file))
+	vec_add1 (merge_files, merge_file);
+
       else if (unformat (input, "verbose %=", &verbose, 1))
 	;
       else if (unformat (input, "max-events %d", &max_events))
@@ -67,21 +71,31 @@ int test_elog_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (load_file)
     {
-      serialize_main_t m;
-
-      if ((error = unserialize_open_unix_file (&m, load_file)))
-	goto done;
-      if ((error = unserialize (&m, unserialize_elog_main, em)))
-	goto done;
-      if ((error = unserialize_close (&m)))
+      if (error = elog_read_file (em, load_file))
 	goto done;
     }
+
+  else if (merge_files)
+    {
+      uword i;
+      elog_main_t * m, * ems;
+
+      vec_clone (ems, merge_files);
+
+      elog_init (em, max_events);
+      for (i = 0; i < vec_len (ems); i++)
+	{
+	  if ((error = elog_read_file (&ems[i], merge_files[i])))
+	    goto done;
+	  elog_merge (em, &ems[i]);
+	}
+    }
+
   else
 #endif /* CLIB_UNIX */
     {
       static elog_event_type_t foo_type = {
 	.format = "foo 0x%x",
-	.n_data_bytes = sizeof (u32),
       };
       static elog_event_type_t bar_type = {
 	.format = "bar %d.%d.%d.%d",
@@ -116,13 +130,7 @@ int test_elog_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (dump_file)
     {
-      serialize_main_t m;
-
-      if ((error = serialize_open_unix_file (&m, dump_file)))
-	goto done;
-      if ((error = serialize (&m, serialize_elog_main, em)))
-	goto done;
-      if ((error = serialize_close (&m)))
+      if (error = elog_write_file (em, dump_file))
 	goto done;
     }
 #endif

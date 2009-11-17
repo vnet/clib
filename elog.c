@@ -25,9 +25,38 @@
 #include <clib/cache.h>
 #include <clib/error.h>
 #include <clib/format.h>
+#include <clib/hash.h>
 
 /* Dummy events for data to be written to when logging is disabled. */
 elog_ievent_t elog_dummy_ievents[2];
+
+static void new_event_type (elog_main_t * em, uword i)
+{
+  elog_event_type_t * t = vec_elt_at_index (em->event_types, i);
+
+  if (! em->event_type_by_format)
+    em->event_type_by_format = hash_create_vec (/* size */ 0, sizeof (u8), sizeof (uword));
+
+  hash_set_mem (em->event_type_by_format, t->format, i);
+}
+
+static uword
+find_or_create_type (elog_main_t * em, elog_event_type_t * t)
+{
+  uword * p = hash_get_mem (em->event_type_by_format, t->format);
+  uword i;
+
+  if (p)
+    i = p[0];
+  else
+    {
+      i = vec_len (em->event_types);
+      vec_add1 (em->event_types, t[0]);
+      new_event_type (em, i);
+    }
+
+  return i;
+}
 
 /* External function to register types. */
 word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
@@ -58,7 +87,15 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 
   vec_add1 (em->event_types, t[0]);
 
-  return l;
+  t = em->event_types + l;
+
+  /* Make copies of strings for hashing etc. */
+  t->format = format (0, "%s%c", t->format, 0);
+  t->format_args = format (0, "%s%c", t->format_args, 0);
+
+  new_event_type (em, l);
+
+ return l;
 }
 
 u8 * format_elog_event (u8 * s, va_list * va)
@@ -221,6 +258,32 @@ void elog_normalize_events (elog_main_t * em)
       j += 1 + is_long;
       j = j >= vec_len (em->ievent_ring) ? 0 : j;
     }
+
+  vec_free (em->ievent_ring);
+  em->n_total_ievents = 0;
+  em->n_total_ievents_disable_limit = ~0ULL;
+}
+
+void elog_merge (elog_main_t * dst, elog_main_t * src)
+{
+  uword ti;
+  elog_event_t * e;
+  uword l;
+
+  elog_normalize_events (src);
+
+  l = vec_len (dst->events);
+  vec_add (dst->events, src->events, vec_len (src->events));
+  for (e = dst->events + l; e < vec_end (dst->events); e++)
+    {
+      elog_event_type_t * t = vec_elt_at_index (src->event_types, e->type);
+
+      /* Re-map type from src -> dst. */
+      e->type = find_or_create_type (dst, t);
+    }
+
+  /* Sort events by increasing time. */
+  vec_sort (dst->events, e1, e2, e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
 }
 
 static void
@@ -248,7 +311,7 @@ unserialize_elog_ievent (serialize_main_t * m, va_list * va)
 }
 
 static void
-serialize_elog_type (serialize_main_t * m, va_list * va)
+serialize_elog_event_type (serialize_main_t * m, va_list * va)
 {
   elog_event_type_t * t = va_arg (*va, elog_event_type_t *);
   int n = va_arg (*va, int);
@@ -263,7 +326,7 @@ serialize_elog_type (serialize_main_t * m, va_list * va)
 }
 
 static void
-unserialize_elog_type (serialize_main_t * m, va_list * va)
+unserialize_elog_event_type (serialize_main_t * m, va_list * va)
 {
   elog_event_type_t * t = va_arg (*va, elog_event_type_t *);
   int n = va_arg (*va, int);
@@ -291,7 +354,9 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   serialize (m, serialize_64, em->n_total_ievents);
   serialize (m, serialize_f64, em->cpu_timer.seconds_per_clock);
 
-  vec_serialize (m, em->event_types, serialize_elog_type);
+  vec_serialize (m, em->event_types, serialize_elog_event_type);
+  for (i = 0; i < vec_len (em->event_types); i++)
+    new_event_type (em, i);
 
   n = elog_ievent_range (em, 0);
   for (i = 0; i < n; i++)
@@ -313,7 +378,7 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
   unserialize (m, unserialize_64, &em->n_total_ievents);
   unserialize (m, unserialize_f64, &em->cpu_timer.seconds_per_clock);
 
-  vec_unserialize (m, &em->event_types, unserialize_elog_type);
+  vec_unserialize (m, &em->event_types, unserialize_elog_event_type);
 
   n = elog_ievent_range (em, 0);
   for (i = 0; i < n; i++)
