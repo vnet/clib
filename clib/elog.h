@@ -144,7 +144,7 @@ typedef struct {
 
 static always_inline uword
 elog_n_events_in_buffer (elog_main_t * em)
-{ return clib_max (em->n_total_ievents, em->ievent_ring_size); }
+{ return clib_min (em->n_total_ievents, em->ievent_ring_size); }
 
 static always_inline uword
 elog_buffer_capacity (elog_main_t * em)
@@ -190,18 +190,19 @@ elog_event_data (elog_main_t * em,
 {
   elog_ievent_t * e;
   i64 dt;
-  word type_index = (word) t->type_index_plus_one - 1;
+  word type_index;
   uword tt, is_long_form;
 
+  /* Return the user dummy memory to scribble data into. */
+  if (PREDICT_FALSE (! em->is_enabled))
+    return elog_dummy_ievents[0].data;
+
+  type_index = (word) t->type_index_plus_one - 1;
   if (PREDICT_FALSE (type_index < 0))
     type_index = elog_event_type_register (em, t);
 
   ASSERT (type_index < vec_len (em->event_types));
   ASSERT (track < (1 << 15));
-
-  /* Return the user dummy memory to scribble data into. */
-  if (PREDICT_FALSE (! em->is_enabled))
-    return elog_dummy_ievents[0].data;
 
   dt = cpu_time - em->cpu_time_last_event;
   ASSERT (dt >= 0);
