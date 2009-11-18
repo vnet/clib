@@ -129,6 +129,9 @@ typedef struct {
   /* Set/unset to globally enable/disable logging of events. */
   u32 is_enabled;
 
+  /* Dummy ievents to use when logger is disabled. */
+  elog_ievent_t dummy_ievents[2];
+
   /* Vector of event types. */
   elog_event_type_t * event_types;
 
@@ -177,8 +180,6 @@ elog_disable_trigger (elog_main_t * em)
 /* External function to register types. */
 word elog_event_type_register (elog_main_t * em, elog_event_type_t * t);
 
-extern elog_ievent_t elog_dummy_ievents[2];
-
 /* Add an event to the log.  Returns a pointer to the
    data for caller to write into. */
 static always_inline void *
@@ -195,7 +196,7 @@ elog_event_data (elog_main_t * em,
 
   /* Return the user dummy memory to scribble data into. */
   if (PREDICT_FALSE (! em->is_enabled))
-    return elog_dummy_ievents[0].data;
+    return em->dummy_ievents[0].data;
 
   type_index = (word) t->type_index_plus_one - 1;
   if (PREDICT_FALSE (type_index < 0))

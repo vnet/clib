@@ -27,9 +27,6 @@
 #include <clib/format.h>
 #include <clib/hash.h>
 
-/* Dummy events for data to be written to when logging is disabled. */
-elog_ievent_t elog_dummy_ievents[2];
-
 static void new_event_type (elog_main_t * em, uword i)
 {
   elog_event_type_t * t = vec_elt_at_index (em->event_types, i);
@@ -357,8 +354,6 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   serialize (m, serialize_f64, em->cpu_timer.seconds_per_clock);
 
   vec_serialize (m, em->event_types, serialize_elog_event_type);
-  for (i = 0; i < vec_len (em->event_types); i++)
-    new_event_type (em, i);
 
   n = elog_ievent_range (em, 0);
   for (i = 0; i < n; i++)
@@ -381,6 +376,8 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
   unserialize (m, unserialize_f64, &em->cpu_timer.seconds_per_clock);
 
   vec_unserialize (m, &em->event_types, unserialize_elog_event_type);
+  for (i = 0; i < vec_len (em->event_types); i++)
+    new_event_type (em, i);
 
   n = elog_ievent_range (em, 0);
   for (i = 0; i < n; i++)
