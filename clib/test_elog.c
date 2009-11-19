@@ -102,6 +102,7 @@ int test_elog_main (unformat_input_t * input)
 	.format_args = "0000",
 	.n_data_bytes = 4 * sizeof (u8),
       };
+      ELOG_TRACK (mumble);
 
       elog_init (em, max_events);
       elog_enable_disable (em, 1);
@@ -119,7 +120,7 @@ int test_elog_main (unformat_input_t * input)
 	  ELOG (em, zap, sum + 1);
 	  
 	  {
-	    u8 * d = ELOG_DATA (em, bar);
+	    u8 * d = ELOG_TRACK_DATA (em, bar, mumble);
 	    d[0] = i + 0;
 	    d[1] = i + 1;
 	    d[2] = i + 2;
@@ -142,7 +143,8 @@ int test_elog_main (unformat_input_t * input)
       es = elog_get_events (em);
       vec_foreach (e, es)
 	{
-	  clib_warning ("%.9f: %U\n", e->time,
+	  clib_warning ("%18.9f: %12U %U\n", e->time,
+			format_elog_track, em, e,
 			format_elog_event, em, e);
 	}
     }

@@ -26,15 +26,16 @@
 #include <clib/error.h>
 #include <clib/format.h>
 #include <clib/hash.h>
+#include <clib/math.h>
 
 /* Non-inline version. */
 void *
 elog_event_data (elog_main_t * em,
-		 elog_event_type_t * t,
+		 elog_event_type_t * type,
+		 elog_track_t * track,
 		 u64 cpu_time,
-		 uword track,
 		 uword n_data_bytes)
-{ return elog_event_data_inline (em, t, cpu_time, track, n_data_bytes); }
+{ return elog_event_data_inline (em, type, track, cpu_time, n_data_bytes); }
 
 static void new_event_type (elog_main_t * em, uword i)
 {
@@ -108,6 +109,23 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
  return l;
 }
 
+word elog_track_register (elog_main_t * em, elog_track_t * t)
+{
+  word l = vec_len (em->tracks);
+
+  t->track_index_plus_one = 1 + l;
+
+  ASSERT (t->name);
+
+  vec_add1 (em->tracks, t[0]);
+
+  t = em->tracks + l;
+
+  t->name = format (0, "%s%c", t->name, 0);
+
+ return l;
+}
+
 u8 * format_elog_event (u8 * s, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
@@ -169,6 +187,14 @@ u8 * format_elog_event (u8 * s, va_list * va)
   return s;
 }
 
+u8 * format_elog_track (u8 * s, va_list * va)
+{
+  elog_main_t * em = va_arg (*va, elog_main_t *);
+  elog_event_t * e = va_arg (*va, elog_event_t *);
+  elog_track_t * t = vec_elt_at_index (em->tracks, e->track);
+  return format (s, "%s", t->name);
+}
+
 static void elog_alloc (elog_main_t * em, u32 n_ievents)
 {
   if (em->ievent_ring)
@@ -187,7 +213,7 @@ static void elog_alloc (elog_main_t * em, u32 n_ievents)
 void elog_init (elog_main_t * em, u32 n_events)
 {
   u64 cpu_time_now;
-  f64 unix_time_now;
+  u32 os_time_now_sec, os_time_now_nsec;
 
   memset (em, 0, sizeof (em[0]));
 
@@ -198,20 +224,41 @@ void elog_init (elog_main_t * em, u32 n_events)
 
   em->n_total_ievents_disable_limit = ~0ULL;
 
+  /* Make track 0. */
+  em->default_track.name = "default";
+  elog_track_register (em, &em->default_track);
+
 #ifdef CLIB_UNIX
-  {
-    struct timespec t;
-    clock_gettime (CLOCK_REALTIME, &t);
-    cpu_time_now = clib_cpu_time_now ();
-    unix_time_now = t.tv_sec + 1e-9*t.tv_nsec;
-  }
+  cpu_time_now = clib_cpu_time_now ();
+  if (1)
+    {
+      struct timespec ts;
+      clock_gettime (CLOCK_REALTIME, &ts);
+      os_time_now_sec = ts.tv_sec;
+      os_time_now_nsec = ts.tv_nsec;
+    }
+  else
+    {
+      u64 ct[3];
+      struct timeval tv[2];
+      ct[0] = cpu_time_now;
+      gettimeofday (&tv[0], 0);
+      ct[1] = clib_cpu_time_now ();
+      gettimeofday (&tv[1], 0);
+      ct[2] = clib_cpu_time_now ();
+      clib_warning ("dt %Ld %Ld", ct[1] - ct[0], ct[2] - ct[1]);
+      os_time_now_sec = tv[1].tv_sec;
+      os_time_now_nsec = 1e3*tv[1].tv_usec;
+      cpu_time_now = ct[1];
+    }
 #else
   cpu_time_now = clib_cpu_time_now ();
-  unix_time_now = cpu_time_now * em->cpu_timer.seconds_per_clock;
+  os_time_now_sec = os_time_now_nsec = 0;
 #endif
 
   em->cpu_time_stamp_at_init = cpu_time_now;
-  em->unix_time_stamp_at_init = unix_time_now;
+  em->os_time_stamp_at_init_sec = os_time_now_sec;
+  em->os_time_stamp_at_init_nsec = os_time_now_nsec;
 }
 
 static always_inline uword
@@ -319,19 +366,35 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
 
   /* Adjust event times for relative starting times of event streams. */
   {
-    f64 dt = src->unix_time_stamp_at_init - dst->unix_time_stamp_at_init;
+    long double dt_os, dt_cpu;
+    f64 dt_diff, dt_event;
 
-    if (dt > 0)
+    dt_os = (i64) src->os_time_stamp_at_init_sec - (i64) dst->os_time_stamp_at_init_sec;
+    dt_os += 1e-9*((i64) src->os_time_stamp_at_init_nsec - (i64) dst->os_time_stamp_at_init_nsec);
+
+    /* See if src/dst came from same time source. */
+    if (src->cpu_timer.clocks_per_second == dst->cpu_timer.clocks_per_second)
+      dt_cpu = (((i64) src->cpu_time_stamp_at_init - (i64) dst->cpu_time_stamp_at_init)
+		* src->cpu_timer.seconds_per_clock);
+
+    dt_diff = fabs ((f64) dt_cpu - (f64) dt_os);
+    dt_event = 0;
+    if (dt_diff > 1e-5)
+      dt_event = dt_os;
+
+    clib_warning ("dt cpu %.9g os %.9g diff %.9g", (f64) dt_cpu, (f64) dt_os, (f64) dt_diff);
+
+    if (dt_event > 0)
       {
 	/* Src started after dst. */
 	for (e = dst->events + l; e < vec_end (dst->events); e++)
-	  e->time += dt;
+	  e->time += dt_event;
       }
     else
       {
 	/* Dst started after src. */
 	for (e = dst->events + 0; e < dst->events + l; e++)
-	  e->time += dt;
+	  e->time += dt_event;
       }
   }
 
@@ -393,6 +456,30 @@ unserialize_elog_event_type (serialize_main_t * m, va_list * va)
     }
 }
 
+static void
+serialize_elog_track (serialize_main_t * m, va_list * va)
+{
+  elog_track_t * t = va_arg (*va, elog_track_t *);
+  int n = va_arg (*va, int);
+  int i;
+  for (i = 0; i < n; i++)
+    {
+      serialize_cstring (m, t[i].name);
+    }
+}
+
+static void
+unserialize_elog_track (serialize_main_t * m, va_list * va)
+{
+  elog_track_t * t = va_arg (*va, elog_track_t *);
+  int n = va_arg (*va, int);
+  int i;
+  for (i = 0; i < n; i++)
+    {
+      unserialize_cstring (m, &t[i].name);
+    }
+}
+
 static char * elog_serialize_magic = "elog v0";
 
 void
@@ -407,9 +494,11 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   serialize (m, serialize_64, em->n_total_ievents);
   serialize (m, serialize_f64, em->cpu_timer.seconds_per_clock);
   serialize (m, serialize_64, em->cpu_time_stamp_at_init);
-  serialize (m, serialize_f64, em->unix_time_stamp_at_init);
+  serialize_integer (m, em->os_time_stamp_at_init_sec, sizeof (em->os_time_stamp_at_init_sec));
+  serialize_integer (m, em->os_time_stamp_at_init_nsec, sizeof (em->os_time_stamp_at_init_nsec));
 
   vec_serialize (m, em->event_types, serialize_elog_event_type);
+  vec_serialize (m, em->tracks, serialize_elog_track);
 
   n = elog_ievent_range (em, 0);
   for (i = 0; i < n; i++)
@@ -431,11 +520,14 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
   unserialize (m, unserialize_64, &em->n_total_ievents);
   unserialize (m, unserialize_f64, &em->cpu_timer.seconds_per_clock);
   unserialize (m, unserialize_64, &em->cpu_time_stamp_at_init);
-  unserialize (m, unserialize_f64, &em->unix_time_stamp_at_init);
+  unserialize_integer (m, &em->os_time_stamp_at_init_sec, sizeof (em->os_time_stamp_at_init_sec));
+  unserialize_integer (m, &em->os_time_stamp_at_init_nsec, sizeof (em->os_time_stamp_at_init_nsec));
 
   vec_unserialize (m, &em->event_types, unserialize_elog_event_type);
   for (i = 0; i < vec_len (em->event_types); i++)
     new_event_type (em, i);
+
+  vec_unserialize (m, &em->tracks, unserialize_elog_track);
 
   n = elog_ievent_range (em, 0);
   for (i = 0; i < n; i++)
