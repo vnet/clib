@@ -141,10 +141,11 @@ typedef struct {
   /* Place holder for CPU clock frequency. */
   clib_time_t cpu_timer;
 
-  /* Cpu time stamp at init. */
+  /* Cpu time stamp at init.
+     Plus Unix time in seconds since Jan 1 1970.
+     These time stamps allow us to normalize CPU clocks to
+     seconds since the Epoch. */
   u64 cpu_time_stamp_at_init;
-
-  /* Seconds since Jan 1 1970. */
   f64 unix_time_stamp_at_init;
 
   /* Vector of events converted to generic form after collection. */

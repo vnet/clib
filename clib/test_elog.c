@@ -85,9 +85,10 @@ int test_elog_main (unformat_input_t * input)
       elog_init (em, max_events);
       for (i = 0; i < vec_len (ems); i++)
 	{
-	  if ((error = elog_read_file (&ems[i], merge_files[i])))
+	  if ((error = elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
 	    goto done;
-	  elog_merge (em, &ems[i]);
+	  if (i > 0)
+	    elog_merge (em, &ems[i]);
 	}
     }
 
@@ -135,12 +136,11 @@ int test_elog_main (unformat_input_t * input)
     }
 #endif
 
-  em->events = elog_get_events (em);
-
   if (verbose)
     {
-      elog_event_t * e;
-      vec_foreach (e, em->events)
+      elog_event_t * e, * es;
+      es = elog_get_events (em);
+      vec_foreach (e, es)
 	{
 	  clib_warning ("%.9f: %U\n", e->time,
 			format_elog_event, em, e);

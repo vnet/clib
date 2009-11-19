@@ -265,7 +265,10 @@ elog_ievent_to_event (elog_main_t * em,
       elapsed_time += (u64) ie[1].dt_hi << (u64) 32;
     }
 
-  e->time = elapsed_time * em->cpu_timer.seconds_per_clock;
+  /* Convert to time in seconds from epoch Jan 1 1970. */
+  ASSERT (elapsed_time >= em->cpu_time_stamp_at_init);
+  e->time = (elapsed_time - em->cpu_time_stamp_at_init) * em->cpu_timer.seconds_per_clock;
+
   *elapsed_time_return = elapsed_time;
 
   return is_long;
@@ -278,6 +281,9 @@ elog_event_t * elog_get_events (elog_main_t * em)
   elog_ievent_t * ie;
   uword i, j, n, is_long = 0;
 
+  if (em->events)
+    return em->events;
+
   n = elog_ievent_range (em, &j);
   for (i = 0; i < n; i += 1 + is_long)
     {
@@ -288,6 +294,7 @@ elog_event_t * elog_get_events (elog_main_t * em)
       j = j >= vec_len (em->ievent_ring) ? 0 : j;
     }
 
+  em->events = es;
   return es;
 }
 
@@ -297,7 +304,8 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
   elog_event_t * e;
   uword l;
 
-  src->events = elog_get_events (src);
+  elog_get_events (src);
+  elog_get_events (dst);
 
   l = vec_len (dst->events);
   vec_add (dst->events, src->events, vec_len (src->events));
@@ -308,6 +316,24 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
       /* Re-map type from src -> dst. */
       e->type = find_or_create_type (dst, t);
     }
+
+  /* Adjust event times for relative starting times of event streams. */
+  {
+    f64 dt = src->unix_time_stamp_at_init - dst->unix_time_stamp_at_init;
+
+    if (dt > 0)
+      {
+	/* Src started after dst. */
+	for (e = dst->events + l; e < vec_end (dst->events); e++)
+	  e->time += dt;
+      }
+    else
+      {
+	/* Dst started after src. */
+	for (e = dst->events + 0; e < dst->events + l; e++)
+	  e->time += dt;
+      }
+  }
 
   /* Sort events by increasing time. */
   vec_sort (dst->events, e1, e2, e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
