@@ -141,6 +141,12 @@ typedef struct {
   /* Place holder for CPU clock frequency. */
   clib_time_t cpu_timer;
 
+  /* Cpu time stamp at init. */
+  u64 cpu_time_stamp_at_init;
+
+  /* Seconds since Jan 1 1970. */
+  f64 unix_time_stamp_at_init;
+
   /* Vector of events converted to generic form after collection. */
   elog_event_t * events;
 } elog_main_t;
@@ -183,11 +189,11 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t);
 /* Add an event to the log.  Returns a pointer to the
    data for caller to write into. */
 static always_inline void *
-elog_event_data (elog_main_t * em,
-		 elog_event_type_t * t,
-		 u64 cpu_time,
-		 uword track,
-		 uword n_data_bytes)
+elog_event_data_inline (elog_main_t * em,
+			elog_event_type_t * t,
+			u64 cpu_time,
+			uword track,
+			uword n_data_bytes)
 {
   elog_ievent_t * e;
   i64 dt;
@@ -236,26 +242,74 @@ elog_event_data (elog_main_t * em,
   return e->data;
 }
 
+/* External version of inline. */
+void *
+elog_event_data (elog_main_t * em,
+		 elog_event_type_t * t,
+		 u64 cpu_time,
+		 uword track,
+		 uword n_data_bytes);
+
+/* Non-inline version. */
+static always_inline void *
+elog_event_data_not_inline (elog_main_t * em,
+			    elog_event_type_t * t,
+			    u64 cpu_time,
+			    uword track,
+			    uword n_data_bytes)
+{
+  /* Return the user dummy memory to scribble data into. */
+  if (PREDICT_FALSE (! em->is_enabled))
+    return em->dummy_ievents[0].data;
+  return elog_event_data (em, t, cpu_time, track, n_data_bytes);
+}
+
 /* Most common form: log a single 32 bit datum. */
 static always_inline void
 elog (elog_main_t * em, elog_event_type_t * t, u32 data)
 {
-  u32 * d = elog_event_data (em,
-			     t,
-			     clib_cpu_time_now (),
-			     /* track */ 0,
-			     sizeof (d[0]));
+  u32 * d = elog_event_data_not_inline
+    (em,
+     t,
+     clib_cpu_time_now (),
+     /* track */ 0,
+     sizeof (d[0]));
+  d[0] = data;
+}
+
+/* Inline version of above. */
+static always_inline void
+elog_inline (elog_main_t * em, elog_event_type_t * t, u32 data)
+{
+  u32 * d = elog_event_data_inline
+    (em,
+     t,
+     clib_cpu_time_now (),
+     /* track */ 0,
+     sizeof (d[0]));
   d[0] = data;
 }
 
 static always_inline void *
 elog_data (elog_main_t * em, elog_event_type_t * t, uword track)
 {
-  return elog_event_data (em,
-			  t,
-			  clib_cpu_time_now (),
-			  track,
-			  t->n_data_bytes);
+  return elog_event_data_not_inline
+    (em,
+     t,
+     clib_cpu_time_now (),
+     track,
+     t->n_data_bytes);
+}
+
+static always_inline void *
+elog_data_inline (elog_main_t * em, elog_event_type_t * t, uword track)
+{
+  return elog_event_data_inline
+    (em,
+     t,
+     clib_cpu_time_now (),
+     track,
+     t->n_data_bytes);
 }
 
 /* Macro shorthands for generating/declaring events. */
@@ -285,12 +339,15 @@ elog_data (elog_main_t * em, elog_event_type_t * t, uword track)
 
 /* Log 32 bits of data. */
 #define ELOG(em,f,data) elog (em, &__ELOG_TYPE_VAR(f), data)
+#define ELOG_INLINE(em,f,data) elog_inline (em, &__ELOG_TYPE_VAR(f), data)
 
 /* Return data pointer to fill in. */
 #define ELOG_DATA2(em,f,track) elog_data (em, &__ELOG_TYPE_VAR(f), track)
+#define ELOG_DATA2_INLINE(em,f,track) elog_data_inline (em, &__ELOG_TYPE_VAR(f), track)
 
 /* Shorthand with track 0. */
 #define ELOG_DATA(em,f) ELOG_DATA2 (em, f, /* track */ 0)
+#define ELOG_DATA_INLINE(em,f) ELOG_DATA2_INLINE (em, f, /* track */ 0)
 
 /* Convert ievents to events and return them as a vector. */
 elog_event_t * elog_get_events (elog_main_t * em);

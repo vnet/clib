@@ -207,10 +207,11 @@ void elog_init (elog_main_t * em, u32 n_events)
   }
 #else
   cpu_time_now = clib_cpu_time_now ();
-  unix_time_now = cpu_time_now;
+  unix_time_now = cpu_time_now * em->cpu_timer.seconds_per_clock;
 #endif
 
-  em->
+  em->cpu_time_stamp_at_init = cpu_time_now;
+  em->unix_time_stamp_at_init = unix_time_now;
 }
 
 static always_inline uword
@@ -379,6 +380,8 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   serialize_integer (m, em->ievent_ring_size, sizeof (u32));
   serialize (m, serialize_64, em->n_total_ievents);
   serialize (m, serialize_f64, em->cpu_timer.seconds_per_clock);
+  serialize (m, serialize_64, em->cpu_time_stamp_at_init);
+  serialize (m, serialize_f64, em->unix_time_stamp_at_init);
 
   vec_serialize (m, em->event_types, serialize_elog_event_type);
 
@@ -401,6 +404,8 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
 
   unserialize (m, unserialize_64, &em->n_total_ievents);
   unserialize (m, unserialize_f64, &em->cpu_timer.seconds_per_clock);
+  unserialize (m, unserialize_64, &em->cpu_time_stamp_at_init);
+  unserialize (m, unserialize_f64, &em->unix_time_stamp_at_init);
 
   vec_unserialize (m, &em->event_types, unserialize_elog_event_type);
   for (i = 0; i < vec_len (em->event_types); i++)
