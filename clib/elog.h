@@ -90,22 +90,33 @@ typedef struct {
 } elog_event_t;
 
 typedef struct {
+  /* Negative type index assigned to this type.
+     This is used to mark type as seen. */
+  u32 type_index_plus_one;
+
+  /* String table as a vector constructed when type is registered. */
+  char ** string_table;
+
   /* Format string. (example: "my-event (%d,%d)"). */
   char * format;
 
   /* Specifies how arguments to format are parsed from event data.
      String of characters '0' '1' or '2' to specify log2 size of data.
+     's' means argument is an index into string table for this type.
      E.g. "22" => event data is 2 32 bit numbers. */
+     
   char * format_args;
 
   /* Function name generating event. */
   char * function;
 
-  /* Negative type index assigned to this type.
-     This is used to mark type as seen. */
-  u32 type_index_plus_one;
-
   u32 n_data_bytes;
+
+  /* Number of elements in string table. */
+  u32 n_strings;
+
+  /* String table for enum/number to string formatting. */
+  char * strings[];
 } elog_event_type_t;
 
 typedef struct {
@@ -116,6 +127,14 @@ typedef struct {
      main structure. */
   u32 track_index_plus_one;
 } elog_track_t;
+
+typedef struct {
+  /* CPU cycle counter. */
+  u64 cpu;
+
+  /* OS timer in nano secs since epoch Jan 1 1970. */
+  u64 os_nsec;
+} elog_time_stamp_t;
 
 typedef struct {
   /* Time stamp of last event.  Used to compute
@@ -156,13 +175,11 @@ typedef struct {
   /* Place holder for CPU clock frequency. */
   clib_time_t cpu_timer;
 
-  /* Cpu time stamp at init.
-     Plus Unix time in seconds and nanoseconds since Jan 1 1970.
-     These time stamps allow us to normalize CPU clocks to
-     seconds since the Epoch. */
-  u64 cpu_time_stamp_at_init;
-  u32 os_time_stamp_at_init_sec;
-  u32 os_time_stamp_at_init_nsec;
+  elog_time_stamp_t init_time, serialize_time;
+
+  /* Use serialize_time and init_time to give estimate for
+     cpu clock frequency. */
+  f64 nsec_per_cpu_clock;
 
   /* Vector of events converted to generic form after collection. */
   elog_event_t * events;

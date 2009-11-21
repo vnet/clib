@@ -34,6 +34,7 @@ int test_elog_main (unformat_input_t * input)
   u32 i, type, n_iter, seed, max_events;
   elog_main_t _em, * em = &_em;
   u32 verbose;
+  f64 min_sample_time;
   char * dump_file, * load_file, * merge_file, ** merge_files;
 
   n_iter = 100;
@@ -43,6 +44,7 @@ int test_elog_main (unformat_input_t * input)
   dump_file = 0;
   load_file = 0;
   merge_files = 0;
+  min_sample_time = 2;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "iter %d", &n_iter))
@@ -59,6 +61,8 @@ int test_elog_main (unformat_input_t * input)
       else if (unformat (input, "verbose %=", &verbose, 1))
 	;
       else if (unformat (input, "max-events %d", &max_events))
+	;
+      else if (unformat (input, "sample-time %f", &min_sample_time))
 	;
       else
 	{
@@ -102,10 +106,23 @@ int test_elog_main (unformat_input_t * input)
 	.format_args = "0000",
 	.n_data_bytes = 4 * sizeof (u8),
       };
+      ELOG_TYPE_DECLARE (fumble) = {
+	.format = "fumble %s",
+	.format_args = "s",
+	.n_strings = 4,
+	.strings = {
+	  "string0",
+	  "string1",
+	  "string2",
+	  "string3",
+	},
+      };
       ELOG_TRACK (mumble);
+      f64 t[2];
 
       elog_init (em, max_events);
       elog_enable_disable (em, 1);
+      t[0] = unix_time_now ();
 
       for (i = 0; i < n_iter; i++)
 	{
@@ -118,6 +135,7 @@ int test_elog_main (unformat_input_t * input)
 
 	  ELOG (em, foo, sum);
 	  ELOG (em, zap, sum + 1);
+	  ELOG (em, fumble, sum & 3);
 	  
 	  {
 	    u8 * d = ELOG_TRACK_DATA (em, bar, mumble);
@@ -127,6 +145,10 @@ int test_elog_main (unformat_input_t * input)
 	    d[3] = i + 3;
 	  }
 	}
+
+      do {
+	t[1] = unix_time_now ();
+      } while (t[1] - t[0] < min_sample_time);
     }
 
 #ifdef CLIB_UNIX

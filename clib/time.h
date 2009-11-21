@@ -132,16 +132,27 @@ void clib_time_init (clib_time_t * c);
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 /* Use 64bit floating point to represent time offset from epoch. */
-static inline f64 unix_time_now (void)
+static always_inline f64 unix_time_now (void)
 {
-  struct timeval tv;
-  gettimeofday (&tv, 0);
-  return tv.tv_sec + 1e-6*tv.tv_usec;
+  /* clock_gettime without indirect syscall uses GLIBC wrappers which
+     we don't want.  Just the bare metal, please. */
+  struct timespec ts;
+  syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
+  return ts.tv_sec + 1e-9*ts.tv_nsec;
 }
 
-static inline f64 unix_usage_now (void)
+/* As above but integer number of nano-seconds. */
+static always_inline u64 unix_time_now_nsec (void)
+{
+  struct timespec ts;
+  syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
+  return 1e9*ts.tv_sec + ts.tv_nsec;
+}
+
+static always_inline f64 unix_usage_now (void)
 {
   struct rusage u;
   getrusage (RUSAGE_SELF, &u);
@@ -149,7 +160,7 @@ static inline f64 unix_usage_now (void)
     + u.ru_stime.tv_sec + 1e-6*u.ru_stime.tv_usec;
 }
 
-static inline void unix_sleep (f64 dt)
+static always_inline void unix_sleep (f64 dt)
 {
   struct timespec t;
   t.tv_sec = dt;
@@ -159,13 +170,16 @@ static inline void unix_sleep (f64 dt)
 
 #else  /* ! CLIB_UNIX */
 
-static inline f64 unix_time_now (void)
+static always_inline f64 unix_time_now (void)
 { return 0; }
 
-static inline f64 unix_usage_now (void)
+static always_inline u64 unix_time_now_nsec (void)
 { return 0; }
 
-static inline void unix_sleep (f64 dt)
+static always_inline f64 unix_usage_now (void)
+{ return 0; }
+
+static always_inline void unix_sleep (f64 dt)
 { }
 
 #endif

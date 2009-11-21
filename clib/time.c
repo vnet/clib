@@ -31,13 +31,6 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
-static inline f64 time_now_unix (void)
-{
-  struct timeval tv;
-  gettimeofday (&tv, 0);
-  return tv.tv_sec + 1e-6*tv.tv_usec;
-}
-
 /* Not very accurate way of determining cpu clock frequency 
    for unix.  Better to use /proc/cpuinfo on linux. */
 static f64 estimate_clock_frequency (void)
@@ -52,10 +45,10 @@ static f64 estimate_clock_frequency (void)
   u64 ifreq, t[2];
 
   t[0] = clib_cpu_time_now ();
-  time_now = time_now_unix ();
+  time_now = unix_time_now ();
   time_limit = time_now + sample_time;
   while (time_now < time_limit)
-    time_now = time_now_unix ();
+    time_now = unix_time_now ();
   t[1] = clib_cpu_time_now ();
 
   freq = (t[1] - t[0]) / sample_time;
@@ -111,6 +104,7 @@ static f64 clock_frequency_from_sys_filesystem (void)
   int fd;
   unformat_input_t input;
 
+  /* Time stamp always runs at max frequency. */
   cpu_freq = 0;
   fd = open ("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", 0);
   if (fd < 0)

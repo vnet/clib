@@ -69,7 +69,7 @@ test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
-test_elog_LDADD =	libclib.la -lpthread -lrt
+test_elog_LDADD =	libclib.la -lpthread
 test_fifo_LDADD =	libclib.la -lpthread
 test_format_LDADD =	libclib.la -lpthread
 test_hash_LDADD =	libclib.la -lpthread
