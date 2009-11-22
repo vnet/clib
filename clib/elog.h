@@ -243,8 +243,10 @@ elog_event_data_inline (elog_main_t * em,
   track_index = (word) track->track_index_plus_one - 1;
   if (PREDICT_FALSE ((type_index | track_index) < 0))
     {
-      type_index = elog_event_type_register (em, type);
-      track_index = elog_track_register (em, track);
+      if (type_index < 0)
+	type_index = elog_event_type_register (em, type);
+      if (track_index < 0)
+	track_index = elog_track_register (em, track);
     }
 
   ASSERT (type_index < vec_len (em->event_types));
