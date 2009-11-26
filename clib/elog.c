@@ -89,9 +89,29 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
       for (i = 0; i < n_percent; i++)
 	vec_add1 (t->format_args, '2');
       vec_add1 (t->format_args, 0);
-
-      t->n_data_bytes = n_percent * sizeof (u32);
     }    
+
+  /* Compute number of data bytes for this event type. */
+  {
+    uword i, n;
+
+    n = 0;
+    for (i = 0; t->format_args[i] != 0; i++)
+      {
+	switch (t->format_args[i])
+	  {
+	  case '0': n += sizeof (u8); break;
+	  case '1': n += sizeof (u16); break;
+	  case '2': n += sizeof (u32); break;
+	  case '3': n += sizeof (u64); break;
+	  case 'e': n += sizeof (f32); break;
+	  case 'f': n += sizeof (f64); break;
+	  case 's': n += sizeof (u32); break;
+	  default: os_panic ();
+	  }
+      }
+    t->n_data_bytes = n;
+  }
 
   vec_add1 (em->event_types, t[0]);
 
@@ -141,60 +161,149 @@ u8 * format_elog_event (u8 * s, va_list * va)
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t;
   char * p;
-  u32 i, n_args, args[sizeof (e->data)];
-  u8 is_string[sizeof (e->data)];
+  u32 i, n_args;
   void * d = (u8 *) e->data;
+
+  typedef union {
+    f64 F;
+    u64 L;
+    u32 I;
+    void * P;
+  } arg_t;
+  enum { F, L, I, P } type;
+  arg_t args[sizeof (e->data)];
+  uword args_types;
 
   t = vec_elt_at_index (em->event_types, e->type);
 
   p = t->format_args;
-  i = 0;
+  n_args = 0;
+  args_types = 0;
   while (*p)
     {
-      u32 x = 0;
+      arg_t a;
       switch (*p)
 	{
-	case '0': x = *( u8 *) d; d += 1; break;
-	case '1': x = *(u16 *) d; d += 2; break;
+	case '0':
+	  type = I;
+	  a.I = ((u8 *) d)[0];
+	  d += sizeof (u8);
+	  break;
+
+	case '1':
+	  type = I;
+	  a.I = clib_mem_unaligned (d, u16);
+	  d += sizeof (u16);
+	  break;
+
+	case '2':
+	  type = I;
+	  a.I = clib_mem_unaligned (d, u32);
+	  d += sizeof (u32);
+	  break;
+
+	case '3':
+	  type = L;
+	  a.L = clib_mem_unaligned (d, u64);
+	  d += sizeof (u64);
+	  break;
+
+	case 'e':
+	  type = F;
+	  a.F = clib_mem_unaligned (d, f32);
+	  d += sizeof (f32);
+	  break;
+
+	case 'f':
+	  type = F;
+	  a.F = clib_mem_unaligned (d, f64);
+	  d += sizeof (f64);
+	  break;
+
 	case 's':
-	case '2': x = *(u32 *) d; d += 4; break;
-	default: ASSERT (0); break;
+	  type = P;
+	  i = clib_mem_unaligned (d, u32);
+	  d += sizeof (u32);
+	  a.P = vec_elt (t->string_table, i);
+	  break;
+
+	default:
+	  ASSERT (0);
+	  break;
 	}
 
-      is_string[i] = *p == 's';
-      args[i] = x;
+      args_types |= type << (n_args * 2);
+      args[n_args] = a;
+      n_args++;
       p++;
-      i++;
     }
-  n_args = i;
-
-  if (n_args == 1 && is_string[0])
-    return format (s, t->format, vec_elt (t->string_table, args[0]));
-
-#define _(i) args[i]
 
   switch (n_args)
     {
     case 1:
-      s = format (s, t->format, _ (0));
+      switch (args_types)
+	{
+	case F: return format (s, t->format, args[0].F);
+	case L: return format (s, t->format, args[0].L);
+	case I: return format (s, t->format, args[0].I);
+	case P: return format (s, t->format, args[0].P);
+	}
       break;
+
     case 2:
-      s = format (s, t->format, _ (0), _ (1));
+#define _(a0,a1)						\
+  case (((a0) << 0) | ((a1) << 2)):				\
+    return format (s, t->format, args[0].a0, args[1].a1)
+
+      switch (args_types)
+	{
+	  _ (F, F); _ (F, L); _ (F, I); _ (F, P);
+	  _ (L, F); _ (L, L); _ (L, I); _ (L, P);
+	  _ (I, F); _ (I, L); _ (I, I); _ (I, P);
+	  _ (P, F); _ (P, L); _ (P, I); _ (P, P);
+	}
       break;
+#undef _
+
     case 3:
-      s = format (s, t->format, _ (0), _ (1), _ (2));
+#define _(a0,a1,a2)							\
+  case (((a0) << 0) | ((a1) << 2) | ((a2) << 4)):			\
+    return format (s, t->format, args[0].a0, args[1].a1, args[2].a2)
+
+#define __(a...)					\
+    _ (F, F, a); _ (F, L, a); _ (F, I, a); _ (F, P, a);	\
+    _ (L, F, a); _ (L, L, a); _ (L, I, a); _ (L, P, a);	\
+    _ (I, F, a); _ (I, L, a); _ (I, I, a); _ (I, P, a);	\
+    _ (P, F, a); _ (P, L, a); _ (P, I, a); _ (P, P, a);
+
+      switch (args_types)
+	{
+	  __ (F);
+	  __ (L);
+	  __ (I);
+	  __ (P);
+	}
       break;
+#undef _
+
     case 4:
-      s = format (s, t->format, _ (0), _ (1), _ (2), _ (3));
-      break;
-    case 5:
-      s = format (s, t->format, _ (0), _ (1), _ (2), _ (3), _ (4));
-      break;
-    case 6:
-      s = format (s, t->format, _ (0), _ (1), _ (2), _ (3), _ (4), _ (5));
+#define _(a0,a1,a2,a3)							\
+  case (((a0) << 0) | ((a1) << 2) | ((a2) << 4) | ((a3) << 6)):		\
+    return format (s, t->format, args[0].a0, args[1].a1, args[2].a2, args[3].a3)
+
+#define ___(a) __ (F, a); __ (L, a); __ (I, a); __ (P, a);
+      switch (args_types)
+	{
+	  ___ (F);
+	  ___ (L);
+	  ___ (I);
+	  ___ (P);
+	}
       break;
 
 #undef _
+#undef __
+#undef ___
 
     default:
       ASSERT (0);
@@ -436,27 +545,143 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
 }
 
 static void
-serialize_elog_ievent (serialize_main_t * m, va_list * va)
+serialize_elog_event (serialize_main_t * m, va_list * va)
 {
-  elog_ievent_t * e = va_arg (*va, elog_ievent_t *);
+  elog_main_t * em = va_arg (*va, elog_main_t *);
+  elog_event_t * e = va_arg (*va, elog_event_t *);
+  elog_event_type_t * t = vec_elt_at_index (em->event_types, e->type);
+  u8 * d = e->data;
   u32 i;
 
-  serialize_integer (m, e->type_and_track, sizeof (e->type_and_track));
-  serialize_integer (m, e->dt_lo, sizeof (e->dt_lo));
-  for (i = 0; i < ARRAY_LEN (e->data); i++)
-    serialize_integer (m, e->data[i], sizeof (e->data[i]));
+  serialize_integer (m, e->type, sizeof (e->type));
+  serialize_integer (m, e->track, sizeof (e->track));
+  serialize (m, serialize_f64, e->time);
+
+  for (i = 0; t->format_args[i] != 0; i++)
+    {
+      switch (t->format_args[i])
+	{
+	case '0':;
+	  serialize_integer (m, d[0], sizeof (u8));
+	  d += sizeof (u8);
+	  break;
+
+	case '1':;
+	  serialize_integer (m, clib_mem_unaligned (d, u16), sizeof (u16));
+	  d += sizeof (u16);
+	  break;
+
+	case '2':
+	case 's':
+	  serialize_integer (m, clib_mem_unaligned (d, u32), sizeof (u32));
+	  d += sizeof (u32);
+	  break;
+
+	case '3':;
+	  serialize (m, serialize_64, clib_mem_unaligned (d, u64));
+	  d += sizeof (u64);
+	  break;
+
+	case 'e':
+	  serialize (m, serialize_f32, clib_mem_unaligned (d, f32));
+	  d += sizeof (f32);
+	  break;
+
+	case 'f':
+	  serialize (m, serialize_f64, clib_mem_unaligned (d, f64));
+	  d += sizeof (f64);
+	  break;
+
+	default:
+	  os_panic ();
+	}
+    }
 }
 
 static void
-unserialize_elog_ievent (serialize_main_t * m, va_list * va)
+unserialize_elog_event (serialize_main_t * m, va_list * va)
 {
-  elog_ievent_t * e = va_arg (*va, elog_ievent_t *);
+  elog_main_t * em = va_arg (*va, elog_main_t *);
+  elog_event_t * e = va_arg (*va, elog_event_t *);
+  elog_event_type_t * t;
   u32 i;
+  u8 * d;
 
-  unserialize_integer (m, &e->type_and_track, sizeof (e->type_and_track));
-  unserialize_integer (m, &e->dt_lo, sizeof (e->dt_lo));
-  for (i = 0; i < ARRAY_LEN (e->data); i++)
-    unserialize_integer (m, &e->data[i], sizeof (e->data[i]));
+  {
+    u32 tmp[2];
+
+    unserialize_integer (m, &tmp[0], sizeof (e->type));
+    unserialize_integer (m, &tmp[1], sizeof (e->track));
+
+    e->type = tmp[0];
+    e->track = tmp[1];
+
+    /* Make sure it fits. */
+    ASSERT (e->type == tmp[0]);
+    ASSERT (e->track == tmp[1]);
+  }
+
+  t = vec_elt_at_index (em->event_types, e->type);
+
+  unserialize (m, unserialize_f64, &e->time);
+
+  d = e->data;
+  for (i = 0; t->format_args[i] != 0; i++)
+    {
+      switch (t->format_args[i])
+	{
+	  u32 tmp;
+
+	case '0':;
+	  unserialize_integer (m, &tmp, sizeof (u8));
+	  d[0] = tmp;
+	  d += sizeof (u8);
+	  break;
+
+	case '1':;
+	  unserialize_integer (m, &tmp, sizeof (u16));
+	  clib_mem_unaligned (d, u16) = tmp;
+	  d += sizeof (u16);
+	  break;
+
+	case '2':
+	case 's':
+	  unserialize_integer (m, &tmp, sizeof (u32));
+	  clib_mem_unaligned (d, u32) = tmp;
+	  d += sizeof (u32);
+	  break;
+
+	case '3':;
+	  {
+	    u64 x;
+	    unserialize (m, unserialize_64, &x);
+	    clib_mem_unaligned (d, u64) = x;
+	    d += sizeof (u64);
+	  }
+	  break;
+
+	case 'e':
+	  {
+	    f32 x;
+	    unserialize (m, unserialize_f32, &x);
+	    clib_mem_unaligned (d, f32) = x;
+	    d += sizeof (f32);
+	  }
+	  break;
+
+	case 'f':
+	  {
+	    f64 x;
+	    unserialize (m, unserialize_f64, &x);
+	    clib_mem_unaligned (d, f64) = x;
+	    d += sizeof (f64);
+	  }
+	  break;
+
+	default:
+	  os_panic ();
+	}
+    }
 }
 
 static void
@@ -542,6 +767,7 @@ void
 serialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
+  elog_event_t * e;
   uword i, n;
 
   serialize_cstring (m, elog_serialize_magic);
@@ -556,9 +782,10 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   vec_serialize (m, em->event_types, serialize_elog_event_type);
   vec_serialize (m, em->tracks, serialize_elog_track);
 
-  n = elog_ievent_range (em, 0);
-  for (i = 0; i < n; i++)
-    serialize (m, serialize_elog_ievent, &em->ievent_ring[i]);
+  elog_get_events (em);
+  serialize_integer (m, vec_len (em->events), sizeof (u32));
+  vec_foreach (e, em->events)
+    serialize (m, serialize_elog_event, em, e);
 }
 
 void
@@ -585,7 +812,13 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
 
   vec_unserialize (m, &em->tracks, unserialize_elog_track);
 
-  n = elog_ievent_range (em, 0);
-  for (i = 0; i < n; i++)
-    unserialize (m, unserialize_elog_ievent, &em->ievent_ring[i]);
+  {
+    u32 ne;
+    elog_event_t * e;
+
+    unserialize_integer (m, &ne, sizeof (u32));
+    vec_resize (em->events, ne);
+    vec_foreach (e, em->events)
+      unserialize (m, unserialize_elog_event, em, e);
+  }
 }

@@ -104,11 +104,10 @@ int test_elog_main (unformat_input_t * input)
       ELOG_TYPE_DECLARE (bar) = {
 	.format = "bar %d.%d.%d.%d",
 	.format_args = "0000",
-	.n_data_bytes = 4 * sizeof (u8),
       };
       ELOG_TYPE_DECLARE (fumble) = {
-	.format = "fumble %s",
-	.format_args = "s",
+	.format = "fumble %s %.9f",
+	.format_args = "se",
 	.n_strings = 4,
 	.strings = {
 	  "string0",
@@ -135,7 +134,15 @@ int test_elog_main (unformat_input_t * input)
 
 	  ELOG (em, foo, sum);
 	  ELOG (em, zap, sum + 1);
-	  ELOG (em, fumble, sum & 3);
+
+	  {
+	    struct { u32 string_index; f32 f; } * d;
+
+	    d = ELOG_DATA (em, fumble);
+
+	    d->string_index = sum & 3;
+	    d->f = (sum & 0xff) / 128.;
+	  }
 	  
 	  {
 	    u8 * d = ELOG_TRACK_DATA (em, bar, mumble);
