@@ -307,26 +307,36 @@ void timing_wheel_delete (timing_wheel_t * w, u32 user_data)
 }
 
 /* Returns upper-bound for time offset in clock cycles of next expiring element. */
-u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w, u64 current_cpu_time)
+u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w,
+					 u64 current_cpu_time,
+					 uword max_level)
 {
   timing_wheel_level_t * l;
   uword li, wi, wi_non_empty, rtime, d;
+  u64 dt = 0ULL;
+
+  if (max_level >= vec_len (w->levels))
+    max_level = vec_len (w->levels) - 1;
 
   li = get_level_and_relative_time (w, current_cpu_time, &rtime);
-  for (l = w->levels + li; l < vec_end (w->levels); l++)
+
+  for (; li <= max_level; li++)
     {
-      if (clib_bitmap_is_zero (l->occupancy_bitmap))
-	continue;
+      l = vec_elt_at_index (w->levels, li);
+      if (! clib_bitmap_is_zero (l->occupancy_bitmap))
+	{
+	  wi_non_empty = clib_bitmap_first_set (l->occupancy_bitmap);
+	  wi = rtime_to_wheel_index (w, l - w->levels, rtime);
 
-      wi_non_empty = clib_bitmap_first_set (l->occupancy_bitmap);
-      wi = rtime_to_wheel_index (w, l - w->levels, rtime);
-
-      /* Number of bins in the future. */
-      d = (wi - wi_non_empty) & w->bins_per_wheel_mask;
-      return (u64) (d + 1) << (u64) (w->log2_clocks_per_bin + li*w->log2_bins_per_wheel);
+	  /* Number of bins in the future. */
+	  d = (wi - wi_non_empty) & w->bins_per_wheel_mask;
+	  dt += d << li*w->log2_bins_per_wheel;
+	  return dt;
+	}
+      dt += 1 << (li + 1)*w->log2_bins_per_wheel;
     }
 
-  return ~0ULL;
+  return dt << (u64) w->log2_clocks_per_bin;
 }
 
 static always_inline void

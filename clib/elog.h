@@ -43,7 +43,7 @@ typedef union {
     u32 dt_lo;
 
     /* Up to 8 bytes of event data.  8 byte aligned. */
-    u32 data[2];
+    u8 data[8];
   };
 
   /* Long form additions which follow short form. */
@@ -51,7 +51,7 @@ typedef union {
     /* 12 more bytes of data for long form.  Must be first
        so that first and second ievent data fields are next
        to each other in memory. */
-    u32 data_continued[3];
+    u8 data_continued[12];
 
     /* High 32 bits of time difference. */
     u32 dt_hi;
@@ -83,7 +83,7 @@ typedef struct {
   u16 type, track;
 
   /* Up to 20 bytes of data for this event. */
-  u32 data[5];
+  u8 data[20];
 
   /* Absolute time of this event in seconds. */
   f64 time;
@@ -101,10 +101,11 @@ typedef struct {
   char * format;
 
   /* Specifies how arguments to format are parsed from event data.
-     String of characters '0' '1' or '2' to specify log2 size of data.
+     String of characters '0' '1' or '2' '3' to specify log2 size of data
+     (e.g. for u8, u16, u32 or u64),
      's' means argument is an index into string table for this type.
-     E.g. "22" => event data is 2 32 bit numbers. */
-     
+     'e' is a float,
+     'f' is a double. */
   char * format_args;
 
   /* Function name generating event. */
