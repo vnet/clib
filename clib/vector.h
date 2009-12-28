@@ -49,34 +49,34 @@
 
 #ifdef CLIB_HAVE_VEC64
 /* Signed 64 bit. */
-typedef char i8x8 _vector_size (8);
-typedef short i16x4 _vector_size (8);
-typedef int i32x2 _vector_size (8);
+typedef i8 i8x8 _vector_size (8);
+typedef i16 i16x4 _vector_size (8);
+typedef i32 i32x2 _vector_size (8);
 
 /* Unsigned 64 bit. */
-typedef unsigned char u8x8 _vector_size (8);
-typedef unsigned short u16x4 _vector_size (8);
-typedef unsigned int u32x2 _vector_size (8);
+typedef u8 u8x8 _vector_size (8);
+typedef u16 u16x4 _vector_size (8);
+typedef u32 u32x2 _vector_size (8);
 
 /* Floating point 64 bit. */
-typedef float f32x2 _vector_size (8);
+typedef f32 f32x2 _vector_size (8);
 #endif /* CLIB_HAVE_VEC64 */
 
 #ifdef CLIB_HAVE_VEC128
 /* Signed 128 bit. */
-typedef char i8x16 _vector_size (16);
-typedef short i16x8 _vector_size (16);
-typedef int i32x4 _vector_size (16);
-typedef long long i64x2 _vector_size (16);
+typedef i8 i8x16 _vector_size (16);
+typedef i16 i16x8 _vector_size (16);
+typedef i32 i32x4 _vector_size (16);
+typedef i64 i64x2 _vector_size (16);
 
 /* Unsigned 128 bit. */
-typedef unsigned char u8x16 _vector_size (16);
-typedef unsigned short u16x8 _vector_size (16);
-typedef unsigned int u32x4 _vector_size (16);
-typedef unsigned long long u64x2 _vector_size (16);
+typedef u8 u8x16 _vector_size (16);
+typedef u16 u16x8 _vector_size (16);
+typedef u32 u32x4 _vector_size (16);
+typedef u64 u64x2 _vector_size (16);
 
-typedef float f32x4 _vector_size (16);
-typedef double f64x2 _vector_size (16);
+typedef f32 f32x4 _vector_size (16);
+typedef f64 f64x2 _vector_size (16);
 #endif /* CLIB_HAVE_VEC128 */
 
 /* Vector word sized types. */
