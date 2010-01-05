@@ -201,6 +201,8 @@ elog_enable_disable (elog_main_t * em, int is_enabled)
 static always_inline void
 elog_reset_buffer (elog_main_t * em)
 {
+  /* Reset clock so next recorded (e.g. first) event gets time relative to 0. */
+  em->cpu_time_last_event = 0;
   em->n_total_ievents = 0;
   em->n_total_ievents_disable_limit = ~0ULL;
 }
@@ -368,6 +370,7 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 
 /* Shorthands with and without __FUNCTION__.
    D for decimal; X for hex.  F for __FUNCTION__. */
+#define ELOG_TYPE(f,fmt) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt)
 #define ELOG_TYPE_D(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " %d")
 #define ELOG_TYPE_X(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " 0x%x")
 #define ELOG_TYPE_DF(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " %d")
@@ -393,8 +396,12 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 #define ELOG_DATA(em,f) elog_data (em, &__ELOG_TYPE_VAR (f), &em->default_track)
 #define ELOG_DATA_INLINE(em,f) elog_data_inline (em, &__ELOG_TYPE_VAR (f), &em->default_track)
 
-/* Convert ievents to events and return them as a vector. */
+/* Convert ievents to events and return them as a vector.
+   Sets em->events to resulting vector. */
 elog_event_t * elog_get_events (elog_main_t * em);
+
+/* Convert ievents to events and return them as a vector with no side effects. */
+elog_event_t * elog_peek_events (elog_main_t * em);
 
 /* Merge two logs. */
 void elog_merge (elog_main_t * dst, elog_main_t * src);

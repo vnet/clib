@@ -454,15 +454,12 @@ elog_ievent_to_event (elog_main_t * em,
   return is_long;
 }
 
-elog_event_t * elog_get_events (elog_main_t * em)
+elog_event_t * elog_peek_events (elog_main_t * em)
 {
   u64 elapsed_time = 0;
   elog_event_t * e, * es = 0;
   elog_ievent_t * ie;
   uword i, j, n, is_long = 0;
-
-  if (em->events)
-    return em->events;
 
   n = elog_ievent_range (em, &j);
   for (i = 0; i < n; i += 1 + is_long)
@@ -474,8 +471,14 @@ elog_event_t * elog_get_events (elog_main_t * em)
       j = j >= vec_len (em->ievent_ring) ? 0 : j;
     }
 
-  em->events = es;
   return es;
+}
+
+elog_event_t * elog_get_events (elog_main_t * em)
+{
+  if (! em->events)
+    em->events = elog_peek_events (em);
+  return em->events;
 }
 
 void elog_merge (elog_main_t * dst, elog_main_t * src)
