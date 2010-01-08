@@ -31,7 +31,7 @@
 #include <clib/serialize.h>
 #include <clib/time.h>		/* for clib_cpu_time_now */
 
-typedef union {
+typedef struct{
   union {
     /* Time difference in clock cycles from last event collected. */
     u64 dt;
