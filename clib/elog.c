@@ -321,21 +321,6 @@ u8 * format_elog_track (u8 * s, va_list * va)
   return format (s, "%s", t->name);
 }
 
-static void elog_alloc (elog_main_t * em, u32 n_ievents)
-{
-  if (em->ievent_ring)
-    vec_free_aligned (em->ievent_ring, CLIB_CACHE_LINE_BYTES);
-  
-  n_ievents = max_pow2 (n_ievents);
-
-  /* Leave an empty ievent at end so we can always speculatively write
-     and event there (possibly a long form event). */
-  vec_resize_aligned (em->ievent_ring, n_ievents + 1, CLIB_CACHE_LINE_BYTES);
-
-  /* Set ring size but don't include last element. */
-  em->ievent_ring_size = n_ievents;
-}
-
 static void elog_time_now (elog_time_stamp_t * et)
 {
   u64 cpu_time_now, os_time_now_nsec;
@@ -376,6 +361,19 @@ elog_nsec_per_clock (elog_main_t * em)
 					    &em->init_time));
 }
 
+static void elog_alloc (elog_main_t * em, u32 n_events)
+{
+  if (em->event_ring)
+    vec_free_aligned (em->event_ring, CLIB_CACHE_LINE_BYTES);
+  
+  /* Ring size must be a power of 2. */
+  em->event_ring_size = n_events = max_pow2 (n_events);
+
+  /* Leave an empty ievent at end so we can always speculatively write
+     and event there (possibly a long form event). */
+  vec_resize_aligned (em->event_ring, n_events, CLIB_CACHE_LINE_BYTES);
+}
+
 void elog_init (elog_main_t * em, u32 n_events)
 {
   memset (em, 0, sizeof (em[0]));
@@ -385,7 +383,7 @@ void elog_init (elog_main_t * em, u32 n_events)
 
   clib_time_init (&em->cpu_timer);
 
-  em->n_total_ievents_disable_limit = ~0ULL;
+  em->n_total_events_disable_limit = ~0ULL;
 
   /* Make track 0. */
   em->default_track.name = "default";
@@ -394,81 +392,46 @@ void elog_init (elog_main_t * em, u32 n_events)
   elog_time_now (&em->init_time);
 }
 
-static always_inline uword
-elog_next_ievent_index (elog_main_t * em, uword i)
+/* Returns number of events in ring and start index. */
+static uword elog_event_range (elog_main_t * em, uword * lo)
 {
-  ASSERT (i < vec_len (em->ievent_ring));
-  i += 1;
-  return i >= vec_len (em->ievent_ring) ? 0 : i;
-}
-
-static uword elog_ievent_range (elog_main_t * em, uword * lo)
-{
-  uword ring_len = em->ievent_ring_size;
-  u64 i = em->n_total_ievents;
+  uword l = em->event_ring_size;
+  u64 i = em->n_total_events;
 
   /* Ring never wrapped? */
-  if (i <= (u64) ring_len)
+  if (i <= (u64) l)
     {
       if (lo) *lo = 0;
       return i;
     }
   else
     {
-      if (lo) *lo = elog_next_ievent_index (em, i);
-      return ring_len;
+      if (lo) *lo = (i + 1) & (l - 1);
+      return l;
     }
-}
-
-static always_inline uword
-elog_ievent_to_event (elog_main_t * em,
-		      elog_ievent_t * ie,
-		      elog_event_t * e,
-		      u64 * elapsed_time_return)
-{
-  u64 elapsed_time = *elapsed_time_return;
-  uword i, is_long;
-
-  is_long = elog_ievent_is_long_form (ie);
-  e->type = elog_ievent_get_type (ie);
-  e->track = elog_ievent_get_track (ie);
-
-  elapsed_time += ie->dt_lo;
-
-  for (i = 0; i < ARRAY_LEN (ie->data); i++)
-    e->data[i] = ie->data[i];
-
-  if (is_long)
-    {
-      for (i = 0; i < ARRAY_LEN (ie->data_continued); i++)
-	e->data[ARRAY_LEN (ie->data) + i] = ie[1].data_continued[i];
-      elapsed_time += (u64) ie[1].dt_hi << (u64) 32;
-    }
-
-  /* Convert to elapsed time from when elog_init was called. */
-  ASSERT (elapsed_time >= em->init_time.cpu);
-  e->time = (elapsed_time - em->init_time.cpu) * em->cpu_timer.seconds_per_clock;
-
-  *elapsed_time_return = elapsed_time;
-
-  return is_long;
 }
 
 elog_event_t * elog_peek_events (elog_main_t * em)
 {
   u64 elapsed_time = 0;
-  elog_event_t * e, * es = 0;
-  elog_ievent_t * ie;
-  uword i, j, n, is_long = 0;
+  elog_event_t * e, * f, * es = 0;
+  uword i, j, n;
 
-  n = elog_ievent_range (em, &j);
-  for (i = 0; i < n; i += 1 + is_long)
+  n = elog_event_range (em, &j);
+  for (i = 0; i < n; i++)
     {
       vec_add2 (es, e, 1);
-      ie = vec_elt_at_index (em->ievent_ring, j);
-      is_long = elog_ievent_to_event (em, ie, e, &elapsed_time);
-      j += 1 + is_long;
-      j = j >= vec_len (em->ievent_ring) ? 0 : j;
+      f = vec_elt_at_index (em->event_ring, j);
+      e[0] = f[0];
+
+      /* Elapsed time in clock ticks. */
+      elapsed_time += e->dt;
+
+      /* Convert to elapsed time from when elog_init was called. */
+      ASSERT (elapsed_time >= em->init_time.cpu);
+      e->time = (elapsed_time - em->init_time.cpu) * em->cpu_timer.seconds_per_clock;
+
+      j = (j + 1) & (em->event_ring_size - 1);
     }
 
   return es;
@@ -775,8 +738,7 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
 
   serialize_cstring (m, elog_serialize_magic);
 
-  serialize_integer (m, em->ievent_ring_size, sizeof (u32));
-  serialize (m, serialize_64, em->n_total_ievents);
+  serialize_integer (m, em->event_ring_size, sizeof (u32));
 
   elog_time_now (&em->serialize_time);
   serialize (m, serialize_elog_time_stamp, &em->serialize_time);
@@ -800,10 +762,8 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
   unserialize_check_magic (m, elog_serialize_magic,
 			   strlen (elog_serialize_magic));
 
-  unserialize_integer (m, &em->ievent_ring_size, sizeof (em->ievent_ring_size));
-  elog_init (em, em->ievent_ring_size);
-
-  unserialize (m, unserialize_64, &em->n_total_ievents);
+  unserialize_integer (m, &em->event_ring_size, sizeof (em->event_ring_size));
+  elog_init (em, em->event_ring_size);
 
   unserialize (m, unserialize_elog_time_stamp, &em->serialize_time);
   unserialize (m, unserialize_elog_time_stamp, &em->init_time);
