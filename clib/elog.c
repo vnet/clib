@@ -406,14 +406,13 @@ static uword elog_event_range (elog_main_t * em, uword * lo)
     }
   else
     {
-      if (lo) *lo = (i + 1) & (l - 1);
+      if (lo) *lo = i & (l - 1);
       return l;
     }
 }
 
 elog_event_t * elog_peek_events (elog_main_t * em)
 {
-  u64 elapsed_time = 0;
   elog_event_t * e, * f, * es = 0;
   uword i, j, n;
 
@@ -424,12 +423,8 @@ elog_event_t * elog_peek_events (elog_main_t * em)
       f = vec_elt_at_index (em->event_ring, j);
       e[0] = f[0];
 
-      /* Elapsed time in clock ticks. */
-      elapsed_time += e->dt;
-
-      /* Convert to elapsed time from when elog_init was called. */
-      ASSERT (elapsed_time >= em->init_time.cpu);
-      e->time = (elapsed_time - em->init_time.cpu) * em->cpu_timer.seconds_per_clock;
+      /* Convert absolute time from cycles to seconds from start. */
+      e->time = (e->time_cycles - em->init_time.cpu) * em->cpu_timer.seconds_per_clock;
 
       j = (j + 1) & (em->event_ring_size - 1);
     }

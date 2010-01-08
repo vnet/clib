@@ -101,10 +101,6 @@ typedef struct {
 } elog_time_stamp_t;
 
 typedef struct {
-  /* Time stamp of last event.  Used to compute
-     time difference between current and previous events. */
-  u64 cpu_time_last_event;
-
   /* Total number of events in buffer (long/short form both count
      as 1 event). */
   u64 n_total_events;
@@ -166,8 +162,6 @@ elog_enable_disable (elog_main_t * em, int is_enabled)
 static always_inline void
 elog_reset_buffer (elog_main_t * em)
 {
-  /* Reset clock so next recorded (e.g. first) event gets time relative to 0. */
-  em->cpu_time_last_event = 0;
   em->n_total_events = 0;
   em->n_total_events_disable_limit = ~0ULL;
 }
@@ -200,7 +194,6 @@ elog_event_data_inline (elog_main_t * em,
 			uword n_data_bytes)
 {
   elog_event_t * e;
-  i64 dt;
   word type_index, track_index;
 
   /* Return the user dummy memory to scribble data into. */
@@ -219,17 +212,12 @@ elog_event_data_inline (elog_main_t * em,
 
   ASSERT (type_index < vec_len (em->event_types));
   ASSERT (track_index < vec_len (em->tracks));
-
-  dt = cpu_time - em->cpu_time_last_event;
-  ASSERT (dt >= 0);
-  em->cpu_time_last_event = cpu_time;
-
   ASSERT (is_pow2 (vec_len (em->event_ring)));
 
   e = vec_elt_at_index (em->event_ring,
 			em->n_total_events & (em->event_ring_size - 1));
 
-  e->dt = dt;
+  e->time_cycles = cpu_time;
   e->type = type_index;
   e->track = track_index;
 
