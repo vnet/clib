@@ -33,8 +33,8 @@
 
 typedef struct{
   union {
-    /* Time difference in clock cycles from last event collected. */
-    u64 dt;
+    /* Absolute time stamp in CPU clock cycles. */
+    u64 time_cycles;
 
     /* Absolute time as floating point number in seconds. */
     f64 time;
