@@ -121,7 +121,7 @@ void os_exit (int code)
 void os_puts (u8 * string, uword string_length, uword is_error)
   __attribute__ ((weak));
 void os_puts (u8 * string, uword string_length, uword is_error)
-{ (void) write (is_error ? 2 : 1, string, string_length); }
+{ int v = write (is_error ? 2 : 1, string, string_length); }
 
 int os_get_cpu_number () __attribute__ ((weak));
 int os_get_cpu_number (void)
