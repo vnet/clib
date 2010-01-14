@@ -152,21 +152,34 @@ test_timing_wheel_main (unformat_input_t * input)
 
     for (iter = 0; iter < tm->n_iter || n_events_in_wheel > 0; iter++)
       {
-	u64 cpu_time;
+	u64 cpu_time, min_next_time[2];
 
 	if (tm->synthetic_time)
 	  cpu_time = iter << w->log2_clocks_per_bin;
 	else
 	  cpu_time = clib_cpu_time_now ();
 
-	expired = timing_wheel_advance (w, cpu_time, expired);
+	_vec_len (expired) = 0;
+	expired = timing_wheel_advance (w, cpu_time, expired, &min_next_time[0]);
 	timing_wheel_validate (w);
 
 	/* Update bitmap of expired events. */
 	if (w->validate)
-	  for (i = 0; i < vec_len (tm->events); i++)
-	    if ((cpu_time >> w->log2_clocks_per_bin) >= (tm->events[i] >> w->log2_clocks_per_bin))
-	      expired_bitmap[0] = clib_bitmap_ori (expired_bitmap[0], i);
+	  {
+	    for (i = 0; i < vec_len (tm->events); i++)
+	      {
+		uword is_expired;
+
+		is_expired = (cpu_time >> w->log2_clocks_per_bin) >= (tm->events[i] >> w->log2_clocks_per_bin);
+		expired_bitmap[0] = clib_bitmap_set (expired_bitmap[0], i, is_expired);
+
+		/* Validate min next time. */
+		if (is_expired)
+		  ASSERT (min_next_time[0] > tm->events[i]);
+		else
+		  ASSERT (min_next_time[0] <= tm->events[i]);
+	      }
+	  }
 
 	n_expired += vec_len (expired);
 	for (i = 0; i < vec_len (expired); i++)
@@ -208,6 +221,15 @@ test_timing_wheel_main (unformat_input_t * input)
 	      ASSERT (is_expired == is_expired_w);
 	    }
 
+	min_next_time[1] = ~0;
+	for (i = 0; i < vec_len (tm->events); i++)
+	  {
+	    if (! clib_bitmap_get (expired_bitmap[1], i))
+	      min_next_time[1] = clib_min (min_next_time[1], tm->events[i]);
+	  }
+	if (min_next_time[0] != min_next_time[1])
+	  clib_error ("min next time wrong 0x%Lx != 0x%Lx", min_next_time[0], min_next_time[1]);
+
 	if (tm->time_per_status_update != 0
 	    && clib_time_now (&tm->time) >= tm->time_next_status_update)
 	  {
@@ -234,7 +256,11 @@ test_timing_wheel_main (unformat_input_t * input)
 	if (iter < tm->n_iter)
 	  {
 	    for (i = 0; i < vec_len (expired); i++)
-	      set_event (tm, expired[i]);
+	      {
+		uword j = expired[i];
+		set_event (tm, j);
+		expired_bitmap[1] = clib_bitmap_andnoti (expired_bitmap[1], j);
+	      }
 	    n_events_in_wheel += vec_len (expired);
 	  }
       }
@@ -273,8 +299,10 @@ test_timing_wheel_main (unformat_input_t * input)
       vec_foreach (f, fs)
 	{
 	  total_fraction += f->fraction;
-	  clib_warning ("%12.4e %.4f%% %.4f%% %Ld",
-			f->dt, f->fraction * 100, total_fraction * 100, f->count);
+	  if (f == fs)
+	    fformat (stdout, "%=12s %=16s %=16s %s\n", "Error max", "Fraction", "Total", "Count");
+	  fformat (stdout, "%12.4e %16.4f%% %16.4f%% %Ld\n",
+		   f->dt, f->fraction * 100, total_fraction * 100, f->count);
 	}
     }
 
