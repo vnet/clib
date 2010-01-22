@@ -240,6 +240,10 @@ u8 * format_elog_event (u8 * s, va_list * va)
 
   switch (n_args)
     {
+    case 0:
+      s = format (s, "%s", t->format);
+      break;
+
     case 1:
       switch (args_types)
 	{
