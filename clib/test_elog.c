@@ -108,8 +108,8 @@ int test_elog_main (unformat_input_t * input)
       ELOG_TYPE_DECLARE (fumble) = {
 	.format = "fumble %s %.9f",
 	.format_args = "se",
-	.n_strings = 4,
-	.strings = {
+	.n_enum_strings = 4,
+	.enum_strings = {
 	  "string0",
 	  "string1",
 	  "string2",

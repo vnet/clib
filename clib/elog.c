@@ -33,9 +33,8 @@ void *
 elog_event_data (elog_main_t * em,
 		 elog_event_type_t * type,
 		 elog_track_t * track,
-		 u64 cpu_time,
-		 uword n_data_bytes)
-{ return elog_event_data_inline (em, type, track, cpu_time, n_data_bytes); }
+		 u64 cpu_time)
+{ return elog_event_data_inline (em, type, track, cpu_time); }
 
 static void new_event_type (elog_main_t * em, uword i)
 {
@@ -75,43 +74,41 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 
   ASSERT (t->format);
 
-  /* Default format is 1 32 bit number for each % is format string. */
+  /* If format args are not specified try to be smart about providing defaults
+     so most of the time user does not have to specify them. */
   if (! t->format_args)
     {
-      uword i, n_percent;
-      uword l = strlen (t->format);
+      uword i, l, this_arg;
 
-      for (i = n_percent = 0; i < l; i++)
-	n_percent += (t->format[i] == '%'
-		      && ! (i + 1 < l && t->format[i + 1] == '%'));
-	  
-      t->format_args = 0;
-      for (i = 0; i < n_percent; i++)
-	vec_add1 (t->format_args, '2');
+      l = strlen (t->format);
+      for (i = 0; i < l; i++)
+	{
+	  if (t->format[i] != '%')
+	    continue;
+	  if (i + 1 >= l)
+	    continue;
+	  if (t->format[i+1] == '%') /* %% */
+	    continue;
+
+	  switch (t->format[i+1]) {
+	  default:
+	  case 'd': case 'x': case 'u':
+	    this_arg = '2';	/* log2 size of u32 */
+	    break;
+	  case 'f':
+	    this_arg = 'f';
+	    break;
+	  case 's':
+	    this_arg = 's';
+	    break;
+	  }
+
+	  vec_add1 (t->format_args, this_arg);
+	}
+
+      /* Null terminate. */
       vec_add1 (t->format_args, 0);
     }    
-
-  /* Compute number of data bytes for this event type. */
-  {
-    uword i, n;
-
-    n = 0;
-    for (i = 0; t->format_args[i] != 0; i++)
-      {
-	switch (t->format_args[i])
-	  {
-	  case '0': n += sizeof (u8); break;
-	  case '1': n += sizeof (u16); break;
-	  case '2': n += sizeof (u32); break;
-	  case '3': n += sizeof (u64); break;
-	  case 'e': n += sizeof (f32); break;
-	  case 'f': n += sizeof (f64); break;
-	  case 's': n += sizeof (u32); break;
-	  default: os_panic ();
-	  }
-      }
-    t->n_data_bytes = n;
-  }
 
   vec_add1 (em->event_types, t[0]);
 
@@ -128,9 +125,10 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
   /* Construct string table. */
   {
     uword i;
-    t->n_strings = static_type->n_strings;
-    for (i = 0; i < t->n_strings; i++)
-      vec_add1 (t->string_table, format (0, "%s%c", static_type->strings[i], 0));
+    t->n_enum_strings = static_type->n_enum_strings;
+    for (i = 0; i < t->n_enum_strings; i++)
+      vec_add1 (t->enum_strings_vector,
+		format (0, "%s%c", static_type->enum_strings[i], 0));
   }
 
   new_event_type (em, l);
@@ -182,6 +180,10 @@ u8 * format_elog_event (u8 * s, va_list * va)
   while (*p)
     {
       arg_t a;
+
+      /* Don't go past end of event data. */
+      ASSERT (d < (void *) (e->data + sizeof (e->data)));
+
       switch (*p)
 	{
 	case '0':
@@ -222,9 +224,15 @@ u8 * format_elog_event (u8 * s, va_list * va)
 
 	case 's':
 	  type = P;
+	  a.P = d;
+	  d += strlen (d) + 1;
+	  break;
+
+	case 't':
+	  type = P;
 	  i = clib_mem_unaligned (d, u32);
 	  d += sizeof (u32);
-	  a.P = vec_elt (t->string_table, i);
+	  a.P = vec_elt (t->enum_strings_vector, i);
 	  break;
 
 	default:
@@ -537,7 +545,7 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 	  break;
 
 	case '2':
-	case 's':
+	case 't':
 	  serialize_integer (m, clib_mem_unaligned (d, u32), sizeof (u32));
 	  d += sizeof (u32);
 	  break;
@@ -545,6 +553,11 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 	case '3':;
 	  serialize (m, serialize_64, clib_mem_unaligned (d, u64));
 	  d += sizeof (u64);
+	  break;
+
+	case 's':
+	  serialize_cstring (m, d);
+	  d += strlen (d) + 1;
 	  break;
 
 	case 'e':
@@ -570,7 +583,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t;
   u32 i;
-  u8 * d;
+  u8 * d, * d_end;
 
   {
     u32 tmp[2];
@@ -591,8 +604,10 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   unserialize (m, unserialize_f64, &e->time);
 
   d = e->data;
+  d_end = d + sizeof (e->data);
   for (i = 0; t->format_args[i] != 0; i++)
     {
+      ASSERT (d < d_end);
       switch (t->format_args[i])
 	{
 	  u32 tmp;
@@ -610,18 +625,29 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	  break;
 
 	case '2':
-	case 's':
+	case 't':
 	  unserialize_integer (m, &tmp, sizeof (u32));
 	  clib_mem_unaligned (d, u32) = tmp;
 	  d += sizeof (u32);
 	  break;
 
-	case '3':;
+	case '3':
 	  {
 	    u64 x;
 	    unserialize (m, unserialize_64, &x);
 	    clib_mem_unaligned (d, u64) = x;
 	    d += sizeof (u64);
+	  }
+	  break;
+
+	case 's':
+	  {
+	    char * x;
+	    unserialize_cstring (m, &x);
+	    ASSERT (d + vec_len (x) <= d_end);
+	    memcpy (d, x, vec_len (x));
+	    d += vec_len (x);
+	    vec_free (x);
 	  }
 	  break;
 
@@ -660,10 +686,9 @@ serialize_elog_event_type (serialize_main_t * m, va_list * va)
       serialize_cstring (m, t[i].format);
       serialize_cstring (m, t[i].format_args);
       serialize_integer (m, t[i].type_index_plus_one, sizeof (t->type_index_plus_one));
-      serialize_integer (m, t[i].n_data_bytes, sizeof (t->n_data_bytes));
-      serialize_integer (m, t[i].n_strings, sizeof (t[i].n_strings));
-      for (j = 0; j < t[i].n_strings; j++)
-	serialize_cstring (m, t[i].string_table[j]);
+      serialize_integer (m, t[i].n_enum_strings, sizeof (t[i].n_enum_strings));
+      for (j = 0; j < t[i].n_enum_strings; j++)
+	serialize_cstring (m, t[i].enum_strings_vector[j]);
     }
 }
 
@@ -678,11 +703,10 @@ unserialize_elog_event_type (serialize_main_t * m, va_list * va)
       unserialize_cstring (m, &t[i].format);
       unserialize_cstring (m, &t[i].format_args);
       unserialize_integer (m, &t[i].type_index_plus_one, sizeof (t->type_index_plus_one));
-      unserialize_integer (m, &t[i].n_data_bytes, sizeof (t->n_data_bytes));
-      unserialize_integer (m, &t[i].n_strings, sizeof (t[i].n_strings));
-      vec_resize (t[i].string_table, t[i].n_strings);
-      for (j = 0; j < t[i].n_strings; j++)
-	unserialize_cstring (m, &t[i].string_table[j]);
+      unserialize_integer (m, &t[i].n_enum_strings, sizeof (t[i].n_enum_strings));
+      vec_resize (t[i].enum_strings_vector, t[i].n_enum_strings);
+      for (j = 0; j < t[i].n_enum_strings; j++)
+	unserialize_cstring (m, &t[i].enum_strings_vector[j]);
     }
 }
 

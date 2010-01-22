@@ -58,7 +58,7 @@ typedef struct {
   u32 type_index_plus_one;
 
   /* String table as a vector constructed when type is registered. */
-  char ** string_table;
+  char ** enum_strings_vector;
 
   /* Format string. (example: "my-event (%d,%d)"). */
   char * format;
@@ -66,7 +66,8 @@ typedef struct {
   /* Specifies how arguments to format are parsed from event data.
      String of characters '0' '1' or '2' '3' to specify log2 size of data
      (e.g. for u8, u16, u32 or u64),
-     's' means argument is an index into string table for this type.
+     's' means a null-terminated C string
+     't' means argument is an index into enum string table for this type.
      'e' is a float,
      'f' is a double. */
   char * format_args;
@@ -74,13 +75,11 @@ typedef struct {
   /* Function name generating event. */
   char * function;
 
-  u32 n_data_bytes;
-
-  /* Number of elements in string table. */
-  u32 n_strings;
+  /* Number of elements in string enum table. */
+  u32 n_enum_strings;
 
   /* String table for enum/number to string formatting. */
-  char * strings[];
+  char * enum_strings[];
 } elog_event_type_t;
 
 typedef struct {
@@ -190,8 +189,7 @@ static always_inline void *
 elog_event_data_inline (elog_main_t * em,
 			elog_event_type_t * type,
 			elog_track_t * track,
-			u64 cpu_time,
-			uword n_data_bytes)
+			u64 cpu_time)
 {
   elog_event_t * e;
   word type_index, track_index;
@@ -236,21 +234,19 @@ void *
 elog_event_data (elog_main_t * em,
 		 elog_event_type_t * type,
 		 elog_track_t * track,
-		 u64 cpu_time,
-		 uword n_data_bytes);
+		 u64 cpu_time);
 
 /* Non-inline version. */
 static always_inline void *
 elog_event_data_not_inline (elog_main_t * em,
 			    elog_event_type_t * type,
 			    elog_track_t * track,
-			    u64 cpu_time,
-			    uword n_data_bytes)
+			    u64 cpu_time)
 {
   /* Return the user dummy memory to scribble data into. */
   if (PREDICT_FALSE (! em->is_enabled))
     return em->dummy_event.data;
-  return elog_event_data (em, type, track, cpu_time, n_data_bytes);
+  return elog_event_data (em, type, track, cpu_time);
 }
 
 /* Most common form: log a single 32 bit datum. */
@@ -261,8 +257,7 @@ elog (elog_main_t * em, elog_event_type_t * type, u32 data)
     (em,
      type,
      &em->default_track,
-     clib_cpu_time_now (),
-     sizeof (d[0]));
+     clib_cpu_time_now ());
   d[0] = data;
 }
 
@@ -274,8 +269,7 @@ elog_inline (elog_main_t * em, elog_event_type_t * type, u32 data)
     (em,
      type,
      &em->default_track,
-     clib_cpu_time_now (),
-     sizeof (d[0]));
+     clib_cpu_time_now ());
   d[0] = data;
 }
 
@@ -284,8 +278,7 @@ elog_data (elog_main_t * em, elog_event_type_t * type, elog_track_t * track)
 {
   return elog_event_data_not_inline
     (em, type, track,
-     clib_cpu_time_now (),
-     type->n_data_bytes);
+     clib_cpu_time_now ());
 }
 
 static always_inline void *
@@ -293,8 +286,7 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 {
   return elog_event_data_inline
     (em, type, track,
-     clib_cpu_time_now (),
-     type->n_data_bytes);
+     clib_cpu_time_now ());
 }
 
 /* Macro shorthands for generating/declaring events. */
