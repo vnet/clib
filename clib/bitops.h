@@ -121,4 +121,17 @@ next_with_same_number_of_set_bits (uword x)
   return ripple | ones;
 }
 
+#define foreach_set_bit(var,mask,body)					\
+do {									\
+  uword _foreach_set_bit_m_##var = (mask);				\
+  uword _foreach_set_bit_f_##var;					\
+  while (_foreach_set_bit_m_##var != 0)					\
+    {									\
+      _foreach_set_bit_f_##var = first_set (_foreach_set_bit_m_##var);	\
+      _foreach_set_bit_m_##var ^= _foreach_set_bit_f_##var;		\
+      (var) = min_log2 (_foreach_set_bit_f_##var);			\
+      do { body; } while (0);						\
+    }									\
+} while (0)
+
 #endif /* included_clib_bitops_h */
