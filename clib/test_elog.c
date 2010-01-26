@@ -103,11 +103,11 @@ int test_elog_main (unformat_input_t * input)
       ELOG_TYPE_XF (zap);
       ELOG_TYPE_DECLARE (bar) = {
 	.format = "bar %d.%d.%d.%d",
-	.format_args = "0000",
+	.format_args = "i1i1i1i1",
       };
       ELOG_TYPE_DECLARE (fumble) = {
 	.format = "fumble %s %.9f",
-	.format_args = "se",
+	.format_args = "t4f4",
 	.n_enum_strings = 4,
 	.enum_strings = {
 	  "string0",

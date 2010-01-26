@@ -78,7 +78,8 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
      so most of the time user does not have to specify them. */
   if (! t->format_args)
     {
-      uword i, l, this_arg;
+      uword i, l;
+      char * this_arg;
 
       l = strlen (t->format);
       for (i = 0; i < l; i++)
@@ -93,17 +94,17 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 	  switch (t->format[i+1]) {
 	  default:
 	  case 'd': case 'x': case 'u':
-	    this_arg = '2';	/* log2 size of u32 */
+	    this_arg = "i4";	/* size of u32 */
 	    break;
 	  case 'f':
-	    this_arg = 'f';
+	    this_arg = "f2";	/* defaults to f32 */
 	    break;
 	  case 's':
-	    this_arg = 's';
+	    this_arg = "s0";	/* defaults to null terminated string. */
 	    break;
 	  }
 
-	  vec_add1 (t->format_args, this_arg);
+	  t->format_args = format (t->format_args, "%s", this_arg);
 	}
 
       /* Null terminate. */
@@ -153,86 +154,156 @@ word elog_track_register (elog_main_t * em, elog_track_t * t)
  return l;
 }
 
+static uword parse_2digit_decimal (u8 * p, uword * number)
+{
+  uword i = 0;
+  u8 digits[2];
+
+  digits[0] = digits[1] = 0;
+  while (p[i] >= '0' && p[i] <= '9')
+    {
+      if (i >= 2)
+	break;
+      digits[i++] = p[0] - '0';
+    }
+
+  if (i >= 1 && i <= 2)
+    {
+      if (i == 1)
+	*number = digits[0];
+      else
+	*number = 10 * digits[0] + digits[1];
+      return i;
+    }
+  else
+    return 0;
+}
+
+static u8 * fixed_format (u8 * s, char * fmt, char * result, uword * result_len)
+{
+  char * f = fmt;
+  char * percent;
+  uword l = 0;
+
+  while (1)
+    {
+      if (f[0] == 0)
+	break;
+      if (f[0] == '%' && f[1] != '%')
+	break;
+      f++;
+    }
+  if (f > fmt)
+    vec_add (s, fmt, f - fmt);
+
+  if (f[0] != '%')
+    goto done;
+
+  /* Skip percent. */
+  percent = f++;
+
+  /* Skip possible +-= justification. */
+  f += f[0] == '+' || f[0] == '-' || f[0] == '=';
+
+  /* Skip possible X.Y width. */
+  while ((f[0] >= '0' && f[0] <= '9') || f[0] == '.')
+    f++;
+
+  /* Skip wlL as in e.g. %Ld. */
+  f += f[0] == 'w' || f[0] == 'l' || f[0] == 'L';
+
+  /* Finally skip format letter. */
+  f += f[0] != 0;
+
+  ASSERT (*result_len > f - percent);
+  l = clib_min (f - percent, *result_len - 1);
+  memcpy (result, percent, l);
+  result[l] = 0;
+
+ done:
+  *result_len = f - fmt;
+  return s;
+}
+
 u8 * format_elog_event (u8 * s, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t;
-  char * p;
-  u32 i, n_args;
+  char * a, * f;
   void * d = (u8 *) e->data;
-
-  typedef union {
-    f64 F;
-    u64 L;
-    u32 I;
-    void * P;
-  } arg_t;
-  enum { F, L, I, P } type;
-  arg_t args[sizeof (e->data)];
-  uword args_types;
+  char arg_format[64];
 
   t = vec_elt_at_index (em->event_types, e->type);
 
-  p = t->format_args;
-  n_args = 0;
-  args_types = 0;
-  while (*p)
+  f = t->format;
+  a = t->format_args;
+  while (1)
     {
-      arg_t a;
+      uword n_bytes, n_digits, f_bytes;
+
+      f_bytes = sizeof (arg_format);
+      s = fixed_format (s, f, arg_format, &f_bytes);
+      f += f_bytes;
+
+      if (a[0] == 0)
+	{
+	  /* Format must also be at end. */
+	  ASSERT (f[0] == 0);
+	  break;
+	}
 
       /* Don't go past end of event data. */
       ASSERT (d < (void *) (e->data + sizeof (e->data)));
 
-      switch (*p)
+      n_digits = parse_2digit_decimal (a + 1, &n_bytes);
+      switch (a[0])
 	{
-	case '0':
-	  type = I;
-	  a.I = ((u8 *) d)[0];
-	  d += sizeof (u8);
-	  break;
+	case 'i':
+	case 't':
+	  {
+	    u32 i;
+	    u64 l;
 
-	case '1':
-	  type = I;
-	  a.I = clib_mem_unaligned (d, u16);
-	  d += sizeof (u16);
-	  break;
-
-	case '2':
-	  type = I;
-	  a.I = clib_mem_unaligned (d, u32);
-	  d += sizeof (u32);
-	  break;
-
-	case '3':
-	  type = L;
-	  a.L = clib_mem_unaligned (d, u64);
-	  d += sizeof (u64);
-	  break;
-
-	case 'e':
-	  type = F;
-	  a.F = clib_mem_unaligned (d, f32);
-	  d += sizeof (f32);
+	    if (n_bytes == 1)
+	      i = ((u8 *) d)[0];
+	    else if (n_bytes == 2)
+	      i = clib_mem_unaligned (d, u16);
+	    else if (n_bytes == 4)
+	      i = clib_mem_unaligned (d, u32);
+	    else if (n_bytes == 8)
+	      l = clib_mem_unaligned (d, u64);
+	    else
+	      ASSERT (0);
+	    if (a[0] == 't')
+	      {
+		char * e = vec_elt (t->enum_strings_vector, n_bytes == 8 ? l : i);
+		s = format (s, arg_format, e);
+	      }
+	    else if (n_bytes == 8)
+	      s = format (s, arg_format, l);
+	    else
+	      s = format (s, arg_format, i);
+	  }
 	  break;
 
 	case 'f':
-	  type = F;
-	  a.F = clib_mem_unaligned (d, f64);
-	  d += sizeof (f64);
+	  {
+	    f64 x;
+	    if (n_bytes == 4)
+	      x = clib_mem_unaligned (d, f32);
+	    else if (n_bytes == 8)
+	      x = clib_mem_unaligned (d, f64);
+	    else
+	      ASSERT (0);
+	    s = format (s, arg_format, x);
+	  }
 	  break;
 
 	case 's':
-	  type = P;
-	  a.P = d;
-	  d += strlen (d) + 1;
-	  break;
-
-	case 't':
-	  type = P;
-	  i = clib_mem_unaligned (d, u32);
-	  d += sizeof (u32);
-	  a.P = vec_elt (t->enum_strings_vector, i);
+	  s = format (s, arg_format, d);
+	  if (n_bytes == 0)
+	    n_bytes = strlen (d) + 1;
 	  break;
 
 	default:
@@ -240,86 +311,9 @@ u8 * format_elog_event (u8 * s, va_list * va)
 	  break;
 	}
 
-      args_types |= type << (n_args * 2);
-      args[n_args] = a;
-      n_args++;
-      p++;
-    }
-
-  switch (n_args)
-    {
-    case 0:
-      s = format (s, "%s", t->format);
-      break;
-
-    case 1:
-      switch (args_types)
-	{
-	case F: return format (s, t->format, args[0].F);
-	case L: return format (s, t->format, args[0].L);
-	case I: return format (s, t->format, args[0].I);
-	case P: return format (s, t->format, args[0].P);
-	}
-      break;
-
-    case 2:
-#define _(a0,a1)						\
-  case (((a0) << 0) | ((a1) << 2)):				\
-    return format (s, t->format, args[0].a0, args[1].a1)
-
-      switch (args_types)
-	{
-	  _ (F, F); _ (F, L); _ (F, I); _ (F, P);
-	  _ (L, F); _ (L, L); _ (L, I); _ (L, P);
-	  _ (I, F); _ (I, L); _ (I, I); _ (I, P);
-	  _ (P, F); _ (P, L); _ (P, I); _ (P, P);
-	}
-      break;
-#undef _
-
-    case 3:
-#define _(a0,a1,a2)							\
-  case (((a0) << 0) | ((a1) << 2) | ((a2) << 4)):			\
-    return format (s, t->format, args[0].a0, args[1].a1, args[2].a2)
-
-#define __(a...)					\
-    _ (F, F, a); _ (F, L, a); _ (F, I, a); _ (F, P, a);	\
-    _ (L, F, a); _ (L, L, a); _ (L, I, a); _ (L, P, a);	\
-    _ (I, F, a); _ (I, L, a); _ (I, I, a); _ (I, P, a);	\
-    _ (P, F, a); _ (P, L, a); _ (P, I, a); _ (P, P, a);
-
-      switch (args_types)
-	{
-	  __ (F);
-	  __ (L);
-	  __ (I);
-	  __ (P);
-	}
-      break;
-#undef _
-
-    case 4:
-#define _(a0,a1,a2,a3)							\
-  case (((a0) << 0) | ((a1) << 2) | ((a2) << 4) | ((a3) << 6)):		\
-    return format (s, t->format, args[0].a0, args[1].a1, args[2].a2, args[3].a3)
-
-#define ___(a) __ (F, a); __ (L, a); __ (I, a); __ (P, a);
-      switch (args_types)
-	{
-	  ___ (F);
-	  ___ (L);
-	  ___ (I);
-	  ___ (P);
-	}
-      break;
-
-#undef _
-#undef __
-#undef ___
-
-    default:
-      ASSERT (0);
-      break;
+      ASSERT (n_digits > 0 && n_digits <= 2);
+      a += 1 + n_digits;
+      d += n_bytes;
     }
 
   return s;
@@ -524,55 +518,55 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t = vec_elt_at_index (em->event_types, e->type);
   u8 * d = e->data;
-  u32 i;
+  u8 * p = t->format_args;
 
   serialize_integer (m, e->type, sizeof (e->type));
   serialize_integer (m, e->track, sizeof (e->track));
   serialize (m, serialize_f64, e->time);
 
-  for (i = 0; t->format_args[i] != 0; i++)
+  while (*p)
     {
-      switch (t->format_args[i])
+      uword n_digits, n_bytes;
+
+      n_digits = parse_2digit_decimal (p + 1, &n_bytes);
+
+      switch (p[0])
 	{
-	case '0':;
-	  serialize_integer (m, d[0], sizeof (u8));
-	  d += sizeof (u8);
-	  break;
-
-	case '1':;
-	  serialize_integer (m, clib_mem_unaligned (d, u16), sizeof (u16));
-	  d += sizeof (u16);
-	  break;
-
-	case '2':
+	case 'i':
 	case 't':
-	  serialize_integer (m, clib_mem_unaligned (d, u32), sizeof (u32));
-	  d += sizeof (u32);
-	  break;
-
-	case '3':;
-	  serialize (m, serialize_64, clib_mem_unaligned (d, u64));
-	  d += sizeof (u64);
+	  if (n_bytes == 1)
+	    serialize_integer (m, d[0], sizeof (u8));
+	  else if (n_bytes == 2)
+	    serialize_integer (m, clib_mem_unaligned (d, u16), sizeof (u16));
+	  else if (n_bytes == 4)
+	    serialize_integer (m, clib_mem_unaligned (d, u32), sizeof (u32));
+	  else if (n_bytes == 8)
+	    serialize (m, serialize_64, clib_mem_unaligned (d, u64));
+	  else
+	    ASSERT (0);
 	  break;
 
 	case 's':
 	  serialize_cstring (m, d);
-	  d += strlen (d) + 1;
-	  break;
-
-	case 'e':
-	  serialize (m, serialize_f32, clib_mem_unaligned (d, f32));
-	  d += sizeof (f32);
+	  if (n_bytes == 0)
+	    n_bytes = strlen (d) + 1;
 	  break;
 
 	case 'f':
-	  serialize (m, serialize_f64, clib_mem_unaligned (d, f64));
-	  d += sizeof (f64);
+	  if (n_bytes == 4)
+	    serialize (m, serialize_f32, clib_mem_unaligned (d, f32));
+	  else if (n_bytes == 8)
+	    serialize (m, serialize_f64, clib_mem_unaligned (d, f64));
+	  else
+	    ASSERT (0);
 	  break;
 
 	default:
 	  os_panic ();
 	}
+
+      p += 1 + n_digits;
+      d += n_bytes;
     }
 }
 
@@ -582,8 +576,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   elog_main_t * em = va_arg (*va, elog_main_t *);
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t;
-  u32 i;
-  u8 * d, * d_end;
+  u8 * p, * d, * d_end;
 
   {
     u32 tmp[2];
@@ -605,73 +598,73 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 
   d = e->data;
   d_end = d + sizeof (e->data);
-  for (i = 0; t->format_args[i] != 0; i++)
+  p = t->format_args;
+
+  while (*p)
     {
-      ASSERT (d < d_end);
-      switch (t->format_args[i])
+      uword n_digits, n_bytes;
+      u32 tmp;
+
+      n_digits = parse_2digit_decimal (p + 1, &n_bytes);
+
+      switch (p[0])
 	{
-	  u32 tmp;
-
-	case '0':;
-	  unserialize_integer (m, &tmp, sizeof (u8));
-	  d[0] = tmp;
-	  d += sizeof (u8);
-	  break;
-
-	case '1':;
-	  unserialize_integer (m, &tmp, sizeof (u16));
-	  clib_mem_unaligned (d, u16) = tmp;
-	  d += sizeof (u16);
-	  break;
-
-	case '2':
+	case 'i':
 	case 't':
-	  unserialize_integer (m, &tmp, sizeof (u32));
-	  clib_mem_unaligned (d, u32) = tmp;
-	  d += sizeof (u32);
-	  break;
-
-	case '3':
-	  {
-	    u64 x;
-	    unserialize (m, unserialize_64, &x);
-	    clib_mem_unaligned (d, u64) = x;
-	    d += sizeof (u64);
-	  }
+	  if (n_bytes == 1)
+	    {
+	      unserialize_integer (m, &tmp, sizeof (u8));
+	      d[0] = tmp;
+	    }
+	  else if (n_bytes == 2)
+	    {
+	      unserialize_integer (m, &tmp, sizeof (u16));
+	      clib_mem_unaligned (d, u16) = tmp;
+	    }
+	  else if (n_bytes == 4)
+	    {
+	      unserialize_integer (m, &tmp, sizeof (u32));
+	      clib_mem_unaligned (d, u32) = tmp;
+	    }
+	  else if (n_bytes == 8)
+	    {
+	      u64 x;
+	      unserialize (m, unserialize_64, &x);
+	      clib_mem_unaligned (d, u64) = x;
+	    }
+	  else
+	    ASSERT (0);
 	  break;
 
 	case 's':
-	  {
-	    char * x;
-	    unserialize_cstring (m, &x);
-	    ASSERT (d + vec_len (x) <= d_end);
-	    memcpy (d, x, vec_len (x));
-	    d += vec_len (x);
-	    vec_free (x);
-	  }
-	  break;
-
-	case 'e':
-	  {
-	    f32 x;
-	    unserialize (m, unserialize_f32, &x);
-	    clib_mem_unaligned (d, f32) = x;
-	    d += sizeof (f32);
-	  }
+	  serialize_cstring (m, d);
+	  if (n_bytes == 0)
+	    n_bytes = strlen (d) + 1;
 	  break;
 
 	case 'f':
-	  {
-	    f64 x;
-	    unserialize (m, unserialize_f64, &x);
-	    clib_mem_unaligned (d, f64) = x;
-	    d += sizeof (f64);
-	  }
+	  if (n_bytes == 4)
+	    {
+	      f32 x;
+	      unserialize (m, unserialize_f32, &x);
+	      clib_mem_unaligned (d, f32) = x;
+	    }
+	  else if (n_bytes == 8)
+	    {
+	      f64 x;
+	      unserialize (m, unserialize_f64, &x);
+	      clib_mem_unaligned (d, f64) = x;
+	    }
+	  else
+	    ASSERT (0);
 	  break;
 
 	default:
 	  os_panic ();
 	}
+
+      p += 1 + n_digits;
+      d += n_bytes;
     }
 }
 
