@@ -59,7 +59,7 @@ static always_inline uword
 qhash_n_overflow (void * v)
 { return v ? hash_elts (qhash_header (v)->overflow_hash) : 0; }
 
-#define QHASH_LOG2_KEYS_PER_BUCKET 3
+#define QHASH_LOG2_KEYS_PER_BUCKET 2
 #define QHASH_KEYS_PER_BUCKET (1 << QHASH_LOG2_KEYS_PER_BUCKET)
 
 static always_inline uword
