@@ -390,7 +390,7 @@ clib_longjmp:
 #undef _
 	
 	/* fp 14 - 31 */
-#define _(a,b) lfd a, 4*(1*(b) + 4 + 4*CLIB_POWERPC_ALTIVEC_N_REGS + 1*18)(3) ;
+#define _(a,b) lfd a, 4*(2*(b) + 4 + 4*CLIB_POWERPC_ALTIVEC_N_REGS + 1*18)(3) ;
 	_foreach_14_31
 #undef _
 
