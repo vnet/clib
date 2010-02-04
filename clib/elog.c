@@ -97,7 +97,7 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 	    this_arg = "i4";	/* size of u32 */
 	    break;
 	  case 'f':
-	    this_arg = "f2";	/* defaults to f32 */
+	    this_arg = "f8";	/* defaults to f64 */
 	    break;
 	  case 's':
 	    this_arg = "s0";	/* defaults to null terminated string. */
