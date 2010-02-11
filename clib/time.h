@@ -40,6 +40,9 @@ typedef struct {
   /* 1 / cpu clock frequency: conversion factor
      from clock cycles into seconds. */
   f64 seconds_per_clock;
+
+  /* Time stamp of call to clib_time_init call. */
+  u64 init_cpu_time;
 } clib_time_t;
 
 /* Return CPU time stamp as 64bit number. */
