@@ -108,6 +108,14 @@ compress_bits (compress_main_t * cm, uword x)
   return r;
 }
 
+static always_inline uword
+rotate_left (uword x, uword i)
+{ return (x << i) | (x >> (BITS (i) - i)); }
+
+static always_inline uword
+rotate_right (uword x, uword i)
+{ return (x >> i) | (x << (BITS (i) - i)); }
+
 /* Returns snoob from Hacker's Delight.  Next highest number
    with same number of set bits. */
 static always_inline uword

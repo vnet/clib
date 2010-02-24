@@ -325,18 +325,18 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 #define ELOG_TRACK(f) ELOG_TRACK_DECLARE(f) = { .name = #f, }
 
 /* Log 32 bits of data. */
-#define ELOG(em,f,data) elog (em, &__ELOG_TYPE_VAR(f), data)
-#define ELOG_INLINE(em,f,data) elog_inline (em, &__ELOG_TYPE_VAR(f), data)
+#define ELOG(em,f,data) elog ((em), &__ELOG_TYPE_VAR(f), data)
+#define ELOG_INLINE(em,f,data) elog_inline ((em), &__ELOG_TYPE_VAR(f), data)
 
 /* Return data pointer to fill in. */
 #define ELOG_TRACK_DATA(em,f,track) \
-  elog_data (em, &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
+  elog_data ((em), &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
 #define ELOG_TRACK_DATA_INLINE(em,f,track) \
-  elog_data_inline (em, &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
+  elog_data_inline ((em), &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
 
 /* Shorthand with default track. */
-#define ELOG_DATA(em,f) elog_data (em, &__ELOG_TYPE_VAR (f), &em->default_track)
-#define ELOG_DATA_INLINE(em,f) elog_data_inline (em, &__ELOG_TYPE_VAR (f), &em->default_track)
+#define ELOG_DATA(em,f) elog_data ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
+#define ELOG_DATA_INLINE(em,f) elog_data_inline ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 
 /* Convert ievents to events and return them as a vector.
    Sets em->events to resulting vector. */
