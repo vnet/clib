@@ -24,9 +24,10 @@
 #ifndef included_hash_h
 #define included_hash_h
 
-#include <clib/vec.h>
-#include <clib/format.h>
+#include <clib/bitops.h>	/* for rotate_left */
 #include <clib/error.h>
+#include <clib/format.h>
+#include <clib/vec.h>
 
 struct hash_header;
 
@@ -377,6 +378,29 @@ do {						\
   hash_mix32_step_2 (a0, b0, c0);		\
   hash_mix32_step_3 (a0, b0, c0);		\
 } while (0)					\
+
+/* Finalize from Bob Jenkins lookup3.c */
+
+#define hash_v3_mix32(a,b,c)				\
+do {							\
+  (a) -= (c); (a) ^= rotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= rotate_left ((a), 6); (a) += (c);	\
+  (c) -= (b); (c) ^= rotate_left ((b), 8); (b) += (a);	\
+  (a) -= (c); (a) ^= rotate_left ((c),16); (c) += (b);	\
+  (b) -= (a); (b) ^= rotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= rotate_left ((b), 4); (b) += (a);	\
+} while (0)
+
+#define hash_v3_finalize32(a,b,c)		\
+do {						\
+  (c) ^= (b); (c) -= rotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= rotate_left ((c), 11);	\
+  (b) ^= (a); (b) -= rotate_left ((a), 25);	\
+  (c) ^= (b); (c) -= rotate_left ((b), 16);	\
+  (a) ^= (c); (a) -= rotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= rotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= rotate_left ((b), 24);	\
+} while (0)
 
 extern u64 hash_memory64 (void * p, word n_bytes, u64 state);
 extern u32 hash_memory32 (void * p, word n_bytes, u32 state);
