@@ -141,13 +141,16 @@ sparse_vec_index (void * v, uword sparse_index)
 }
 				    
 static always_inline void
-sparse_vec_index2 (sparse_vec_header_t * h,
+sparse_vec_index2 (void * v,
 		   u32 si0, u32 si1,
 		   u32 * i0_return, u32 * i1_return)
 {
+  sparse_vec_header_t * h;
   uword b0, b1, w0, w1, v0, v1;
   u32 i0, i1, d0, d1;
   u8 is_member0, is_member1;
+
+  h = sparse_vec_header (v);
 
   i0 = si0 / BITS (h->is_member_bitmap[0]);
   i1 = si1 / BITS (h->is_member_bitmap[0]);
