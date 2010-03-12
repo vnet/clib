@@ -304,6 +304,13 @@ do {										\
   (V)[_v(l)];					\
 })
 
+#define vec_pop2(V,E)				\
+({						\
+  uword _v(l) = vec_len (V);			\
+  if (_v(l) > 0) (E) = vec_pop (V);		\
+  _v(l) > 0;					\
+})
+
 /* Resize vector by N elements starting from element M.
    Zero new elements. */
 #define vec_insert_init_empty_ha(V,N,M,INIT,H,A)	\
