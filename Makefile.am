@@ -141,6 +141,7 @@ nobase_include_HEADERS = \
     clib/math.h \
     clib/md5.h \
     clib/mem.h \
+    clib/mhash.h \
     clib/mheap.h \
     clib/os.h \
     clib/phash.h \
@@ -183,6 +184,7 @@ CLIB_CORE = \
   clib/hash.c \
   clib/heap.c \
   clib/longjmp.S \
+  clib/mhash.c \
   clib/mheap.c \
   clib/md5.c \
   clib/mem_mheap.c \

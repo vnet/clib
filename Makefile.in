@@ -87,6 +87,7 @@ am__objects_1 = clib/libclibkernel_a-asm_x86.$(OBJEXT) \
 	clib/libclibkernel_a-hash.$(OBJEXT) \
 	clib/libclibkernel_a-heap.$(OBJEXT) \
 	clib/libclibkernel_a-longjmp.$(OBJEXT) \
+	clib/libclibkernel_a-mhash.$(OBJEXT) \
 	clib/libclibkernel_a-mheap.$(OBJEXT) \
 	clib/libclibkernel_a-md5.$(OBJEXT) \
 	clib/libclibkernel_a-mem_mheap.$(OBJEXT) \
@@ -134,6 +135,7 @@ am__objects_3 = clib/libclibstandalone_a-asm_x86.$(OBJEXT) \
 	clib/libclibstandalone_a-hash.$(OBJEXT) \
 	clib/libclibstandalone_a-heap.$(OBJEXT) \
 	clib/libclibstandalone_a-longjmp.$(OBJEXT) \
+	clib/libclibstandalone_a-mhash.$(OBJEXT) \
 	clib/libclibstandalone_a-mheap.$(OBJEXT) \
 	clib/libclibstandalone_a-md5.$(OBJEXT) \
 	clib/libclibstandalone_a-mem_mheap.$(OBJEXT) \
@@ -173,12 +175,12 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 libclib_la_LIBADD =
 am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
 	clib/elog.lo clib/error.lo clib/fifo.lo clib/format.lo \
-	clib/hash.lo clib/heap.lo clib/longjmp.lo clib/mheap.lo \
-	clib/md5.lo clib/mem_mheap.lo clib/phash.lo clib/qhash.lo \
-	clib/random.lo clib/random_buffer.lo clib/random_isaac.lo \
-	clib/serialize.lo clib/std-formats.lo clib/string.lo \
-	clib/time.lo clib/timing_wheel.lo clib/unformat.lo clib/vec.lo \
-	clib/zvec.lo
+	clib/hash.lo clib/heap.lo clib/longjmp.lo clib/mhash.lo \
+	clib/mheap.lo clib/md5.lo clib/mem_mheap.lo clib/phash.lo \
+	clib/qhash.lo clib/random.lo clib/random_buffer.lo \
+	clib/random_isaac.lo clib/serialize.lo clib/std-formats.lo \
+	clib/string.lo clib/time.lo clib/timing_wheel.lo \
+	clib/unformat.lo clib/vec.lo clib/zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) clib/mem_malloc.lo \
 	clib/socket.lo clib/timer.lo clib/unix-formats.lo \
 	clib/unix-misc.lo
@@ -567,6 +569,7 @@ nobase_include_HEADERS = \
     clib/math.h \
     clib/md5.h \
     clib/mem.h \
+    clib/mhash.h \
     clib/mheap.h \
     clib/os.h \
     clib/phash.h \
@@ -609,6 +612,7 @@ CLIB_CORE = \
   clib/hash.c \
   clib/heap.c \
   clib/longjmp.S \
+  clib/mhash.c \
   clib/mheap.c \
   clib/md5.c \
   clib/mem_mheap.c \
@@ -775,6 +779,8 @@ clib/libclibkernel_a-heap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-longjmp.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibkernel_a-mhash.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-mheap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-md5.$(OBJEXT): clib/$(am__dirstamp) \
@@ -862,6 +868,8 @@ clib/libclibstandalone_a-hash.$(OBJEXT): clib/$(am__dirstamp) \
 clib/libclibstandalone_a-heap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-longjmp.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibstandalone_a-mhash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-mheap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
@@ -968,6 +976,7 @@ clib/format.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/hash.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/heap.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/longjmp.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+clib/mhash.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/mheap.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/md5.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/mem_mheap.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
@@ -1125,6 +1134,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibkernel_a-longjmp.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-md5.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-mem_mheap.$(OBJEXT)
+	-rm -f clib/libclibkernel_a-mhash.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-mheap.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-phash.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-qhash.$(OBJEXT)
@@ -1166,6 +1176,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-longjmp.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-md5.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-mem_mheap.$(OBJEXT)
+	-rm -f clib/libclibstandalone_a-mhash.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-mheap.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-phash.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-qhash.$(OBJEXT)
@@ -1204,6 +1215,8 @@ mostlyclean-compile:
 	-rm -f clib/mem_malloc.lo
 	-rm -f clib/mem_mheap.$(OBJEXT)
 	-rm -f clib/mem_mheap.lo
+	-rm -f clib/mhash.$(OBJEXT)
+	-rm -f clib/mhash.lo
 	-rm -f clib/mheap.$(OBJEXT)
 	-rm -f clib/mheap.lo
 	-rm -f clib/phash.$(OBJEXT)
@@ -1282,6 +1295,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-longjmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-md5.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-mem_mheap.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-mhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-phash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-qhash.Po@am__quote@
@@ -1323,6 +1337,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-longjmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-md5.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-mem_mheap.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-mhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-phash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-qhash.Po@am__quote@
@@ -1357,6 +1372,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/md5.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mem_malloc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mem_mheap.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mhash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mheap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/phash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/qhash.Plo@am__quote@
@@ -1593,6 +1609,20 @@ clib/libclibkernel_a-heap.obj: clib/heap.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/heap.c' object='clib/libclibkernel_a-heap.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-heap.obj `if test -f 'clib/heap.c'; then $(CYGPATH_W) 'clib/heap.c'; else $(CYGPATH_W) '$(srcdir)/clib/heap.c'; fi`
+
+clib/libclibkernel_a-mhash.o: clib/mhash.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-mhash.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-mhash.Tpo -c -o clib/libclibkernel_a-mhash.o `test -f 'clib/mhash.c' || echo '$(srcdir)/'`clib/mhash.c
+@am__fastdepCC_TRUE@	mv -f clib/$(DEPDIR)/libclibkernel_a-mhash.Tpo clib/$(DEPDIR)/libclibkernel_a-mhash.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/mhash.c' object='clib/libclibkernel_a-mhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-mhash.o `test -f 'clib/mhash.c' || echo '$(srcdir)/'`clib/mhash.c
+
+clib/libclibkernel_a-mhash.obj: clib/mhash.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-mhash.obj -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-mhash.Tpo -c -o clib/libclibkernel_a-mhash.obj `if test -f 'clib/mhash.c'; then $(CYGPATH_W) 'clib/mhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/mhash.c'; fi`
+@am__fastdepCC_TRUE@	mv -f clib/$(DEPDIR)/libclibkernel_a-mhash.Tpo clib/$(DEPDIR)/libclibkernel_a-mhash.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/mhash.c' object='clib/libclibkernel_a-mhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-mhash.obj `if test -f 'clib/mhash.c'; then $(CYGPATH_W) 'clib/mhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/mhash.c'; fi`
 
 clib/libclibkernel_a-mheap.o: clib/mheap.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-mheap.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-mheap.Tpo -c -o clib/libclibkernel_a-mheap.o `test -f 'clib/mheap.c' || echo '$(srcdir)/'`clib/mheap.c
@@ -2167,6 +2197,20 @@ clib/libclibstandalone_a-heap.obj: clib/heap.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/heap.c' object='clib/libclibstandalone_a-heap.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-heap.obj `if test -f 'clib/heap.c'; then $(CYGPATH_W) 'clib/heap.c'; else $(CYGPATH_W) '$(srcdir)/clib/heap.c'; fi`
+
+clib/libclibstandalone_a-mhash.o: clib/mhash.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-mhash.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-mhash.Tpo -c -o clib/libclibstandalone_a-mhash.o `test -f 'clib/mhash.c' || echo '$(srcdir)/'`clib/mhash.c
+@am__fastdepCC_TRUE@	mv -f clib/$(DEPDIR)/libclibstandalone_a-mhash.Tpo clib/$(DEPDIR)/libclibstandalone_a-mhash.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/mhash.c' object='clib/libclibstandalone_a-mhash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-mhash.o `test -f 'clib/mhash.c' || echo '$(srcdir)/'`clib/mhash.c
+
+clib/libclibstandalone_a-mhash.obj: clib/mhash.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-mhash.obj -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-mhash.Tpo -c -o clib/libclibstandalone_a-mhash.obj `if test -f 'clib/mhash.c'; then $(CYGPATH_W) 'clib/mhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/mhash.c'; fi`
+@am__fastdepCC_TRUE@	mv -f clib/$(DEPDIR)/libclibstandalone_a-mhash.Tpo clib/$(DEPDIR)/libclibstandalone_a-mhash.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/mhash.c' object='clib/libclibstandalone_a-mhash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-mhash.obj `if test -f 'clib/mhash.c'; then $(CYGPATH_W) 'clib/mhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/mhash.c'; fi`
 
 clib/libclibstandalone_a-mheap.o: clib/mheap.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-mheap.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-mheap.Tpo -c -o clib/libclibstandalone_a-mheap.o `test -f 'clib/mheap.c' || echo '$(srcdir)/'`clib/mheap.c

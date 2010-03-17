@@ -75,7 +75,7 @@ static always_inline u8x16 u16x8_pack (u16x8 lo, u16x8 hi)
 { return (u8x16) __builtin_ia32_packuswb128 ((i16x8) lo, (i16x8) hi); }
 
 static always_inline i8x16 i16x8_pack (i16x8 lo, i16x8 hi)
-{ return __builtin_ia32_packsswb128 (lo, hi); }
+{ return (i8x16) __builtin_ia32_packsswb128 ((i16x8) lo, (i16x8) hi); }
 
 static always_inline u16x8 u32x4_pack (u32x4 lo, u32x4 hi)
 { return (u16x8) __builtin_ia32_packssdw128 ((i32x4) lo, (i32x4) hi); }
@@ -151,16 +151,16 @@ static always_inline u8x8 u8x8_splat (u8 a)
 #define i8x8_splat u8x8_splat
 
 static always_inline u64x2 u64x2_read_lo (u64x2 x, u64 * a)
-{ return (u64x2) __builtin_ia32_loadlps ((f32x4) x, (f32x2 *) a); }
+{ return (u64x2) __builtin_ia32_loadlps ((f32x4) x, (void *) a); }
 
 static always_inline u64x2 u64x2_read_hi (u64x2 x, u64 * a)
-{ return (u64x2) __builtin_ia32_loadhps ((f32x4) x, (f32x2 *) a); }
+{ return (u64x2) __builtin_ia32_loadhps ((f32x4) x, (void *) a); }
 
 static always_inline void u64x2_write_lo (u64x2 x, u64 * a)
-{ __builtin_ia32_storehps ((f32x2 *) a, (f32x4) x); }
+{ __builtin_ia32_storehps ((void *) a, (f32x4) x); }
 
 static always_inline void u64x2_write_hi (u64x2 x, u64 * a)
-{ __builtin_ia32_storelps ((f32x2 *) a, (f32x4) x); }
+{ __builtin_ia32_storelps ((void *) a, (f32x4) x); }
 
 /* Unaligned loads/stores. */
 
@@ -250,10 +250,17 @@ _ (i32x4, i32x4, right, psrad);
 #undef _
 
 /* 64 bit shifts. */
+#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 4
 #define _(t,ti,lr,f)				\
   static always_inline t			\
   t##_shift_##lr (t x, t i)			\
   { return (t) __builtin_ia32_##f ((ti) x, (ti) i); }
+#else
+#define _(t,ti,lr,f)				\
+  static always_inline t			\
+  t##_shift_##lr (t x, t i)			\
+  { return (t) __builtin_ia32_##f ((ti) x, (i64) i); }
+#endif
 
 _ (u16x4, i16x4, left, psllw);
 _ (u32x2, i32x2, left, pslld);
