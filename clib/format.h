@@ -230,6 +230,11 @@ void unformat_init_string (unformat_input_t * input,
 			   char * string,
 			   int string_len);
 
+static always_inline void
+unformat_init_cstring (unformat_input_t * input,
+                       char * string)
+{ unformat_init_string (input, string, strlen (string)); }
+
 /* Setup for unformat of given vector string; vector will be freed by unformat_string. */
 void unformat_init_vector (unformat_input_t * input,
 			   u8 * vector_string);
