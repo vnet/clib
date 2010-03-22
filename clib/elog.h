@@ -364,11 +364,10 @@ elog_write_file (elog_main_t * em, char * unix_file)
   serialize_main_t m;
   clib_error_t * error;
 
-  if ((error = serialize_open_unix_file (&m, unix_file)))
-    return error;
-  if ((error = serialize (&m, serialize_elog_main, em)))
-    return error;
-  return serialize_close (&m);
+  serialize_open_unix_file (&m, unix_file);
+  if (! (error = serialize (&m, serialize_elog_main, em)))
+    serialize_close (&m);
+  return error;
 }
 
 static always_inline clib_error_t *
@@ -377,11 +376,10 @@ elog_read_file (elog_main_t * em, char * unix_file)
   serialize_main_t m;
   clib_error_t * error;
 
-  if ((error = unserialize_open_unix_file (&m, unix_file)))
-    return error;
-  if ((error = unserialize (&m, unserialize_elog_main, em)))
-    return error;
-  return unserialize_close (&m);
+  unserialize_open_unix_file (&m, unix_file);
+  if (! (error = unserialize (&m, unserialize_elog_main, em)))
+    unserialize_close (&m);
+  return error;
 }
 
 #endif /* CLIB_UNIX */
