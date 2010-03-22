@@ -248,17 +248,28 @@ void unserialize_pool (serialize_main_t * m, va_list * va)
 void serialize_cstring (serialize_main_t * m, char * s)
 {
   u32 len = strlen (s);
+  void * p;
 
   serialize_integer (m, len, sizeof (len));
-  serialize_write (m, (u8 *) s, len);
+  p = serialize_write (m, len);
+  memcpy (p, s, len);
 }
 
 void unserialize_cstring (serialize_main_t * m, char ** s)
 {
-  *s = unserialize_data (m);
+  char * p, * r;
+  u32 len;
+
+  unserialize_integer (m, &len, sizeof (len));
+
+  r = vec_new (char, len + 1);
+  p = serialize_read (m, len);
+  memcpy (r, p, len);
 
   /* Null terminate. */
-  vec_add1 (*s, 0);
+  r[len] = 0;
+
+  *s = r;
 }
 
 void unserialize_check_magic (serialize_main_t * m, void * magic,
@@ -324,98 +335,162 @@ unserialize (serialize_main_t * m, ...)
   return error;
 }
 
-void serialize_flush_buffer (serialize_main_t * m)
+static void * serialize_write_not_inline (serialize_main_t * m, uword n_bytes_to_write)
 {
-  clib_error_t * error;
-  u32 n, n_written;
+  uword cur_bi, n_left_b, n_left_o;
 
-  n = vec_len (m->buffer);
-  n_written = n;
-  error = m->write (m, m->buffer, &n_written);
-  if (error)
+  /* Prepend overflow buffer if present. */
+  ASSERT (m->current_buffer_index <= m->n_buffer_bytes);
+  cur_bi = m->current_buffer_index;
+  n_left_b = m->n_buffer_bytes - cur_bi;
+  n_left_o = vec_len (m->overflow_buffer);
+  if (n_left_o > 0 && n_left_b > 0)
     {
-      serialize_error (m, error);
-      return;
+      uword n = clib_min (n_left_b, n_left_o);
+      memcpy (m->buffer + cur_bi, m->overflow_buffer, n);
+      cur_bi += n;
+      n_left_b -= n;
+      n_left_o -= n;
+
+      if (n_left_o == 0)
+	_vec_len (m->overflow_buffer) = 0;
+      else
+	vec_delete (m->overflow_buffer, n, 0);
     }
 
-  ASSERT (n_written <= n);
-  n -= n_written;
-
-  if (n > 0)
-    vec_delete (m->buffer, n_written, n_written);
-  else
-    _vec_len (m->buffer) = n;
-}
-
-void serialize_fill_buffer (serialize_main_t * m, u32 n_must_read)
-{
-  clib_error_t * error;
-  u32 n, n_read;
-  u8 * b;
-
-  n = clib_max (n_must_read, 4096);
-  n_read = n;
-
-  /* Re-use read buffer if its already consumed. */
-  if (m->buffer && m->read_index >= vec_len (m->buffer))
+  if (n_left_o + n_left_b == 0)
     {
-      m->read_index = 0;
-      _vec_len (m->buffer) = 0;
+      clib_error_t * e;
+      m->current_buffer_index = cur_bi;
+      m->data_function (m);
+      cur_bi = m->current_buffer_index;
+      n_left_b = m->n_buffer_bytes - cur_bi;
     }
 
-  vec_add2 (m->buffer, b, n);
-  error = m->read (m, b, &n_read);
-  if (error)
+  if (n_left_o > 0 || n_left_b < n_bytes_to_write)
     {
-      serialize_error (m, error);
-      return;
+      u8 * r;
+      vec_add2 (m->overflow_buffer, r, n_bytes_to_write);
+      return r;
     }
 
-  ASSERT (n_read <= n);
-  _vec_len (m->buffer) -= n - n_read;
+  m->current_buffer_index = cur_bi + n_bytes_to_write;
+  return m->buffer + cur_bi;
 }
 
-clib_error_t * serialize_close (serialize_main_t * m)
+static void * serialize_read_not_inline (serialize_main_t * m, uword n_bytes_to_read)
 {
-  clib_error_t * e = 0;
-  u32 n_written;
+  uword cur_bi, cur_oi, n_left_b, n_left_o, n_left_to_read;
 
-  n_written = vec_len (m->buffer);
-  if (m->write)
-    e = m->write (m, m->buffer, &n_written);
-  if (m->close)
-    m->close (m);
-  vec_free (m->buffer);
-  memset (m, 0, sizeof (m[0]));
-  return e;
+  ASSERT (m->current_buffer_index <= m->n_buffer_bytes);
+
+  cur_bi = m->current_buffer_index;
+  cur_oi = m->current_overflow_index;
+
+  n_left_b = m->n_buffer_bytes - cur_bi;
+  n_left_o = vec_len (m->overflow_buffer) - cur_oi;
+
+  /* Read from overflow? */
+  if (n_left_o >= n_bytes_to_read)
+    {
+      m->current_overflow_index = cur_oi + n_bytes_to_read;
+      return vec_elt_at_index (m->overflow_buffer, cur_oi);
+    }
+
+  /* Reset overflow buffer. */
+  if (n_left_o == 0 && m->overflow_buffer)
+    {
+      m->current_overflow_index = 0;
+      _vec_len (m->overflow_buffer) = 0;
+    }
+
+  n_left_to_read = n_bytes_to_read;
+  while (n_left_to_read > 0)
+    {
+      uword n;
+
+      /* If we don't have enough data between overflow and normal buffer
+	 call read function. */
+      if (n_left_o + n_left_b < n_left_to_read)
+	{
+	  /* Save any left over buffer in overflow vector. */
+	  if (n_left_b > 0)
+	    {
+	      vec_add (m->overflow_buffer, m->buffer + cur_bi, n_left_b);
+	      m->current_buffer_index = cur_bi + n_left_b;
+	      n_left_b = 0;
+	      n_left_o += n_left_b;
+	    }
+
+	  m->data_function (m);
+	  cur_bi = m->current_buffer_index;
+	  n_left_b = m->n_buffer_bytes - cur_bi;
+	}
+
+      /* For first time through loop return if we have enough data
+	 in normal buffer and overflow vector is empty. */
+      if (n_left_o == 0
+	  && n_left_to_read == n_bytes_to_read
+	  && n_left_b >= n_left_to_read)
+	{
+	  m->current_buffer_index += n_left_to_read;
+	  return m->buffer + cur_bi;
+	}
+
+      /* Copy from buffer to overflow vector. */
+      n = clib_min (n_left_to_read, n_left_b);
+      vec_add (m->overflow_buffer, m->buffer + cur_bi, n);
+      cur_bi += n;
+      n_left_b -= n;
+      n_left_o += n;
+      n_left_to_read -= n;
+    }
+      
+  m->current_buffer_index = cur_bi;
+  m->current_overflow_index = cur_oi + n_bytes_to_read;
+  return vec_elt_at_index (m->overflow_buffer, cur_oi);
 }
 
-clib_error_t * unserialize_close (serialize_main_t * m)
+void * serialize_read_write_not_inline (serialize_main_t * m, uword n_bytes, uword is_read)
+{ return (is_read ? serialize_read_not_inline : serialize_write_not_inline) (m, n_bytes); }
+
+static void serialize_read_write_close (serialize_main_t * m, uword is_read)
 {
-  if (m->close)
-    m->close (m);
-  vec_free (m->buffer);
+  if (serialize_is_end_of_stream (m))
+    return;
+
+  serialize_set_end_of_stream (m);
+
+  if (! is_read)
+    /* "Write" 0 bytes to flush overflow vector. */
+    serialize_write_not_inline (m, /* n bytes */ 0);
+
+  /* Call it one last time to flush buffer and close. */
+  m->data_function (m);
+
+  vec_free (m->overflow_buffer);
   memset (m, 0, sizeof (m[0]));
-  return 0;
+  serialize_set_end_of_stream (m);
 }
 
-clib_error_t *
-serialize_open_vector (serialize_main_t * m, u8 * vector)
+void serialize_close (serialize_main_t * m)
+{ serialize_read_write_close (m, /* is_read */ 0); }
+
+void unserialize_close (serialize_main_t * m)
+{ serialize_read_write_close (m, /* is_read */ 1); }
+
+void serialize_open_vector (serialize_main_t * m, u8 * vector)
 {
   memset (m, 0, sizeof (m[0]));
-  m->flush_threshold = ~0;	/* never flush */
   m->buffer = vector;
-  if (vector)
-    _vec_len (m->buffer) = 0;
-  return 0;
+  m->n_buffer_bytes = vec_len (vector);
 }
 
-clib_error_t *
-unserialize_open_vector (serialize_main_t * m, u8 * vector)
+void unserialize_open_vector (serialize_main_t * m, u8 * vector)
 {
   memset (m, 0, sizeof (m[0]));
   m->buffer = vector;
-  return 0;
+  m->n_buffer_bytes = vec_len (vector);
 }
 
 #ifdef CLIB_UNIX
@@ -423,68 +498,74 @@ unserialize_open_vector (serialize_main_t * m, u8 * vector)
 #include <unistd.h>
 #include <fcntl.h>
 
-static clib_error_t *
-unix_file_write (serialize_main_t * m, u8 * buffer, u32 * n_written)
+static void unix_file_write (serialize_main_t * m)
 {
-  clib_error_t * error = 0;
-  int n;
+  int fd, n;
 
-  n = *n_written;
-  n = write (m->opaque, buffer, n);
+  fd = m->data_function_opaque;
+  n = write (fd, m->buffer, m->current_buffer_index);
   if (n < 0)
-    error = clib_error_return_unix (0, "write error");
+    {
+      if (! unix_error_is_fatal (errno))
+	n = 0;
+      else
+	serialize_error (m, clib_error_return_unix (0, "write"));
+    }
+  if (n == m->current_buffer_index)
+    _vec_len (m->buffer) = 0;
   else
-    *n_written = n;
-  return error;
+    vec_delete (m->buffer, n, 0);
+  m->current_buffer_index = vec_len (m->buffer);
+}
+
+static void unix_file_read (serialize_main_t * m)
+{
+  int fd, n;
+
+  fd = m->data_function_opaque;
+  n = read (fd, m->buffer, vec_len (m->buffer));
+  if (n < 0)
+    {
+      if (! unix_error_is_fatal (errno))
+	n = 0;
+      else
+	serialize_error (m, clib_error_return_unix (0, "read"));
+    }
+  m->current_buffer_index = 0;
+  m->n_buffer_bytes = n;
 }
 
 static clib_error_t *
-unix_file_read (serialize_main_t * m, u8 * buffer, u32 * n_read)
+serialize_open_unix (serialize_main_t * m, char * file, uword is_read)
 {
-  clib_error_t * error = 0;
-  int n;
+  int fd, mode;
 
-  n = *n_read;
-  n = read (m->opaque, buffer, n);
-  if (n == 0)
-    error = clib_error_return (0, "read end of file");
-  else if (n < 0)
-    error = clib_error_return_unix (0, "read error");
-  else
-    *n_read = n;
-  return error;
-}
-
-static void unix_file_close (serialize_main_t * m)
-{ close (m->opaque); }
-
-static clib_error_t *
-serialize_open_unix (serialize_main_t * m, char * file, int mode)
-{
-  int fd;
-
+  mode = is_read ? O_RDONLY : O_RDWR | O_CREAT | O_TRUNC;
   fd = open (file, mode, 0666);
   if (fd < 0)
     return clib_error_return_unix (0, "open `%s'", file);
 
   memset (m, 0, sizeof (m[0]));
-  m->flush_threshold = 4096;
-  m->buffer = vec_new (u8, m->flush_threshold);
-  _vec_len (m->buffer) = 0;
-  m->write = unix_file_write;
-  m->read = unix_file_read;
-  m->close = unix_file_close;
-  m->opaque = fd;
+  vec_resize (m->buffer, 4096);
+  
+  if (! is_read)
+    {
+      m->n_buffer_bytes = vec_len (m->buffer);
+      _vec_len (m->buffer) = 0;
+    }
+
+  m->data_function = is_read ? unix_file_read : unix_file_write;
+  m->data_function_opaque = fd;
 
   return 0;
 }
 
 clib_error_t *
 serialize_open_unix_file (serialize_main_t * m, char * file)
-{ return serialize_open_unix (m, file, O_RDWR | O_CREAT | O_TRUNC); }
+{ return serialize_open_unix (m, file, /* is_read */ 0); }
 
 clib_error_t *
 unserialize_open_unix_file (serialize_main_t * m, char * file)
-{ return serialize_open_unix (m, file, O_RDONLY); }
+{ return serialize_open_unix (m, file, /* is_read */ 1); }
 
 #endif /* CLIB_UNIX */
