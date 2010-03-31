@@ -535,16 +535,9 @@ static void unix_file_read (serialize_main_t * m)
   m->n_buffer_bytes = n;
 }
 
-static clib_error_t *
-serialize_open_unix (serialize_main_t * m, char * file, uword is_read)
+static void
+serialize_open_unix_file_descriptor_helper (serialize_main_t * m, int fd, uword is_read)
 {
-  int fd, mode;
-
-  mode = is_read ? O_RDONLY : O_RDWR | O_CREAT | O_TRUNC;
-  fd = open (file, mode, 0666);
-  if (fd < 0)
-    return clib_error_return_unix (0, "open `%s'", file);
-
   memset (m, 0, sizeof (m[0]));
   vec_resize (m->buffer, 4096);
   
@@ -556,16 +549,34 @@ serialize_open_unix (serialize_main_t * m, char * file, uword is_read)
 
   m->data_function = is_read ? unix_file_read : unix_file_write;
   m->data_function_opaque = fd;
+}
 
+void serialize_open_unix_file_descriptor (serialize_main_t * m, int fd)
+{ serialize_open_unix_file_descriptor_helper (m, fd, /* is_read */ 0); }
+
+void unserialize_open_unix_file_descriptor (serialize_main_t * m, int fd)
+{ serialize_open_unix_file_descriptor_helper (m, fd, /* is_read */ 1); }
+
+static clib_error_t *
+serialize_open_unix_file_helper (serialize_main_t * m, char * file, uword is_read)
+{
+  int fd, mode;
+
+  mode = is_read ? O_RDONLY : O_RDWR | O_CREAT | O_TRUNC;
+  fd = open (file, mode, 0666);
+  if (fd < 0)
+    return clib_error_return_unix (0, "open `%s'", file);
+
+  serialize_open_unix_file_descriptor_helper (m, fd, is_read);
   return 0;
 }
 
 clib_error_t *
 serialize_open_unix_file (serialize_main_t * m, char * file)
-{ return serialize_open_unix (m, file, /* is_read */ 0); }
+{ return serialize_open_unix_file_helper (m, file, /* is_read */ 0); }
 
 clib_error_t *
 unserialize_open_unix_file (serialize_main_t * m, char * file)
-{ return serialize_open_unix (m, file, /* is_read */ 1); }
+{ return serialize_open_unix_file_helper (m, file, /* is_read */ 1); }
 
 #endif /* CLIB_UNIX */
