@@ -479,43 +479,18 @@ void serialize_close (serialize_main_t * m)
 void unserialize_close (serialize_main_t * m)
 { serialize_read_write_close (m, /* is_read */ 1); }
 
-void serialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes)
-{
-  memset (m, 0, sizeof (m[0]));
-  m->buffer = data;
-  m->n_buffer_bytes = n_data_bytes;
-}
-
-void unserialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes)
-{ serialize_open_data (m, data, n_data_bytes); }
-
-static void serialize_vector_write (serialize_main_t * m)
-{
-  if (! serialize_is_end_of_stream (m))
-    {
-      /* Double buffer size. */
-      uword l = vec_len (m->buffer);
-      vec_resize (m->buffer, l > 0 ? 2*l : 64);
-      m->n_buffer_bytes = vec_len (m->buffer);
-    }
-}
-
 void serialize_open_vector (serialize_main_t * m, u8 * vector)
 {
   memset (m, 0, sizeof (m[0]));
-  m->data_function = serialize_vector_write;
   m->buffer = vector;
-  m->current_buffer_index = vec_len (vector);
-  m->n_buffer_bytes = vec_max_len (vector);
+  m->n_buffer_bytes = vec_len (vector);
 }
 
-void * serialize_close_vector (serialize_main_t * m)
+void unserialize_open_vector (serialize_main_t * m, u8 * vector)
 {
-  void * result;
-  _vec_len (m->buffer) = m->current_buffer_index;
-  result = m->buffer;
   memset (m, 0, sizeof (m[0]));
-  return result;
+  m->buffer = vector;
+  m->n_buffer_bytes = vec_len (vector);
 }
 
 #ifdef CLIB_UNIX
