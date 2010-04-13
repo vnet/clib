@@ -161,7 +161,7 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
   if (r < (1 << 14))
     {
       p = serialize_write (m, 2);
-      clib_mem_unaligned (m, u16) = clib_host_to_little_u16 (4 * r + 2);
+      clib_mem_unaligned (p, u16) = clib_host_to_little_u16 (4 * r + 2);
       return;
     }
 
@@ -169,7 +169,7 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
   if (r < (1 << 29))
     {
       p = serialize_write (m, 4);
-      clib_mem_unaligned (m, u32) = clib_host_to_little_u32 (8 * r + 4);
+      clib_mem_unaligned (p, u32) = clib_host_to_little_u32 (8 * r + 4);
       return;
     }
 
@@ -258,8 +258,14 @@ void unserialize_cstring (serialize_main_t * m, char ** string);
 void serialize_close (serialize_main_t * m);
 void unserialize_close (serialize_main_t * m);
 
+void serialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes);
+void unserialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes);
+
+/* Starts serialization with expanding vector as buffer. */
 void serialize_open_vector (serialize_main_t * m, u8 * vector);
-void unserialize_open_vector (serialize_main_t * m, u8 * vector);
+
+/* Serialization is done: returns vector buffer to caller. */
+void * serialize_close_vector (serialize_main_t * m);
 
 #ifdef CLIB_UNIX
 clib_error_t * serialize_open_unix_file (serialize_main_t * m, char * file);
