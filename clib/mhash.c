@@ -199,6 +199,10 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 #undef _
   };
 
+  vec_free (h->key_vector);
+  vec_free (h->key_vector_free_indices);
+  hash_free (h->hash);
+
   memset (h, 0, sizeof (h[0]));
   h->n_key_bytes = n_key_bytes;
 

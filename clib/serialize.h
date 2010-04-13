@@ -141,6 +141,88 @@ unserialize_integer (serialize_main_t * m, u32 * x, u32 n_bytes)
     ASSERT (0);
 }
 
+/* As above but tries to be more compact. */
+static always_inline void
+serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
+{
+  u64 r = x;
+  u8 * p;
+
+  /* Low bit set means it fits into 1 byte. */
+  if (r < (1 << 7))
+    {
+      p = serialize_write (m, 1);
+      p[0] = 1 + 2*r;
+      return;
+    }
+
+  /* Low 2 bits 1 0 means it fits into 2 bytes. */
+  r -= (1 << 7);
+  if (r < (1 << 14))
+    {
+      p = serialize_write (m, 2);
+      clib_mem_unaligned (m, u16) = clib_host_to_little_u16 (4 * r + 2);
+      return;
+    }
+
+  r -= (1 << 14);
+  if (r < (1 << 29))
+    {
+      p = serialize_write (m, 4);
+      clib_mem_unaligned (m, u32) = clib_host_to_little_u32 (8 * r + 4);
+      return;
+    }
+
+  r -= 1 << 29;
+
+  ASSERT ((r >> (64 - 3)) == 0);
+  p = serialize_write (m, 8);
+  clib_mem_unaligned (p, u64) = clib_host_to_little_u64 (8 * r + 0);
+}
+
+static always_inline u64
+unserialize_likely_small_unsigned_integer (serialize_main_t * m)
+{
+  u8 * p = serialize_read (m, 1);
+  u64 r;
+  u32 y = p[0];
+
+  if (y & 1)
+    return y / 2;
+
+  r = 1 << 7;
+  if (y & 2)
+    {
+      p = serialize_read (m, 1);
+      r += (y / 4) + (p[0] << 6);
+      return r;
+    }
+
+  r += 1 << 14;
+  if (y & 4)
+    {
+      p = serialize_read (m, 3);
+      r += ((y / 8)
+	    + (p[0] << (5 + 8*0))
+	    + (p[1] << (5 + 8*1))
+	    + (p[2] << (5 + 8*2)));
+      return r;
+    }
+
+  r += 1 << 29;
+  p = serialize_read (m, 7);
+  r += ((y / 8)
+	+ (((u64) p[0] << (u64) (5 + 8*0)))
+	+ (((u64) p[1] << (u64) (5 + 8*1)))
+	+ (((u64) p[2] << (u64) (5 + 8*2)))
+	+ (((u64) p[3] << (u64) (5 + 8*3)))
+	+ (((u64) p[4] << (u64) (5 + 8*4)))
+	+ (((u64) p[5] << (u64) (5 + 8*5)))
+	+ (((u64) p[6] << (u64) (5 + 8*6)))
+	+ (((u64) p[7] << (u64) (5 + 8*7))));
+  return r;
+}
+
 /* Basic types. */
 serialize_function_t serialize_64, unserialize_64;
 serialize_function_t serialize_32, unserialize_32;
@@ -172,26 +254,6 @@ uword * unserialize_bitmap (serialize_main_t * m);
 
 void serialize_cstring (serialize_main_t * m, char * string);
 void unserialize_cstring (serialize_main_t * m, char ** string);
-
-#define serialize_data(m,d,l)			\
-do {						\
-  u32 _l = (l);					\
-  serialize_integer (m, _l, sizeof (_l));	\
-  serialize_write (m, d, _l);			\
-} while (0)
-
-static always_inline void *
-unserialize_data (serialize_main_t * m)
-{
-  u8 * d, * v;
-  u32 len;
-
-  unserialize_integer (m, &len, sizeof (len));
-  d = serialize_read (m, len);
-  v = 0;
-  vec_add (v, d, len);
-  return v;
-}
 
 void serialize_close (serialize_main_t * m);
 void unserialize_close (serialize_main_t * m);
