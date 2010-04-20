@@ -301,7 +301,7 @@ serialize_multiple (serialize_main_t * m,
   else if (n_data_bytes == 4)
     serialize_multiple_4 (m, data, data_stride, n_data);
   else
-    os_panic ();
+    ASSERT (0);
 }
 
 static always_inline void
@@ -318,7 +318,7 @@ unserialize_multiple (serialize_main_t * m,
   else if (n_data_bytes == 4)
     unserialize_multiple_4 (m, data, data_stride, n_data);
   else
-    os_panic ();
+    ASSERT (0);
 }
 
 /* Basic types. */
