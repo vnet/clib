@@ -79,11 +79,16 @@ static always_inline u64 clib_cpu_time_now (void)
 
 static always_inline u64 clib_cpu_time_now (void)
 {
-  u32 hi, lo;
-  asm volatile ("mftbu %[hi]\n"
-		"mftb  %[lo]\n"
-		: [hi] "=r" (hi), [lo] "=r" (lo));
-  return (u64) lo + ((u64) hi << (u64) 32);
+  u32 hi1, hi2, lo;
+  asm volatile (
+    "1:\n"
+    "mftbu %[hi1]\n"
+    "mftb  %[lo]\n"
+    "mftbu %[hi2]\n"
+    "cmpw %[hi1],%[hi2]\n"
+    "bne 1b\n"
+    : [hi1] "=r" (hi1), [hi2] "=r" (hi2), [lo] "=r" (lo));
+  return (u64) lo + ((u64) hi2 << (u64) 32);
 }
 
 #elif defined (__arm__)
