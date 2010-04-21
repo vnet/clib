@@ -564,6 +564,9 @@ void * serialize_close_vector (serialize_main_t * m)
 {
   serialize_stream_t * s = &m->stream;
   void * result;
+
+  serialize_close (m);		/* frees overflow buffer */
+
   if (s->buffer)
     _vec_len (s->buffer) = s->current_buffer_index;
   result = s->buffer;
