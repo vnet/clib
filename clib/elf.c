@@ -471,6 +471,7 @@ add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
     {
       tab->symbols = elf_section_contents (em, data, s - em->sections,
 					   sizeof (tab->symbols[0]));
+      tab->symbols = vec_dup (tab->symbols);
       for (i = 0; i < vec_len (tab->symbols); i++)
 	{
 #define _(t,f) tab->symbols[i].f = elf_swap_##t (em, tab->symbols[i].f);
@@ -526,6 +527,8 @@ add_relocation_table (elf_main_t * em, void * data, elf_section_t * s)
 
       r = elf_section_contents (em, data, t->section_index, 
 				sizeof (r[0]) + has_addend * sizeof (r->addend[0]));
+      r = vec_dup (r);
+
       if (em->need_byte_swap)
 	for (i = 0; i < vec_len (r); i++)
 	  {

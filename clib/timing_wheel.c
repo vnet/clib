@@ -423,9 +423,9 @@ expire_bin (timing_wheel_t * w,
   return expired_user_data;
 }
 
-/* Called rarely.  32 bit times should only over every 4k seconds or so. */
+/* Called rarely. 32 bit times should only overflow every 4 seconds or so on a fast machine. */
 static void
-advance_cpu_time_base (timing_wheel_t * w)
+advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 {
   timing_wheel_level_t * l;
   timing_wheel_elt_t * e;
@@ -442,6 +442,8 @@ advance_cpu_time_base (timing_wheel_t * w)
       clib_bitmap_foreach (wi, l->occupancy_bitmap, ({
 	vec_foreach (e, l->elts[wi])
 	  {
+	    /* This should always be true since otherwise we would have already expired
+	       this element. */
 	    ASSERT (e->cpu_time_relative_to_base >= delta);
 	    e->cpu_time_relative_to_base -= delta;
 	  }
@@ -455,7 +457,16 @@ advance_cpu_time_base (timing_wheel_t * w)
       /* It fits now into 32 bits. */
       if (0 == ((oe->cpu_time - w->cpu_time_base) >> BITS (e->cpu_time_relative_to_base)))
 	{
-	  timing_wheel_insert_helper (w, oe->cpu_time, oe->user_data);
+	  u64 ti = oe->cpu_time >> w->log2_clocks_per_bin;
+	  if (ti < w->current_time_index)
+	    {
+	      /* This can happen when timing wheel is not advanced for a long time
+		 (for example when at a gdb breakpoint for a while). */
+	      if (! elt_is_deleted (w, oe->user_data))
+		vec_add1 (expired_user_data, oe->user_data);
+	    }
+	  else
+	    timing_wheel_insert_helper (w, oe->cpu_time, oe->user_data);
 	  pool_put (w->overflow_pool, oe);
 	}
     }));
@@ -615,7 +626,7 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 
   /* Don't advance until necessary. */
   while (PREDICT_FALSE (advance_time_index >= w->time_index_next_cpu_time_base_update))
-    advance_cpu_time_base (w);
+    advance_cpu_time_base (w, expired_user_data);
 
   if (next_expiring_element_cpu_time)
     *next_expiring_element_cpu_time = timing_wheel_next_expiring_elt_time (w);

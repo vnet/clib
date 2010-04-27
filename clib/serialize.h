@@ -31,11 +31,13 @@
 #include <clib/pool.h>
 #include <clib/longjmp.h>
 
-struct serialize_main_t;
+struct serialize_main_header_t;
+struct serialize_stream_t;
 
-typedef void (serialize_data_function_t) (struct serialize_main_t *);
+typedef void (serialize_data_function_t) (struct serialize_main_header_t *h,
+					  struct serialize_stream_t * s);
 
-typedef struct serialize_main_t {
+typedef struct serialize_stream_t {
   /* Current data buffer being serialized/unserialized. */
   u8 * buffer;
 
@@ -52,71 +54,101 @@ typedef struct serialize_main_t {
   /* Current index in overflow buffer for reads. */
   u32 current_overflow_index;
 
-  u32 recursion_level;
-
   u32 flags;
 #define SERIALIZE_END_OF_STREAM (1 << 0)
 
+  u32 data_function_opaque;
+
+  u32 opaque[64 - 5 * sizeof (u32) - 2 * sizeof (void *)];
+} serialize_stream_t;
+
+static always_inline void
+serialize_stream_set_end_of_stream (serialize_stream_t * s)
+{ s->flags |= SERIALIZE_END_OF_STREAM; }
+
+static always_inline uword
+serialize_stream_is_end_of_stream (serialize_stream_t * s)
+{ return (s->flags & SERIALIZE_END_OF_STREAM) != 0; }
+
+typedef struct serialize_main_header_t {
+  u32 recursion_level;
+
   /* Data callback function and opaque data. */
   serialize_data_function_t * data_function;
-
-  uword data_function_opaque;
 
   /* Error if signaled by data function. */
   clib_error_t * error;
 
   /* Exit unwind point if error occurs. */
   clib_longjmp_t error_longjmp;
+} serialize_main_header_t;
+
+static always_inline void
+serialize_error (serialize_main_header_t * m, clib_error_t * error)
+{ clib_longjmp (&m->error_longjmp, pointer_to_uword (error)); }
+
+void * serialize_read_write_not_inline (serialize_main_header_t * m,
+					serialize_stream_t * s,
+					uword n_bytes, uword flags);
+
+#define SERIALIZE_FLAG_IS_READ  (1 << 0)
+#define SERIALIZE_FLAG_IS_WRITE (1 << 1)
+
+static always_inline void *
+serialize_stream_read_write (serialize_main_header_t * header,
+			     serialize_stream_t * s,
+			     uword n_bytes,
+			     uword flags)
+{
+  uword i, j, l;
+
+  l = vec_len (s->overflow_buffer);
+  i = s->current_buffer_index;
+  j = i + n_bytes;
+  s->current_buffer_index = j;
+  if (l == 0 && j <= s->n_buffer_bytes)
+    {
+      return s->buffer + i;
+    }
+  else
+    {
+      s->current_buffer_index = i;
+      return serialize_read_write_not_inline (header, s, n_bytes, flags);
+    }
+}
+
+typedef struct {
+  serialize_main_header_t header;
+  serialize_stream_t stream;
 } serialize_main_t;
 
 static always_inline void
 serialize_set_end_of_stream (serialize_main_t * m)
-{ m->flags |= SERIALIZE_END_OF_STREAM; }
+{ serialize_stream_set_end_of_stream (&m->stream); }
 
 static always_inline uword
 serialize_is_end_of_stream (serialize_main_t * m)
-{ return (m->flags & SERIALIZE_END_OF_STREAM) != 0; }
+{ return serialize_stream_is_end_of_stream (&m->stream); }
 
-static always_inline void
-serialize_error (serialize_main_t * m, clib_error_t * error)
-{ clib_longjmp (&m->error_longjmp, pointer_to_uword (error)); }
+typedef struct {
+  serialize_main_header_t header;
+  serialize_stream_t * streams;
+} serialize_multiple_main_t;
 
 typedef void (serialize_function_t) (serialize_main_t * m, va_list * va);
 
-void * serialize_read_write_not_inline (serialize_main_t * m, uword n_bytes, uword is_read);
+static always_inline void *
+unserialize_get (serialize_main_t * m, uword n_bytes)
+{ return serialize_stream_read_write (&m->header, &m->stream, n_bytes, SERIALIZE_FLAG_IS_READ); }
 
 static always_inline void *
-serialize_read_write (serialize_main_t * m, uword n_bytes, uword is_read)
-{
-  uword i, j, l;
-
-  l = vec_len (m->overflow_buffer);
-  i = m->current_buffer_index;
-  j = i + n_bytes;
-  m->current_buffer_index = j;
-  if (l == 0 && j < m->n_buffer_bytes)
-    {
-      return m->buffer + i;
-    }
-  else
-    {
-      m->current_buffer_index = i;
-      return serialize_read_write_not_inline (m, n_bytes, is_read);
-    }
-}
-
-static always_inline void *
-serialize_read (serialize_main_t * m, uword n_bytes)
-{ return serialize_read_write (m, n_bytes, /* is_read */ 1); }
-
-static always_inline void *
-serialize_write (serialize_main_t * m, uword n_bytes)
-{ return serialize_read_write (m, n_bytes, /* is_read */ 0); }
+serialize_get (serialize_main_t * m, uword n_bytes)
+{ return serialize_stream_read_write (&m->header, &m->stream, n_bytes, SERIALIZE_FLAG_IS_WRITE); }
 
 static always_inline void
 serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
 {
-  u8 * p = serialize_write (m, n_bytes);
+  u8 * p = serialize_get (m, n_bytes);
   if (n_bytes == 1)
     p[0] = x;
   else if (n_bytes == 2)
@@ -128,15 +160,163 @@ serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
 }
 
 static always_inline void
-unserialize_integer (serialize_main_t * m, u32 * x, u32 n_bytes)
+unserialize_integer (serialize_main_t * m, void * x, u32 n_bytes)
 {
-  u8 * p = serialize_read (m, n_bytes);
+  u8 * p = unserialize_get (m, n_bytes);
   if (n_bytes == 1)
-    *x = p[0];
+    *(u8 *) x = p[0];
   else if (n_bytes == 2)
-    *x = clib_net_to_host_unaligned_mem_u16 ((u16 *) p);
+    *(u16 *) x = clib_net_to_host_unaligned_mem_u16 ((u16 *) p);
   else if (n_bytes == 4)
-    *x = clib_net_to_host_unaligned_mem_u32 ((u32 *) p);
+    *(u32 *) x = clib_net_to_host_unaligned_mem_u32 ((u32 *) p);
+  else
+    ASSERT (0);
+}
+
+/* As above but tries to be more compact. */
+static always_inline void
+serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
+{
+  u64 r = x;
+  u8 * p;
+
+  /* Low bit set means it fits into 1 byte. */
+  if (r < (1 << 7))
+    {
+      p = serialize_get (m, 1);
+      p[0] = 1 + 2*r;
+      return;
+    }
+
+  /* Low 2 bits 1 0 means it fits into 2 bytes. */
+  r -= (1 << 7);
+  if (r < (1 << 14))
+    {
+      p = serialize_get (m, 2);
+      clib_mem_unaligned (p, u16) = clib_host_to_little_u16 (4 * r + 2);
+      return;
+    }
+
+  r -= (1 << 14);
+  if (r < (1 << 29))
+    {
+      p = serialize_get (m, 4);
+      clib_mem_unaligned (p, u32) = clib_host_to_little_u32 (8 * r + 4);
+      return;
+    }
+
+  r -= 1 << 29;
+
+  ASSERT ((r >> (64 - 3)) == 0);
+  p = serialize_get (m, 8);
+  clib_mem_unaligned (p, u64) = clib_host_to_little_u64 (8 * r + 0);
+}
+
+static always_inline u64
+unserialize_likely_small_unsigned_integer (serialize_main_t * m)
+{
+  u8 * p = unserialize_get (m, 1);
+  u64 r;
+  u32 y = p[0];
+
+  if (y & 1)
+    return y / 2;
+
+  r = 1 << 7;
+  if (y & 2)
+    {
+      p = unserialize_get (m, 1);
+      r += (y / 4) + (p[0] << 6);
+      return r;
+    }
+
+  r += 1 << 14;
+  if (y & 4)
+    {
+      p = unserialize_get (m, 3);
+      r += ((y / 8)
+	    + (p[0] << (5 + 8*0))
+	    + (p[1] << (5 + 8*1))
+	    + (p[2] << (5 + 8*2)));
+      return r;
+    }
+
+  r += 1 << 29;
+  p = unserialize_get (m, 7);
+  r += ((y / 8)
+	+ (((u64) p[0] << (u64) (5 + 8*0)))
+	+ (((u64) p[1] << (u64) (5 + 8*1)))
+	+ (((u64) p[2] << (u64) (5 + 8*2)))
+	+ (((u64) p[3] << (u64) (5 + 8*3)))
+	+ (((u64) p[4] << (u64) (5 + 8*4)))
+	+ (((u64) p[5] << (u64) (5 + 8*5)))
+	+ (((u64) p[6] << (u64) (5 + 8*6)))
+	+ (((u64) p[7] << (u64) (5 + 8*7))));
+  return r;
+}
+
+void
+serialize_multiple_1 (serialize_main_t * m,
+		      void * data,
+		      uword data_stride,
+		      uword n_data);
+void
+serialize_multiple_2 (serialize_main_t * m,
+		      void * data,
+		      uword data_stride,
+		      uword n_data);
+void
+serialize_multiple_4 (serialize_main_t * m,
+		      void * data,
+		      uword data_stride,
+		      uword n_data);
+
+void
+unserialize_multiple_1 (serialize_main_t * m,
+			void * data,
+			uword data_stride,
+			uword n_data);
+void
+unserialize_multiple_2 (serialize_main_t * m,
+			void * data,
+			uword data_stride,
+			uword n_data);
+void
+unserialize_multiple_4 (serialize_main_t * m,
+			void * data,
+			uword data_stride,
+			uword n_data);
+
+static always_inline void
+serialize_multiple (serialize_main_t * m,
+		    void * data,
+		    uword n_data_bytes,
+		    uword data_stride,
+		    uword n_data)
+{
+  if (n_data_bytes == 1)
+    serialize_multiple_1 (m, data, data_stride, n_data);
+  else if (n_data_bytes == 2)
+    serialize_multiple_2 (m, data, data_stride, n_data);
+  else if (n_data_bytes == 4)
+    serialize_multiple_4 (m, data, data_stride, n_data);
+  else
+    ASSERT (0);
+}
+
+static always_inline void
+unserialize_multiple (serialize_main_t * m,
+		      void * data,
+		      uword n_data_bytes,
+		      uword data_stride,
+		      uword n_data)
+{
+  if (n_data_bytes == 1)
+    unserialize_multiple_1 (m, data, data_stride, n_data);
+  else if (n_data_bytes == 2)
+    unserialize_multiple_2 (m, data, data_stride, n_data);
+  else if (n_data_bytes == 4)
+    unserialize_multiple_4 (m, data, data_stride, n_data);
   else
     ASSERT (0);
 }
@@ -153,7 +333,7 @@ serialize_function_t serialize_f32, unserialize_f32;
 serialize_function_t serialize_vector, unserialize_vector;
 
 #define vec_serialize(m,v,f) \
-  serialize ((m), serialize_vector, (v), (f))
+  serialize ((m), serialize_vector, (v), sizeof ((v)[0]), (f))
 
 #define vec_unserialize(m,v,f) \
   unserialize ((m), unserialize_vector, (v), sizeof ((*(v))[0]), (f))
@@ -173,35 +353,26 @@ uword * unserialize_bitmap (serialize_main_t * m);
 void serialize_cstring (serialize_main_t * m, char * string);
 void unserialize_cstring (serialize_main_t * m, char ** string);
 
-#define serialize_data(m,d,l)			\
-do {						\
-  u32 _l = (l);					\
-  serialize_integer (m, _l, sizeof (_l));	\
-  serialize_write (m, d, _l);			\
-} while (0)
-
-static always_inline void *
-unserialize_data (serialize_main_t * m)
-{
-  u8 * d, * v;
-  u32 len;
-
-  unserialize_integer (m, &len, sizeof (len));
-  d = serialize_read (m, len);
-  v = 0;
-  vec_add (v, d, len);
-  return v;
-}
-
 void serialize_close (serialize_main_t * m);
 void unserialize_close (serialize_main_t * m);
 
+void serialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes);
+void unserialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes);
+
+/* Starts serialization with expanding vector as buffer. */
 void serialize_open_vector (serialize_main_t * m, u8 * vector);
+
+/* Serialization is done: returns vector buffer to caller. */
+void * serialize_close_vector (serialize_main_t * m);
+
 void unserialize_open_vector (serialize_main_t * m, u8 * vector);
 
 #ifdef CLIB_UNIX
 clib_error_t * serialize_open_unix_file (serialize_main_t * m, char * file);
 clib_error_t * unserialize_open_unix_file (serialize_main_t * m, char * file);
+
+void serialize_open_unix_file_descriptor (serialize_main_t * m, int fd);
+void unserialize_open_unix_file_descriptor (serialize_main_t * m, int fd);
 #endif /* CLIB_UNIX */
 
 /* Main routines. */

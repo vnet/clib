@@ -760,7 +760,6 @@ static always_inline void
 elf_symbol_table_free (elf_symbol_table_t * s)
 {
   vec_free (s->symbols);
-  vec_free (s->string_table);
   hash_free (s->symbol_by_name);
 }
 
