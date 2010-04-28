@@ -750,7 +750,6 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
   elog_event_t * e;
-  uword i, n;
 
   serialize_cstring (m, elog_serialize_magic);
 
@@ -773,7 +772,7 @@ void
 unserialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
-  uword i, n;
+  uword i;
 
   unserialize_check_magic (m, elog_serialize_magic,
 			   strlen (elog_serialize_magic));
