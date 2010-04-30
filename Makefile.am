@@ -29,6 +29,7 @@ TESTS	=  test_elog \
 	   test_time \
 	   test_timing_wheel \
 	   test_vec \
+	   test_vhash \
 	   test_zvec
 
 noinst_PROGRAMS = $(TESTS)
@@ -50,6 +51,7 @@ test_socket_SOURCES = clib/test_socket.c
 test_time_SOURCES = clib/test_time.c
 test_timing_wheel_SOURCES = clib/test_timing_wheel.c
 test_vec_SOURCES = clib/test_vec.c
+test_vhash_SOURCES = clib/test_vhash.c
 test_zvec_SOURCES = clib/test_zvec.c
 
 # All unit tests use ASSERT for failure
@@ -70,6 +72,7 @@ test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_vhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
 test_elog_LDADD =	libclib.la -lpthread
@@ -88,6 +91,7 @@ test_socket_LDADD =	libclib.la -lpthread
 test_time_LDADD =	libclib.la -lm -lpthread
 test_timing_wheel_LDADD =	libclib.la -lm -lpthread
 test_vec_LDADD =	libclib.la -lpthread
+test_vhash_LDADD =	libclib.la -lpthread
 test_zvec_LDADD =	libclib.la -lpthread
 
 test_elog_LDFLAGS = -static
@@ -106,6 +110,7 @@ test_socket_LDFLAGS = -static
 test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
+test_vhash_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
@@ -123,6 +128,7 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_serialize.c \
   clib/test_timing_wheel.c \
   clib/test_vec.c \
+  clib/test_vhash.c \
   clib/test_zvec.c \
   clib/test_vec.h \
   clib/test_standalone_string.h
@@ -151,6 +157,7 @@ nobase_include_HEADERS = \
     clib/mheap.h \
     clib/os.h \
     clib/phash.h \
+    clib/pipeline.h \
     clib/pool.h \
     clib/qhash.h \
     clib/random.h \
@@ -173,6 +180,7 @@ nobase_include_HEADERS = \
     clib/vector_funcs.h \
     clib/vector_iwmmxt.h \
     clib/vector_sse2.h \
+    clib/vhash.h \
     clib/vm_linux_kernel.h \
     clib/vm_standalone.h \
     clib/vm_unix.h \
@@ -206,6 +214,7 @@ CLIB_CORE = \
   clib/timing_wheel.c \
   clib/unformat.c \
   clib/vec.c \
+  clib/vhash.c \
   clib/zvec.c
 
 # Core plus Unix additions

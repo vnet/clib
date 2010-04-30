@@ -401,9 +401,10 @@ _ (xori, a = a ^ b, 1)
 
 /* Returns random bitmap of given length. */
 static inline uword *
-clib_bitmap_random (uword n_bits, u32 * seed)
+clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
-  uword * ai = 0;
+  if (ai)
+    _vec_len (ai) = 0;
 
   if (n_bits > 0)
     {

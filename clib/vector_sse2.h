@@ -345,6 +345,17 @@ _signed_binop (32, 4, is_equal, pcmpeqd128)
 #define u16x8_extract(x,i) __builtin_ia32_vec_ext_v8hi (x, i)
 #define i16x8_extract(x,i) __builtin_ia32_vec_ext_v8hi (x, i)
 
+/* Extract low order 32 bit word. */
+static always_inline u32
+u32x4_get0 (u32x4 x)
+{
+  u32 result;
+  asm volatile ("movd %[x], %[result]"
+		: /* outputs */ [result] "=r" (result)
+		: /* inputs */ [x] "x" (x));
+  return result;
+}
+
 static always_inline u32 u8x16_zero_mask (u8x16 x)
 {
   i8x16 z = {0};
