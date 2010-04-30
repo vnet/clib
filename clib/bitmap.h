@@ -142,6 +142,15 @@ clib_bitmap_get_no_check (uword * ai, uword i)
   return 0 != ((ai[i0] >> i1) & 1);
 }
 
+static inline uword
+clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
+{
+  uword i0 = i / BITS (ai[0]);
+  uword i1 = i % BITS (ai[0]);
+  ASSERT (i1 + n_bits <= BITS (uword));
+  return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
+}
+
 /* Fetch bits I through I + N_BITS. */
 static inline uword
 clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)

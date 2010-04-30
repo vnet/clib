@@ -28,6 +28,7 @@
 #include <clib/error.h>
 #include <clib/format.h>
 #include <clib/vec.h>
+#include <clib/vector.h>
 
 struct hash_header;
 
@@ -400,6 +401,48 @@ do {						\
   (a) ^= (c); (a) -= rotate_left ((c),  4);	\
   (b) ^= (a); (b) -= rotate_left ((a), 14);	\
   (c) ^= (b); (c) -= rotate_left ((b), 24);	\
+} while (0)
+
+/* Vector v3 mixing/finalize. */
+#define hash_v3_mix_step_1_u32x(a,b,c)				\
+do {								\
+  (a) -= (c); (a) ^= u32x_rotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= u32x_rotate_left ((a), 6); (a) += (c);	\
+  (c) -= (b); (c) ^= u32x_rotate_left ((b), 8); (b) += (a);	\
+} while (0)
+
+#define hash_v3_mix_step_2_u32x(a,b,c)				\
+do {								\
+  (a) -= (c); (a) ^= u32x_rotate_left ((c),16); (c) += (b);	\
+  (b) -= (a); (b) ^= u32x_rotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= u32x_rotate_left ((b), 4); (b) += (a);	\
+} while (0)
+
+#define hash_v3_finalize_step_1_u32x(a,b,c)		\
+do {							\
+  (c) ^= (b); (c) -= u32x_rotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= u32x_rotate_left ((c), 11);	\
+  (b) ^= (a); (b) -= u32x_rotate_left ((a), 25);	\
+} while (0)
+
+#define hash_v3_finalize_step_2_u32x(a,b,c)		\
+do {							\
+  (c) ^= (b); (c) -= u32x_rotate_left ((b), 16);	\
+  (a) ^= (c); (a) -= u32x_rotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= u32x_rotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= u32x_rotate_left ((b), 24);	\
+} while (0)
+
+#define hash_v3_mix_u32x(a,b,c)			\
+do {						\
+  hash_v3_mix_step_1_u32x(a,b,c);		\
+  hash_v3_mix_step_2_u32x(a,b,c);		\
+} while (0)
+
+#define hash_v3_finalize_u32x(a,b,c)		\
+do {						\
+  hash_v3_finalize_step_1_u32x(a,b,c);		\
+  hash_v3_finalize_step_2_u32x(a,b,c);		\
 } while (0)
 
 extern u64 hash_memory64 (void * p, word n_bytes, u64 state);

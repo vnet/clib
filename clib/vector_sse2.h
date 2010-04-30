@@ -273,20 +273,22 @@ _ (i32x2, i32x2, right, psrad);
 
 #undef _
 
-#define _(n,m,lr)							\
-  static always_inline u##n##x##m u##n##x##m##_word_shift_##lr (u##n##x##m a, int n_words) \
-  { return (u##n##x##m) __builtin_ia32_psrldqi128 ((i64x2) a, n * n_words); } \
-  static always_inline i##n##x##m i##n##x##m##_word_shift_##lr (i##n##x##m a, int n_words) \
-  { return (i##n##x##m) __builtin_ia32_psrldqi128 ((i64x2) a, n * n_words); }
+#define _(n,m,lr,f,t)							\
+  static always_inline u##n##x##m					\
+  u##n##x##m##_word_shift_##lr (u##n##x##m a, int n_words)		\
+  { return (u##n##x##m) __builtin_ia32_##f ((t) a, n_words); }	\
+  static always_inline i##n##x##m					\
+  i##n##x##m##_word_shift_##lr (i##n##x##m a, int n_words)		\
+  { return (i##n##x##m) __builtin_ia32_##f ((t) a, n_words); }
 
-_ (8, 16, right)
-_ (8, 16, left)
-_ (16, 8, right)
-_ (16, 8, left)
-_ (32, 4, right)
-_ (32, 4, left)
-_ (64, 2, right)
-_ (64, 2, left)
+_ (8, 16, right, psrldqi128, i64x2)
+_ (8, 16, left, pslldqi128, i64x2)
+_ (16, 8, right, psrlwi128, i16x8)
+_ (16, 8, left, psllwi128, i16x8)
+_ (32, 4, right, psrldi128, i32x4)
+_ (32, 4, left, pslldi128, i32x4)
+_ (64, 2, right, psrldqi128, i64x2)
+_ (64, 2, left, pslldqi128, i64x2)
 
 #undef _
 
@@ -356,9 +358,9 @@ static always_inline u8x16 u8x16_max (u8x16 x, u8x16 y)
 static always_inline u32 u8x16_max_scalar (u8x16 x)
 {
   x = u8x16_max (x, u8x16_word_shift_right (x, 8));
-  x = u8x16_max (x, u8x16_word_shift_right (x, 8));
-  x = u8x16_max (x, u8x16_word_shift_right (x, 8));
-  x = u8x16_max (x, u8x16_word_shift_right (x, 8));
+  x = u8x16_max (x, u8x16_word_shift_right (x, 4));
+  x = u8x16_max (x, u8x16_word_shift_right (x, 2));
+  x = u8x16_max (x, u8x16_word_shift_right (x, 1));
   return u16x8_extract ((i16x8) x, 0) & 0xff;
 }
 

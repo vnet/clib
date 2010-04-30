@@ -145,6 +145,22 @@ do {						\
 #define i32x_shift_right i32x4_shift_right
 #define u64x_shift_right u64x2_shift_right
 #define i64x_shift_right i64x2_shift_right
+#define u8x_rotate_left u8x16_rotate_left
+#define i8x_rotate_left i8x16_rotate_left
+#define u16x_rotate_left u16x8_rotate_left
+#define i16x_rotate_left i16x8_rotate_left
+#define u32x_rotate_left u32x4_rotate_left
+#define i32x_rotate_left i32x4_rotate_left
+#define u64x_rotate_left u64x2_rotate_left
+#define i64x_rotate_left i64x2_rotate_left
+#define u8x_rotate_right u8x16_rotate_right
+#define i8x_rotate_right i8x16_rotate_right
+#define u16x_rotate_right u16x8_rotate_right
+#define i16x_rotate_right i16x8_rotate_right
+#define u32x_rotate_right u32x4_rotate_right
+#define i32x_rotate_right i32x4_rotate_right
+#define u64x_rotate_right u64x2_rotate_right
+#define i64x_rotate_right i64x2_rotate_right
 #endif
 
 #if CLIB_VECTOR_WORD_BITS == 64
@@ -160,6 +176,18 @@ do {						\
 #define i16x_shift_right i16x4_shift_right
 #define u32x_shift_right u32x2_shift_right
 #define i32x_shift_right i32x2_shift_right
+#define u8x_rotate_left u8x8_rotate_left
+#define i8x_rotate_left i8x8_rotate_left
+#define u16x_rotate_left u16x4_rotate_left
+#define i16x_rotate_left i16x4_rotate_left
+#define u32x_rotate_left u32x2_rotate_left
+#define i32x_rotate_left i32x2_rotate_left
+#define u8x_rotate_right u8x8_rotate_right
+#define i8x_rotate_right i8x8_rotate_right
+#define u16x_rotate_right u16x4_rotate_right
+#define i16x_rotate_right i16x4_rotate_right
+#define u32x_rotate_right u32x2_rotate_right
+#define i32x_rotate_right i32x2_rotate_right
 #endif
 
 #if CLIB_VECTOR_WORD_BITS == 128
