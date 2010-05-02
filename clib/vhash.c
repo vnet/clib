@@ -69,7 +69,7 @@ next_overflow_bucket (vhash_overflow_search_bucket_t * b, u32 n_key_u32s)
 static always_inline vhash_overflow_buckets_t *
 get_overflow_buckets (vhash_t * h, u32 key)
 {
-  u32 i = ((key >> 2) & 0xf);
+  u32 i = (((key & h->bucket_mask) >> 2) & 0xf);
   ASSERT (i < ARRAY_LEN (h->overflow_buckets));
   return h->overflow_buckets + i;
 }
@@ -213,16 +213,21 @@ vhash_unset_refill_from_overflow (vhash_t * h,
   foreach_vhash_overflow_bucket (ob, obs, n_key_u32s)
     {
       for (i = 0; i < 4; i++)
-	if (ob->key_hash.data_u32[i] == key_hash)
-	  {
-	    i_refill = vhash_non_empty_result_index (sb->result.data_u32x4);
-	    sb->result.data_u32[i_refill] = ob->result.data_u32[i];
-	    for (j = 0; j < n_key_u32s; j++)
-	      sb->key[j].data_u32[i_refill] = ob->key[j].data_u32[i];
-	    set_overflow_result (ob, i, 0, ~key_hash);
-	    free_overflow_bucket (obs, ob, i);
-	    return;
-	  }
+	{
+	  if (! ob->result.data_u32[i])
+	    continue;
+	  if ((ob->key_hash.data_u32[i] & h->bucket_mask)
+	      != (key_hash & h->bucket_mask))
+	    continue;
+
+	  i_refill = vhash_empty_result_index (sb->result.data_u32x4);
+	  sb->result.data_u32[i_refill] = ob->result.data_u32[i];
+	  for (j = 0; j < n_key_u32s; j++)
+	    sb->key[j].data_u32[i_refill] = ob->key[j].data_u32[i];
+	  set_overflow_result (ob, i, 0, ~key_hash);
+	  free_overflow_bucket (obs, ob, i);
+	  return;
+	}
     }
 }
 

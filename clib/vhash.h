@@ -254,9 +254,11 @@ vhash_merge_results (u32x4 r)
 static always_inline u32
 vhash_search_bucket_is_full (u32x4 r)
 {
-  r = r & u32x4_word_shift_right (r, 2);
-  r = r & u32x4_word_shift_right (r, 1);
-  return u32x4_get0 (r) != 0;
+  u32x4 zero = {0, 0, 0, 0};
+  r = u32x4_is_equal (r, zero);
+  r = r | u32x4_word_shift_right (r, 2);
+  r = r | u32x4_word_shift_right (r, 1);
+  return u32x4_get0 (r) == 0;
 }
 
 static always_inline u32
@@ -267,11 +269,37 @@ vhash_non_empty_result_index (u32x4 x)
 
   tmp.data_u32x4 = x;
 
+  ASSERT ((tmp.data_u32[0] != 0)
+	  + (tmp.data_u32[1] != 0)
+	  + (tmp.data_u32[2] != 0)
+	  + (tmp.data_u32[3] != 0) == 1);
+
   /* At most 1 32 bit word in r is set. */
   i = 0;
   i = tmp.data_u32[1] != 0 ? 1 : i;
   i = tmp.data_u32[2] != 0 ? 2 : i;
   i = tmp.data_u32[3] != 0 ? 3 : i;
+  return i;
+}
+
+static always_inline u32
+vhash_empty_result_index (u32x4 x)
+{
+  u32x4_union_t tmp;
+  u32 i;
+
+  tmp.data_u32x4 = x;
+
+  ASSERT ((tmp.data_u32[0] != 0)
+	  + (tmp.data_u32[1] != 0)
+	  + (tmp.data_u32[2] != 0)
+	  + (tmp.data_u32[3] != 0) == 3);
+
+  /* At most 1 32 bit word in r is set. */
+  i = 0;
+  i = tmp.data_u32[1] == 0 ? 1 : i;
+  i = tmp.data_u32[2] == 0 ? 2 : i;
+  i = tmp.data_u32[3] == 0 ? 3 : i;
   return i;
 }
 
