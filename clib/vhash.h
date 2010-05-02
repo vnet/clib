@@ -30,12 +30,25 @@
 #include <clib/vector.h>
 
 /* Gathers 32 bits worth of key with given index. */
-typedef u32 (vhash_key_function_t) (void * state, u32 vector_index, u32 key_index);
-typedef u32 (vhash_result_function_t) (void * state, u32 buffer_index, u32 result_index);
-										 
+typedef u32 (vhash_key_function_t) (void * state, u32 vector_index, u32 key_hash);
+/* Sets/gets result of hash lookup. */
+typedef u32 (vhash_result_function_t) (void * state, u32 vector_index, u32 result);
+
 typedef struct {
   u32x_union_t hashed_key[3];
 } vhash_hashed_key_t;
+
+/* Search buckets are really this structure. */
+typedef struct {
+  /* 4 results for this bucket.
+     Zero is used to mark empty results.  This means user can't use the result ~0
+     since user results differ from internal results stored in buckets by 1.
+     e.g. internal result = user result + 1. */
+  u32x4_union_t result;
+
+  /* n_key_u32s u32x4s of key data follow. */
+  u32x4_union_t key[0];
+} vhash_search_bucket_t;
 
 typedef struct {
   u32x4_union_t * search_buckets;
@@ -106,23 +119,23 @@ vhash_get_key_word_u32x (vhash_t * h, u32 wi, u32 vi)
 static always_inline void
 vhash_validate_sizes (vhash_t * h, u32 n_key_u32, u32 n_vectors)
 {
-  u32 n = max_pow2 (n_vectors) / VECTOR_WORD_TYPE_LEN (u32);
-  u32 i = min_log2 (n);
-  if (i != h->log2_n_key_word_len_u32x)
-    {
-      h->log2_n_key_word_len_u32x = i;
-      vec_validate_aligned (h->key_words, (n_key_u32 << i) - 1, CLIB_CACHE_LINE_BYTES);
-      vec_validate_aligned (h->hash_state, n - 1, CLIB_CACHE_LINE_BYTES);
-    }
+  u32 n, l;
+
+  n = max_pow2 (n_vectors) / VECTOR_WORD_TYPE_LEN (u32);
+  n = clib_max (n, 8);
+
+  h->log2_n_key_word_len_u32x = l = min_log2 (n);
+  vec_validate_aligned (h->key_words, (n_key_u32 << l) - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (h->hash_state, n - 1, CLIB_CACHE_LINE_BYTES);
 }
 
 static always_inline void
-vhash_get_gather_key_stage (vhash_t * h,
-				u32 vector_index,
-				u32 n_vectors,
-				vhash_key_function_t key_function,
-				void * state,
-				u32 n_key_u32s)
+vhash_gather_key_stage (vhash_t * h,
+			u32 vector_index,
+			u32 n_vectors,
+			vhash_key_function_t key_function,
+			void * state,
+			u32 n_key_u32s)
 {
   u32 i, j, vi;
 
@@ -132,14 +145,14 @@ vhash_get_gather_key_stage (vhash_t * h,
       vi = vector_index * VECTOR_WORD_TYPE_LEN (u32) + i;
       for (j = 0; j < n_key_u32s; j++)
 	vhash_set_key_word (h, j, vi,
-				key_function (state, vi, j));
+			    key_function (state, vi, j));
     }
 }
 
 static always_inline void
 vhash_get_hash_mix_stage (vhash_t * h,
-			      u32 vector_index,
-			      u32 n_key_u32s)
+			  u32 vector_index,
+			  u32 n_key_u32s)
 {
   i32 i, n_left;
   u32x a, b, c;
@@ -170,14 +183,18 @@ vhash_get_hash_mix_stage (vhash_t * h,
   }
 }
 
-static always_inline u32x4_union_t *
-get_search_bucket (vhash_t * h, u32 index, u32 n_key_u32s)
-{ return vec_elt_at_index (h->search_buckets, index * (1 + n_key_u32s)); }
+static always_inline vhash_search_bucket_t *
+get_search_bucket (vhash_t * h, u32 key_hash, u32 n_key_u32s)
+{
+  u32 i = key_hash & h->bucket_mask;
+  return ((vhash_search_bucket_t *)
+	  vec_elt_at_index (h->search_buckets, i * (1 + n_key_u32s)));
+}
 
 static always_inline void
 vhash_finalize_stage (vhash_t * h,
-			  u32 vector_index,
-			  u32 n_key_u32s)
+		      u32 vector_index,
+		      u32 n_key_u32s)
 {
   i32 n_left;
   u32x a, b, c;
@@ -213,14 +230,14 @@ vhash_finalize_stage (vhash_t * h,
   /* Prefetch buckets. */
   {
     u32x_union_t cu;
-    u32x4_union_t * bucket;
+    vhash_search_bucket_t * b;
     uword i;
 
     cu.data_u32x = c;
     for (i = 0; i < VECTOR_WORD_TYPE_LEN (u32); i++)
       {
-	bucket = get_search_bucket (h, cu.data_u32[i], n_key_u32s);
-	CLIB_PREFETCH (bucket, (1 + n_key_u32s) * sizeof (bucket[0]), READ);
+	b = get_search_bucket (h, cu.data_u32[i], n_key_u32s);
+	CLIB_PREFETCH (b, sizeof (b[0]) + n_key_u32s * sizeof (b->key[0]), READ);
       }
   }
 }
@@ -228,8 +245,8 @@ vhash_finalize_stage (vhash_t * h,
 static always_inline u32
 vhash_merge_results (u32x4 r)
 {
-  r = r | u32x4_word_shift_right (r, 4);
   r = r | u32x4_word_shift_right (r, 2);
+  r = r | u32x4_word_shift_right (r, 1);
   return u32x4_get0 (r);
 }
 
@@ -237,9 +254,9 @@ vhash_merge_results (u32x4 r)
 static always_inline u32
 vhash_search_bucket_is_full (u32x4 r)
 {
-  r = r & u32x4_word_shift_right (r, 4);
   r = r & u32x4_word_shift_right (r, 2);
-  return u32x4_get0 (r) & 1;
+  r = r & u32x4_word_shift_right (r, 1);
+  return u32x4_get0 (r) != 0;
 }
 
 static always_inline u32
@@ -259,48 +276,52 @@ vhash_non_empty_result_index (u32x4 x)
 }
 
 static always_inline u32x4
-vhash_bucket_compare (vhash_t * h, u32x4_union_t * bucket,
-		      u32 key_word_index, u32 vi)
+vhash_bucket_compare (vhash_t * h,
+		      u32x4_union_t * bucket,
+		      u32 key_word_index,
+		      u32 vi)
 {
   u32 k = vhash_get_key_word (h, key_word_index, vi);
-  return u32x4_is_equal (bucket[1 + key_word_index].data_u32x4,
+  return u32x4_is_equal (bucket[key_word_index].data_u32x4,
 			 u32x4_splat (k));
 }
 
 u32 vhash_get_overflow (vhash_t * h,
-			u32 key_index,
+			u32 key_hash,
 			u32 vi,
 			u32 n_key_u32s);
 
 static always_inline void
 vhash_get_stage (vhash_t * h,
-		     u32 vector_index,
-		     u32 n_vectors,
-		     vhash_result_function_t result_function,
-		     void * state,
-		     u32 n_key_u32s)
+		 u32 vector_index,
+		 u32 n_vectors,
+		 vhash_result_function_t result_function,
+		 void * state,
+		 u32 n_key_u32s)
 {
   u32 i, j;
   vhash_hashed_key_t * hk = vec_elt_at_index (h->hash_state, vector_index);
+  vhash_search_bucket_t * b;
 
   for (i = 0; i < n_vectors; i++)
     {
       u32 vi = vector_index * VECTOR_WORD_TYPE_LEN (u32) + i;
-      u32 key_index = hk->hashed_key[2].data_u32[i];
+      u32 key_hash = hk->hashed_key[2].data_u32[i];
       u32 result;
-      u32x4_union_t * bucket = get_search_bucket (h, key_index, n_key_u32s);
-      u32x4 r, b0 = bucket[0].data_u32x4;
+      u32x4 r, r0;
 
-      r = b0;
+      b = get_search_bucket (h, key_hash, n_key_u32s);
+
+      r = r0 = b->result.data_u32x4;
       for (j = 0; j < n_key_u32s; j++)
-	r &= vhash_bucket_compare (h, bucket, j, vi);
+	r &= vhash_bucket_compare (h, &b->key[0], j, vi);
 
       /* At this point only one of 4 results should be non-zero.
 	 So we can or all 4 together and get the valid result (if there is one). */
       result = vhash_merge_results (r);
 
-      if (! result && vhash_search_bucket_is_full (b0))
-	result = vhash_get_overflow (h, key_index, vi, n_key_u32s);
+      if (! result && vhash_search_bucket_is_full (r0))
+	result = vhash_get_overflow (h, key_hash, vi, n_key_u32s);
 
       result_function (state, vi, result - 1);
     }
@@ -308,43 +329,46 @@ vhash_get_stage (vhash_t * h,
 
 u32
 vhash_set_overflow (vhash_t * h,
-		    u32 key_index,
+		    u32 key_hash,
 		    u32 vi,
 		    u32 new_result,
 		    u32 n_key_u32s);
 
 static always_inline void
 vhash_set_stage (vhash_t * h,
-		     u32 vector_index,
-		     u32 n_vectors,
-		     vhash_result_function_t result_function,
-		     void * state,
-		     u32 n_key_u32s)
+		 u32 vector_index,
+		 u32 n_vectors,
+		 vhash_result_function_t result_function,
+		 void * state,
+		 u32 n_key_u32s)
 {
   u32 i, j;
   vhash_hashed_key_t * hk = vec_elt_at_index (h->hash_state, vector_index);
+  vhash_search_bucket_t * b;
 
   for (i = 0; i < n_vectors; i++)
     {
       u32 vi = vector_index * VECTOR_WORD_TYPE_LEN (u32) + i;
-      u32 key_index = hk->hashed_key[2].data_u32[i];
+      u32 key_hash = hk->hashed_key[2].data_u32[i];
       u32 old_result, new_result;
       u32 i_set;
-      u32x4_union_t * bucket = get_search_bucket (h, key_index, n_key_u32s);
-      u32x4 r, cmp, b0 = bucket[0].data_u32x4;
+      u32x4 r, r0, cmp;
 
-      cmp = vhash_bucket_compare (h, bucket, 0, vi);
+      b = get_search_bucket (h, key_hash, n_key_u32s);
+
+      cmp = vhash_bucket_compare (h, &b->key[0], 0, vi);
       for (j = 1; j < n_key_u32s; j++)
-	cmp &= vhash_bucket_compare (h, bucket, j, vi);
+	cmp &= vhash_bucket_compare (h, &b->key[0], j, vi);
 
-      r = b0 & cmp;
+      r0 = b->result.data_u32x4;
+      r = r0 & cmp;
 
       /* At this point only one of 4 results should be non-zero.
 	 So we can or all 4 together and get the valid result (if there is one). */
       old_result = vhash_merge_results (r);
 
-      if (! old_result && vhash_search_bucket_is_full (b0))
-	old_result = vhash_get_overflow (h, key_index, vi, n_key_u32s);
+      if (! old_result && vhash_search_bucket_is_full (r0))
+	old_result = vhash_get_overflow (h, key_hash, vi, n_key_u32s);
 
       /* Get new result; possibly do something with old result. */
       new_result = result_function (state, vi, old_result - 1);
@@ -358,84 +382,97 @@ vhash_set_stage (vhash_t * h,
       if (old_result)
 	{
 	  i_set = vhash_non_empty_result_index (r);
-	  bucket[0].data_u32[i_set] = new_result;
+	  b->result.data_u32[i_set] = new_result;
 	}
       else
 	{
 	  /* Set allocates new result. */
 	  u32 valid_mask;
 
-	  valid_mask = (((bucket[0].data_u32[0] & 1) << 0)
-			| ((bucket[0].data_u32[1] & 1) << 1)
-			| ((bucket[0].data_u32[2] & 1) << 2)
-			| ((bucket[0].data_u32[3] & 1) << 3));
+	  valid_mask = (((b->result.data_u32[0] != 0) << 0)
+			| ((b->result.data_u32[1] != 0) << 1)
+			| ((b->result.data_u32[2] != 0) << 2)
+			| ((b->result.data_u32[3] != 0) << 3));
 
-	  /* Rotate 4 bit valid mask so that key_index corresponds to bit 0. */
-	  i_set = key_index & 3;
+	  /* Rotate 4 bit valid mask so that key_hash corresponds to bit 0. */
+	  i_set = key_hash & 3;
 	  valid_mask = ((valid_mask >> i_set) | (valid_mask << (4 - i_set))) & 0xf;
 
-	  /* Insert into first empty position in bucket after key_index. */
+	  /* Insert into first empty position in bucket after key_hash. */
 	  i_set = (i_set + h->find_first_zero_table[valid_mask]) & 3;
 
 	  if (valid_mask != 0xf)
 	    {
-	      bucket[0].data_u32[i_set] = new_result;
+	      b->result.data_u32[i_set] = new_result;
 
 	      /* Insert new key into search bucket. */
 	      for (j = 0; j < n_key_u32s; j++)
-		bucket[1 + j].data_u32[i_set] = vhash_get_key_word (h, j, vi);
+		b->key[j].data_u32[i_set] = vhash_get_key_word (h, j, vi);
 	    }
 	  else
-	    vhash_set_overflow (h, key_index, vi, new_result, n_key_u32s);
+	    vhash_set_overflow (h, key_hash, vi, new_result, n_key_u32s);
 	}
     }
 }
 
 u32
 vhash_unset_overflow (vhash_t * h,
-		      u32 key_index,
+		      u32 key_hash,
 		      u32 vi,
 		      u32 n_key_u32s);
 
+void
+vhash_unset_refill_from_overflow (vhash_t * h,
+				  vhash_search_bucket_t * b,
+				  u32 key_hash,
+				  u32 n_key_u32s);
+
 static always_inline void
 vhash_unset_stage (vhash_t * h,
-		       u32 vector_index,
-		       u32 n_vectors,
-		       vhash_result_function_t result_function,
-		       void * state,
-		       u32 n_key_u32s)
+		   u32 vector_index,
+		   u32 n_vectors,
+		   vhash_result_function_t result_function,
+		   void * state,
+		   u32 n_key_u32s)
 {
   u32 i, j;
   vhash_hashed_key_t * hk = vec_elt_at_index (h->hash_state, vector_index);
+  vhash_search_bucket_t * b;
 
   for (i = 0; i < n_vectors; i++)
     {
       u32 vi = vector_index * VECTOR_WORD_TYPE_LEN (u32) + i;
-      u32 key_index = hk->hashed_key[2].data_u32[i];
+      u32 key_hash = hk->hashed_key[2].data_u32[i];
       u32 old_result;
-      u32x4_union_t * bucket = get_search_bucket (h, key_index, n_key_u32s);
-      u32x4 cmp, b, o;
+      u32x4 cmp, r0;
 
-      cmp = vhash_bucket_compare (h, bucket, 0, vi);
+      b = get_search_bucket (h, key_hash, n_key_u32s);
+
+      cmp = vhash_bucket_compare (h, &b->key[0], 0, vi);
       for (j = 1; j < n_key_u32s; j++)
-	cmp &= vhash_bucket_compare (h, bucket, j, vi);
+	cmp &= vhash_bucket_compare (h, &b->key[0], j, vi);
 
-      b = bucket[0].data_u32x4;
+      r0 = b->result.data_u32x4;
 
       /* At this point cmp is all ones where key matches and zero otherwise.
 	 So, this will invalidate results for matching key and do nothing otherwise. */
-      bucket[0].data_u32x4 = b & ~cmp;
+      b->result.data_u32x4 = r0 & ~cmp;
 
-      o = b & cmp;
-      old_result = vhash_merge_results (o);
+      old_result = vhash_merge_results (r0 & cmp);
 
-      if (! old_result && vhash_search_bucket_is_full (b))
-	old_result = vhash_unset_overflow (h, key_index, vi, n_key_u32s);
+      if (vhash_search_bucket_is_full (r0))
+	{
+	  if (old_result)
+	    vhash_unset_refill_from_overflow (h, b, key_hash, n_key_u32s);
+	  else
+	    old_result = vhash_unset_overflow (h, key_hash, vi, n_key_u32s);
+	}
 
       result_function (state, vi, old_result - 1);
     }
 }
 
-void vhash_init (vhash_t * h, u32 log2_n_keys, u32 * hash_seeds);
+void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32,
+		 u32 * hash_seeds);
 
 #endif /* included_clib_vhash_h */

@@ -403,8 +403,7 @@ _ (xori, a = a ^ b, 1)
 static inline uword *
 clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
-  if (ai)
-    _vec_len (ai) = 0;
+  vec_reset_length (ai);
 
   if (n_bits > 0)
     {

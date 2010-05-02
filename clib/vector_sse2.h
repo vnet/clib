@@ -273,24 +273,55 @@ _ (i32x2, i32x2, right, psrad);
 
 #undef _
 
-#define _(n,m,lr,f,t)							\
-  static always_inline u##n##x##m					\
-  u##n##x##m##_word_shift_##lr (u##n##x##m a, int n_words)		\
-  { return (u##n##x##m) __builtin_ia32_##f ((t) a, n_words); }	\
-  static always_inline i##n##x##m					\
-  i##n##x##m##_word_shift_##lr (i##n##x##m a, int n_words)		\
-  { return (i##n##x##m) __builtin_ia32_##f ((t) a, n_words); }
+#define u8x16_word_shift_left(a,n)				\
+({								\
+  u8x16 _r = (a);						\
+  asm volatile ("pslldq %[n_bytes], %[r]"			\
+		: /* outputs */ [r] "=x" (_r)			\
+		: /* inputs */ "0" (_r), [n_bytes] "i" (n));	\
+  _r;								\
+})
 
-_ (8, 16, right, psrldqi128, i64x2)
-_ (8, 16, left, pslldqi128, i64x2)
-_ (16, 8, right, psrlwi128, i16x8)
-_ (16, 8, left, psllwi128, i16x8)
-_ (32, 4, right, psrldi128, i32x4)
-_ (32, 4, left, pslldi128, i32x4)
-_ (64, 2, right, psrldqi128, i64x2)
-_ (64, 2, left, pslldqi128, i64x2)
+#define u8x16_word_shift_right(a,n)				\
+({								\
+  u8x16 _r = (a);						\
+  asm volatile ("psrldq %[n_bytes], %[r]"			\
+		: /* outputs */ [r] "=x" (_r)			\
+		: /* inputs */ "0" (_r), [n_bytes] "i" (n));	\
+  _r;								\
+})
 
-#undef _
+#define i8x16_word_shift_left(a,n) \
+  ((i8x16) u8x16_word_shift_left((u8x16) (a), (n)))
+#define i8x16_word_shift_right(a,n) \
+  ((i8x16) u8x16_word_shift_right((u8x16) (a), (n)))
+
+#define u16x8_word_shift_left(a,n) \
+  ((u16x8) u8x16_word_shift_left((u8x16) (a), (n) * sizeof (u16)))
+#define i16x8_word_shift_left(a,n) \
+  ((u16x8) u8x16_word_shift_left((u8x16) (a), (n) * sizeof (u16)))
+#define u16x8_word_shift_right(a,n) \
+  ((u16x8) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u16)))
+#define i16x8_word_shift_right(a,n) \
+  ((i16x8) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u16)))
+
+#define u32x4_word_shift_left(a,n) \
+  ((u32x4) u8x16_word_shift_left((u8x16) (a), (n) * sizeof (u32)))
+#define i32x4_word_shift_left(a,n) \
+  ((u32x4) u8x16_word_shift_left((u8x16) (a), (n) * sizeof (u32)))
+#define u32x4_word_shift_right(a,n) \
+  ((u32x4) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u32)))
+#define i32x4_word_shift_right(a,n) \
+  ((i32x4) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u32)))
+
+#define u64x2_word_shift_left(a,n) \
+  ((u64x2) u8x16_word_shift_left((u8x16) (a), (n) * sizeof (u64)))
+#define i64x2_word_shift_left(a,n) \
+  ((u64x2) u8x16_word_shift_left((u8x16) (a), (n) * sizeof (u64)))
+#define u64x2_word_shift_right(a,n) \
+  ((u64x2) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u64)))
+#define i64x2_word_shift_right(a,n) \
+  ((i64x2) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u64)))
 
 /* SSE2 has no rotate instructions: use shifts to simulate them. */
 #define _(t,n,lr1,lr2)					\

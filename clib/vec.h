@@ -94,6 +94,7 @@ vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
    (e.g. _vec_len (v) = 99). */
 #define _vec_len(v)	(_vec_find(v)->len)
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
+#define vec_reset_length(v) do { if (v) _vec_len (v) = 0; } while (0)
 
 /* Number of data bytes in vector. */
 #define vec_bytes(v) (vec_len (v) * sizeof (v[0]))
