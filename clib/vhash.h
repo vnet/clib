@@ -257,9 +257,14 @@ vhash_search_bucket_is_full (u32x4 r)
 {
   u32x4 zero = {0, 0, 0, 0};
   r = u32x4_is_equal (r, zero);
-  r = r | u32x4_word_shift_right (r, 2);
-  r = r | u32x4_word_shift_right (r, 1);
-  return u32x4_get0 (r) == 0;
+  if (0)
+    {
+      r = r | u32x4_word_shift_right (r, 2);
+      r = r | u32x4_word_shift_right (r, 1);
+      return u32x4_get0 (r) == 0;
+    }
+  else
+    return __builtin_ia32_pmovmskb128 ((i8x16) r) == 0;
 }
 
 static always_inline u32
