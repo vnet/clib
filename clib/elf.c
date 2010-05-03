@@ -658,8 +658,8 @@ clib_error_t * elf_read_file (elf_main_t * em, char * file_name)
 {
   int fd;
   struct stat fd_stat;
-  uword mmap_length;
-  void * data;
+  uword mmap_length = 0;
+  void * data = 0;
   clib_error_t * error = 0;
 
   elf_main_init (em);
@@ -773,7 +773,7 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
       {
 	u8 * name = elf_section_name (em, s);
 	s->header.name = vec_len (st);
-	vec_add (st, name, strlen (name) + 1);
+	vec_add (st, name, strlen ((char *) name) + 1);
       }
 
     s = vec_elt_at_index (em->sections, em->file_header.section_header_string_table_index);

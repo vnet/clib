@@ -103,6 +103,13 @@ vhash_set_key_word (vhash_t * h, u32 wi, u32 vi, u32 value)
   vec_elt (h->key_words, i0).data_u32[i1] = value;
 }
 
+static always_inline void
+vhash_set_key_word_u32x (vhash_t * h, u32 wi, u32 vi, u32x value)
+{
+  u32 i0 = (wi << h->log2_n_key_word_len_u32x) + (vi / VECTOR_WORD_TYPE_LEN (u32));
+  vec_elt (h->key_words, i0).data_u32x = value;
+}
+
 static always_inline u32
 vhash_get_key_word (vhash_t * h, u32 wi, u32 vi)
 {
@@ -193,6 +200,30 @@ get_search_bucket (vhash_t * h, u32 key_hash, u32 n_key_u32s)
 	  vec_elt_at_index (h->search_buckets, i * (1 + n_key_u32s)));
 }
 
+static always_inline u32x4
+get_4_search_buckets (vhash_t * h, u32x4 key_hash, u32 n_key_u32s)
+{
+  vhash_search_bucket_t * b;
+  u32 n_bytes_per_bucket = sizeof (b[0]) + n_key_u32s * sizeof (b->key[0]);
+  u32x4 r = key_hash & h->bucket_mask_u32x.data_u32x;
+
+  if (n_bytes_per_bucket == (1 << 5))
+    r = u32x4_shift_left (r, 5);
+  else if (n_bytes_per_bucket == ((1 << 5) + (1 << 4)))
+    r = u32x4_shift_left (r, 5) + u32x4_shift_left (r, 4);
+  else if (n_bytes_per_bucket == (1 << 6))
+    r = u32x4_shift_left (r, 6);
+  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 4)))
+    r = u32x4_shift_left (r, 6) + u32x4_shift_left (r, 4);
+  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 5)))
+    r = u32x4_shift_left (r, 6) + u32x4_shift_left (r, 5);
+  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 5) + (1 << 4)))
+    r = u32x4_shift_left (r, 6) + u32x4_shift_left (r, 5) + u32x4_shift_left (r, 4);
+  else
+    ASSERT (0);
+  return r;
+}
+
 static always_inline void
 vhash_finalize_stage (vhash_t * h,
 		      u32 vector_index,
@@ -229,18 +260,23 @@ vhash_finalize_stage (vhash_t * h,
   /* Only save away last 32 bits of hash code. */
   hk->hashed_key[2].data_u32x = c;
 
-  /* Prefetch buckets. */
+  /* Prefetch buckets.  This costs a bit for small tables but saves
+     big for large ones. */
   {
-    u32x_union_t cu;
-    vhash_search_bucket_t * b;
-    uword i;
+    vhash_search_bucket_t * b0, * b1, * b2, * b3;
+    u32x4_union_t kh;
 
-    cu.data_u32x = c;
-    for (i = 0; i < VECTOR_WORD_TYPE_LEN (u32); i++)
-      {
-	b = get_search_bucket (h, cu.data_u32[i], n_key_u32s);
-	CLIB_PREFETCH (b, sizeof (b[0]) + n_key_u32s * sizeof (b->key[0]), READ);
-      }
+    kh.data_u32x4 = get_4_search_buckets (h, c, n_key_u32s);
+
+    b0 = (void *) h->search_buckets + kh.data_u32[0];
+    b1 = (void *) h->search_buckets + kh.data_u32[1];
+    b2 = (void *) h->search_buckets + kh.data_u32[2];
+    b3 = (void *) h->search_buckets + kh.data_u32[3];
+
+    CLIB_PREFETCH (b0, sizeof (b0[0]) + n_key_u32s * sizeof (b0->key[0]), READ);
+    CLIB_PREFETCH (b1, sizeof (b1[0]) + n_key_u32s * sizeof (b1->key[0]), READ);
+    CLIB_PREFETCH (b2, sizeof (b2[0]) + n_key_u32s * sizeof (b2->key[0]), READ);
+    CLIB_PREFETCH (b3, sizeof (b3[0]) + n_key_u32s * sizeof (b3->key[0]), READ);
   }
 }
 				 
@@ -359,43 +395,13 @@ vhash_get_4stage (vhash_t * h,
 		  void * state,
 		  u32 n_key_u32s)
 {
-  u32 i, j, vi, n_bytes_per_bucket;
+  u32 i, vi;
   vhash_hashed_key_t * hk = vec_elt_at_index (h->hash_state, vector_index);
   vhash_search_bucket_t * b0, * b1, * b2, * b3;
   u32x4 r0, r1, r2, r3, r0_before, r1_before, r2_before, r3_before;
-  u32x_union_t key_hash, kh;
+  u32x_union_t kh;
 
-  key_hash.data_u32x = hk->hashed_key[2].data_u32x;
-  kh.data_u32x = key_hash.data_u32x & h->bucket_mask_u32x.data_u32x;
-
-  n_bytes_per_bucket = sizeof (b0[0]) + n_key_u32s * sizeof (b0->key[0]);
-  if (n_bytes_per_bucket == (1 << 5))
-    kh.data_u32x = u32x4_shift_left (kh.data_u32x, 5);
-  else if (n_bytes_per_bucket == ((1 << 5) + (1 << 4)))
-    {
-      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 5)
-		      + u32x4_shift_left (kh.data_u32x, 4));
-    }
-  else if (n_bytes_per_bucket == (1 << 6))
-    kh.data_u32x = u32x4_shift_left (kh.data_u32x, 6);
-  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 4)))
-    {
-      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 6)
-		      + u32x4_shift_left (kh.data_u32x, 4));
-    }
-  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 5)))
-    {
-      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 6)
-		      + u32x4_shift_left (kh.data_u32x, 5));
-    }
-  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 5) + (1 << 4)))
-    {
-      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 6)
-		      + u32x4_shift_left (kh.data_u32x, 5)
-		      + u32x4_shift_left (kh.data_u32x, 4));
-    }
-  else
-    ASSERT (0);
+  kh.data_u32x = get_4_search_buckets (h, hk->hashed_key[2].data_u32x, n_key_u32s);
 
   b0 = (void *) h->search_buckets + kh.data_u32[0];
   b1 = (void *) h->search_buckets + kh.data_u32[1];
@@ -409,12 +415,12 @@ vhash_get_4stage (vhash_t * h,
 
   vi = vector_index * VECTOR_WORD_TYPE_LEN (u32);
 
-  for (j = 0; j < n_key_u32s; j++)
+  for (i = 0; i < n_key_u32s; i++)
     {
-      r0 &= vhash_bucket_compare (h, &b0->key[0], j, vi + 0);
-      r1 &= vhash_bucket_compare (h, &b1->key[0], j, vi + 1);
-      r2 &= vhash_bucket_compare (h, &b2->key[0], j, vi + 2);
-      r3 &= vhash_bucket_compare (h, &b3->key[0], j, vi + 3);
+      r0 &= vhash_bucket_compare (h, &b0->key[0], i, vi + 0);
+      r1 &= vhash_bucket_compare (h, &b1->key[0], i, vi + 1);
+      r2 &= vhash_bucket_compare (h, &b2->key[0], i, vi + 2);
+      r3 &= vhash_bucket_compare (h, &b3->key[0], i, vi + 3);
     }
 
   /* 4x4 transpose so that 4 results are aligned. */
@@ -435,13 +441,13 @@ do {						\
   /* Gather together 4 results. */
   {
     u32x4 r = r0 | r1 | r2 | r3;
-    u32x4 t = {0};
     u32x4 o = {1,1,1,1};
     u32x4_union_t fu;
     u32 zero_mask;
+    u32x4_union_t key_hash;
 
-    t = u32x4_is_equal (r, t);
-    zero_mask = __builtin_ia32_pmovmskb128 ((i8x16) t);
+    key_hash.data_u32x4 = hk->hashed_key[2].data_u32x & h->bucket_mask_u32x.data_u32x;
+    zero_mask = u32x4_zero_mask (r);
     if (zero_mask == 0)
       {
 	result_function (state, vi, r - o);

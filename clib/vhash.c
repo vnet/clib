@@ -167,7 +167,7 @@ vhash_unset_overflow (vhash_t * h,
 {
   vhash_overflow_buckets_t * ob = get_overflow_buckets (h, key_hash);
   vhash_overflow_search_bucket_t * b;
-  u32 i_set, i, j, old_result;
+  u32 i_set, i, old_result;
 
   foreach_vhash_overflow_bucket (b, ob, n_key_u32s)
     {

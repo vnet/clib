@@ -104,7 +104,7 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 	    break;
 	  }
 
-	  t->format_args = format (t->format_args, "%s", this_arg);
+	  t->format_args = (char *) format ((u8 *) t->format_args, "%s", this_arg);
 	}
 
       /* Null terminate. */
@@ -117,11 +117,11 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 
   /* Make copies of strings for hashing etc. */
   if (t->function)
-    t->format = format (0, "%s %s%c", t->function, t->format, 0);
+    t->format = (char *) format (0, "%s %s%c", t->function, t->format, 0);
   else
-    t->format = format (0, "%s%c", t->format, 0);
+    t->format = (char *) format (0, "%s%c", t->format, 0);
 
-  t->format_args = format (0, "%s%c", t->format_args, 0);
+  t->format_args = (char *) format (0, "%s%c", t->format_args, 0);
 
   /* Construct string table. */
   {
@@ -129,7 +129,7 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
     t->n_enum_strings = static_type->n_enum_strings;
     for (i = 0; i < t->n_enum_strings; i++)
       vec_add1 (t->enum_strings_vector,
-		format (0, "%s%c", static_type->enum_strings[i], 0));
+		(char *) format (0, "%s%c", static_type->enum_strings[i], 0));
   }
 
   new_event_type (em, l);
@@ -149,12 +149,12 @@ word elog_track_register (elog_main_t * em, elog_track_t * t)
 
   t = em->tracks + l;
 
-  t->name = format (0, "%s%c", t->name, 0);
+  t->name = (char *) format (0, "%s%c", t->name, 0);
 
  return l;
 }
 
-static uword parse_2digit_decimal (u8 * p, uword * number)
+static uword parse_2digit_decimal (char * p, uword * number)
 {
   uword i = 0;
   u8 digits[2];
@@ -240,7 +240,7 @@ u8 * format_elog_event (u8 * s, va_list * va)
   a = t->format_args;
   while (1)
     {
-      uword n_bytes, n_digits, f_bytes;
+      uword n_bytes = 0, n_digits, f_bytes = 0;
 
       f_bytes = sizeof (arg_format);
       s = fixed_format (s, f, arg_format, &f_bytes);
@@ -262,8 +262,8 @@ u8 * format_elog_event (u8 * s, va_list * va)
 	case 'i':
 	case 't':
 	  {
-	    u32 i;
-	    u64 l;
+	    u32 i = 0;
+	    u64 l = 0;
 
 	    if (n_bytes == 1)
 	      i = ((u8 *) d)[0];
@@ -289,7 +289,7 @@ u8 * format_elog_event (u8 * s, va_list * va)
 
 	case 'f':
 	  {
-	    f64 x;
+	    f64 x = 0;
 	    if (n_bytes == 4)
 	      x = clib_mem_unaligned (d, f32);
 	    else if (n_bytes == 8)
@@ -447,7 +447,6 @@ elog_event_t * elog_get_events (elog_main_t * em)
 
 void elog_merge (elog_main_t * dst, elog_main_t * src)
 {
-  uword ti;
   elog_event_t * e;
   uword l;
 
@@ -518,7 +517,7 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t = vec_elt_at_index (em->event_types, e->type);
   u8 * d = e->data;
-  u8 * p = t->format_args;
+  u8 * p = (u8 *) t->format_args;
 
   serialize_integer (m, e->type, sizeof (e->type));
   serialize_integer (m, e->track, sizeof (e->track));
@@ -526,9 +525,9 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 
   while (*p)
     {
-      uword n_digits, n_bytes;
+      uword n_digits, n_bytes = 0;
 
-      n_digits = parse_2digit_decimal (p + 1, &n_bytes);
+      n_digits = parse_2digit_decimal ((char *) p + 1, &n_bytes);
 
       switch (p[0])
 	{
@@ -547,9 +546,9 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 	  break;
 
 	case 's':
-	  serialize_cstring (m, d);
+	  serialize_cstring (m, (char *) d);
 	  if (n_bytes == 0)
-	    n_bytes = strlen (d) + 1;
+	    n_bytes = strlen ((char *) d) + 1;
 	  break;
 
 	case 'f':
@@ -562,7 +561,8 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 	  break;
 
 	default:
-	  os_panic ();
+	  ASSERT (0);
+	  break;
 	}
 
       p += 1 + n_digits;
@@ -598,14 +598,14 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 
   d = e->data;
   d_end = d + sizeof (e->data);
-  p = t->format_args;
+  p = (u8 *) t->format_args;
 
   while (*p)
     {
-      uword n_digits, n_bytes;
+      uword n_digits, n_bytes = 0;
       u32 tmp;
 
-      n_digits = parse_2digit_decimal (p + 1, &n_bytes);
+      n_digits = parse_2digit_decimal ((char *) p + 1, &n_bytes);
 
       switch (p[0])
 	{
@@ -637,9 +637,9 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	  break;
 
 	case 's':
-	  serialize_cstring (m, d);
+	  serialize_cstring (m, (char *) d);
 	  if (n_bytes == 0)
-	    n_bytes = strlen (d) + 1;
+	    n_bytes = strlen ((char *) d) + 1;
 	  break;
 
 	case 'f':
@@ -660,7 +660,8 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	  break;
 
 	default:
-	  os_panic ();
+	  ASSERT (0);
+	  break;
 	}
 
       p += 1 + n_digits;

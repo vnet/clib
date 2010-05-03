@@ -27,6 +27,7 @@
 
 #include <clib/bitmap.h>
 #include <clib/error.h>
+#include <clib/os.h>
 #include <clib/random.h>
 #include <clib/time.h>
 #include <clib/vhash.h>
@@ -273,7 +274,8 @@ test_vhash_op (test_vhash_main_t * tm,
       switch (tm->n_key_u32)
 	{
 	default:
-	  os_panic ();
+	  ASSERT (0);
+	  break;
 
 #define _(N_KEY_U32)						\
 	case N_KEY_U32:						\
@@ -348,7 +350,8 @@ test_vhash_op (test_vhash_main_t * tm,
       switch (tm->n_key_u32)
 	{
 	default:
-	  os_panic ();
+	  ASSERT (0);
+	  break;
 
 #define _(N_KEY_U32)						\
 	case N_KEY_U32:						\
@@ -416,32 +419,6 @@ test_vhash_op (test_vhash_main_t * tm,
 #undef _
 	}
     }
-}
-
-static always_inline u32 *
-get_key (test_vhash_main_t * tm, uword k)
-{
-  u32 * v;
-  if (k < tm->n_key_u32 * tm->n_keys)
-    v = vec_elt_at_index (tm->keys, k);
-  else
-    v = uword_to_pointer (k, u32 *);
-  return v;
-}
-
-static uword test_vhash_key_sum (hash_t * h, uword key)
-{
-  test_vhash_main_t * tm = uword_to_pointer (h->user, test_vhash_main_t *);
-  u32 * k = get_key (tm, key);
-  return hash_memory (k, tm->n_key_u32 * sizeof (k[0]), 0);
-}
-
-static uword test_vhash_key_equal (hash_t * h, uword key1, uword key2)
-{
-  test_vhash_main_t * tm = uword_to_pointer (h->user, test_vhash_main_t *);
-  u32 * k1  = get_key (tm, key1);
-  u32 * k2  = get_key (tm, key2);
-  return k1 == k2 || 0 == memcmp (k1, k2, tm->n_key_u32 * sizeof (k1[0]));
 }
 
 int test_vhash_main (unformat_input_t * input)

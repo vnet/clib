@@ -262,7 +262,6 @@ void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data
   if (elt_is_deleted (w, user_data))
     {
       timing_wheel_level_t * l;
-      timing_wheel_elt_t * e;
       uword wi;
 
       /* Delete elts with given user data so that stale events don't expire. */
@@ -304,7 +303,6 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
   timing_wheel_elt_t * e;
   uword li, wi, wi0, n_bins_searched;
   u32 min_dt = ~0;
-  u64 min_time;
   uword wrapped = 0;
 
   n_bins_searched = 0;

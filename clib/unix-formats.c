@@ -752,7 +752,7 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
 #elif defined (powerpc64)
   regs = &uc->uc_mcontext.uc_regs->gp_regs[0];
 #else
-  regs = &uc->uc_mcontext.gregs[0];
+  regs = (void *) &uc->uc_mcontext.gregs[0];
 #endif
 
 #if defined (powerpc) || defined (powerpc64)

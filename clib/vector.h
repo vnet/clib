@@ -67,7 +67,7 @@ typedef float f32x2 _vector_size (8);
 typedef i8 i8x16 _vector_size (16);
 typedef i16 i16x8 _vector_size (16);
 typedef i32 i32x4 _vector_size (16);
-typedef i64 i64x2 _vector_size (16);
+typedef long long i64x2 _vector_size (16);
 
 /* Unsigned 128 bit. */
 typedef u8 u8x16 _vector_size (16);

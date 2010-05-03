@@ -387,6 +387,16 @@ u32x4_get0 (u32x4 x)
   return result;
 }
 
+static always_inline u32x4
+u32x4_set0 (u32 x)
+{
+  u32x4 result;
+  asm volatile ("movd %[x], %[result]"
+		: /* outputs */ [result] "=x" (result)
+		: /* inputs */ [x] "r" (x));
+  return result;
+}
+
 /* Converts all ones/zeros compare mask to bitmap. */
 static always_inline u32 u8x16_compare_mask (u8x16 x)
 { return __builtin_ia32_pmovmskb128 ((i8x16) x); }

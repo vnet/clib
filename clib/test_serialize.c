@@ -22,6 +22,7 @@
 */
 
 #include <clib/serialize.h>
+#include <clib/os.h>
 
 #define foreach_my_vector_type			\
   _ (u8, a8)					\
@@ -66,7 +67,6 @@ static void serialize_my_vector_type_multiple (serialize_main_t * m, va_list * v
 {
   my_vector_type_t * v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
-  u32 i;
 
 #define _(t,f)					\
   serialize_multiple				\
@@ -85,7 +85,6 @@ static void unserialize_my_vector_type_multiple (serialize_main_t * m, va_list *
 {
   my_vector_type_t * v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
-  u32 i;
 
 #define _(t,f)					\
   unserialize_multiple				\
@@ -192,7 +191,7 @@ int test_serialize_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (tm->dump_file)
     {
-      if (error = unserialize_open_unix_file (um, tm->dump_file))
+      if ((error = unserialize_open_unix_file (um, tm->dump_file)))
 	goto done;
     }
   else
