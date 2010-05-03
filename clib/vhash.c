@@ -240,6 +240,8 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32,
 
   h->log2_n_keys = log2_n_keys;
   h->bucket_mask = pow2_mask (h->log2_n_keys) &~ 3;
+  for (i = 0; i < VECTOR_WORD_TYPE_LEN (u32); i++)
+    h->bucket_mask_u32x.data_u32[i] = h->bucket_mask;
 
   /* Allocate search buckets. */
   vec_validate_aligned (h->search_buckets, ((1 + n_key_u32) << log2_n_keys) - 1,
