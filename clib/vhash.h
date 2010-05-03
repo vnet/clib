@@ -152,9 +152,9 @@ vhash_gather_key_stage (vhash_t * h,
 }
 
 static always_inline void
-vhash_get_hash_mix_stage (vhash_t * h,
-			  u32 vector_index,
-			  u32 n_key_u32s)
+vhash_mix_stage (vhash_t * h,
+		 u32 vector_index,
+		 u32 n_key_u32s)
 {
   i32 i, n_left;
   u32x a, b, c;
@@ -252,20 +252,10 @@ vhash_merge_results (u32x4 r)
   return u32x4_get0 (r);
 }
 
+/* Bucket is full if none of its 4 results are 0. */
 static always_inline u32
 vhash_search_bucket_is_full (u32x4 r)
-{
-  u32x4 zero = {0, 0, 0, 0};
-  r = u32x4_is_equal (r, zero);
-  if (0)
-    {
-      r = r | u32x4_word_shift_right (r, 2);
-      r = r | u32x4_word_shift_right (r, 1);
-      return u32x4_get0 (r) == 0;
-    }
-  else
-    return __builtin_ia32_pmovmskb128 ((i8x16) r) == 0;
-}
+{ return u32x4_zero_mask (r) == 0; }
 
 static always_inline u32
 vhash_non_empty_result_index (u32x4 x)
@@ -362,7 +352,7 @@ vhash_get_stage (vhash_t * h,
 }
 
 static always_inline void
-vhash_get_stage_ (vhash_t * h,
+vhash_get_4stage (vhash_t * h,
 		  u32 vector_index,
 		  u32 n_vectors,
 		  vhash_4result_function_t result_function,
@@ -381,6 +371,29 @@ vhash_get_stage_ (vhash_t * h,
   n_bytes_per_bucket = sizeof (b0[0]) + n_key_u32s * sizeof (b0->key[0]);
   if (n_bytes_per_bucket == (1 << 5))
     kh.data_u32x = u32x4_shift_left (kh.data_u32x, 5);
+  else if (n_bytes_per_bucket == ((1 << 5) + (1 << 4)))
+    {
+      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 5)
+		      + u32x4_shift_left (kh.data_u32x, 4));
+    }
+  else if (n_bytes_per_bucket == (1 << 6))
+    kh.data_u32x = u32x4_shift_left (kh.data_u32x, 6);
+  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 4)))
+    {
+      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 6)
+		      + u32x4_shift_left (kh.data_u32x, 4));
+    }
+  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 5)))
+    {
+      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 6)
+		      + u32x4_shift_left (kh.data_u32x, 5));
+    }
+  else if (n_bytes_per_bucket == ((1 << 6) + (1 << 5) + (1 << 4)))
+    {
+      kh.data_u32x = (u32x4_shift_left (kh.data_u32x, 6)
+		      + u32x4_shift_left (kh.data_u32x, 5)
+		      + u32x4_shift_left (kh.data_u32x, 4));
+    }
   else
     ASSERT (0);
 

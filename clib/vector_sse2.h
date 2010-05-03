@@ -387,11 +387,26 @@ u32x4_get0 (u32x4 x)
   return result;
 }
 
+/* Converts all ones/zeros compare mask to bitmap. */
+static always_inline u32 u8x16_compare_mask (u8x16 x)
+{ return __builtin_ia32_pmovmskb128 ((i8x16) x); }
+
 static always_inline u32 u8x16_zero_mask (u8x16 x)
 {
-  i8x16 z = {0};
-  z = __builtin_ia32_pcmpeqb128 ((i8x16) x, z);
-  return __builtin_ia32_pmovmskb128 (z);
+  u8x16 zero = {0};
+  return u8x16_compare_mask (u8x16_is_equal (x, zero));
+}
+
+static always_inline u32 u16x8_zero_mask (u16x8 x)
+{
+  u16x8 zero = {0};
+  return u8x16_compare_mask ((u8x16) u16x8_is_equal (x, zero));
+}
+
+static always_inline u32 u32x4_zero_mask (u32x4 x)
+{
+  u32x4 zero = {0};
+  return u8x16_compare_mask ((u8x16) u32x4_is_equal (x, zero));
 }
 
 static always_inline u8x16 u8x16_max (u8x16 x, u8x16 y)
