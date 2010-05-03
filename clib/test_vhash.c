@@ -154,20 +154,20 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result)
   test_vhash_get_stage_##N_KEY_U32 (test_vhash_main_t * tm, u32 i)	\
   {									\
     vhash_get_stage (&tm->vhash,					\
-			 /* vector_index */ i,				\
-			 /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
-			 test_vhash_get_result,				\
-			 tm, N_KEY_U32);				\
+		      /* vector_index */ i,				\
+		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+		      test_vhash_get_result,				\
+		      tm, N_KEY_U32);					\
   }									\
 									\
   static always_inline void						\
   test_vhash_get_mod_stage_##N_KEY_U32 (test_vhash_main_t * tm, u32 i)	\
   {									\
     vhash_get_stage (&tm->vhash,					\
-			 /* vector_index */ tm->n_vectors_div_4,	\
-			 /* n_vectors */ tm->n_vectors_mod_4,		\
-			 test_vhash_get_result,				\
-			 tm, N_KEY_U32);				\
+		     /* vector_index */ tm->n_vectors_div_4,		\
+		     /* n_vectors */ tm->n_vectors_mod_4,		\
+		     test_vhash_get_result,				\
+		     tm, N_KEY_U32);					\
   }									\
 									\
   static always_inline void						\
