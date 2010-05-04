@@ -76,7 +76,8 @@ test_vhash_key_gather (void * _tm, u32 vi, u32 i, u32 n_key_u32s)
 static always_inline u32
 test_vhash_get_result (void * _tm,
 		       u32 vector_index,
-		       u32 result_index)
+		       u32 result_index,
+		       u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
   u32 * p = vec_elt_at_index (tm->vhash_results, vector_index);
@@ -84,21 +85,23 @@ test_vhash_get_result (void * _tm,
   return result_index;
 }
 
-static always_inline u32
+static always_inline u32x4
 test_vhash_get_4result (void * _tm,
 			u32 vector_index,
-			u32x4 results)
+			u32x4 results,
+			u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
   u32 * p = vec_elt_at_index (tm->vhash_results, vector_index);
   *(u32x4 *)p = results;
-  return 0;
+  return results;
 }
 
 static always_inline u32
 test_vhash_set_result (void * _tm,
 		       u32 vector_index,
-		       u32 old_result)
+		       u32 old_result,
+		       u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
   u32 * p = vec_elt_at_index (tm->vhash_results, vector_index);
@@ -108,7 +111,7 @@ test_vhash_set_result (void * _tm,
 }
 
 static always_inline u32
-test_vhash_unset_result (void * _tm, u32 i, u32 old_result)
+test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
   u32 * p = vec_elt_at_index (tm->vhash_results, i);
@@ -565,6 +568,9 @@ int test_vhash_main (unformat_input_t * input)
 	      }
 	  }
 
+	if (vh->n_elts != clib_bitmap_count_set_bits (is_set_bitmap))
+	  os_panic ();
+
 	if (vec_len (to_unset) > 0)
 	  {
 	    t[0] = clib_cpu_time_now ();
@@ -603,7 +609,36 @@ int test_vhash_main (unformat_input_t * input)
 		  os_panic ();
 	      }
 	  }
+
+	if (vh->n_elts != clib_bitmap_count_set_bits (is_set_bitmap))
+	  os_panic ();
       }
+
+    vhash_resize (vh, tm->log2_size + 1);
+
+    test_vhash_op (tm, tm->vhash_get_key_indices,
+		   tm->vhash_get_results,
+		   vec_len (tm->vhash_get_key_indices),
+		   GET);
+
+    for (j = 0; j < vec_len (tm->vhash_get_results); j++)
+      {
+	u32 r0 = tm->vhash_get_results[j];
+	u32 r1 = tm->results[j];
+	if (clib_bitmap_get (is_set_bitmap, j))
+	  {
+	    if (r0 != r1)
+	      os_panic ();
+	  }
+	else
+	  {
+	    if (r0 != ~0)
+	      os_panic ();
+	  }
+      }
+
+    if (vh->n_elts != clib_bitmap_count_set_bits (is_set_bitmap))
+      os_panic ();
   }
 
   {
