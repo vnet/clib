@@ -70,6 +70,10 @@ typedef struct {
 
   /* Count of bytes allocated with this traceback. */
   u32 n_bytes;
+
+  /* Offset of this item */
+  uword offset;    
+
 } mheap_trace_t;
 
 typedef struct {
