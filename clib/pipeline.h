@@ -26,15 +26,30 @@
 #ifndef included_clib_pipeline_h
 #define included_clib_pipeline_h
 
+#define clib_pipeline_stage(F,TYPE,ARG,I,BODY)			\
+  static always_inline void F##_inline (void * _, u32 I)	\
+  { TYPE ARG = _; { BODY; } }					\
+  static never_inline  void F##_no_inline (TYPE ARG, u32 I)	\
+  { F##_inline (ARG, I); }
+
+#define clib_pipeline_stage_no_inline(F,TYPE,ARG,I,BODY)	\
+  static never_inline void F##_no_inline (void * _, u32 I)	\
+  { TYPE ARG = _; { BODY; } }					\
+  static never_inline  void F##_inline (TYPE ARG, u32 I)	\
+  { F##_no_inline (ARG, I); }
+
 #define _clib_pipeline_var(v) _clib_pipeline_##v
 
+#define clib_pipeline_stage_execute(F,A,I,S) \
+  F##_##S (A, _clib_pipeline_var(i) - (I))
+
 #define clib_pipeline_main_stage(F,A,I) \
-  F (A, _clib_pipeline_var(i) - (I))
+  clib_pipeline_stage_execute (F, A, I, inline)
 #define clib_pipeline_init_stage(F,A,I) \
-  if (_clib_pipeline_var(i) >= (I)) clib_pipeline_main_stage (F, A, I)
+  if (_clib_pipeline_var(i) >= (I)) clib_pipeline_stage_execute (F, A, I, no_inline)
 #define clib_pipeline_exit_stage(F,A,I)					\
   if (_clib_pipeline_var(i) >= (I) && _clib_pipeline_var(i) - (I) < _clib_pipeline_var(n_vectors)) \
-    clib_pipeline_main_stage (F, A, I)
+    clib_pipeline_stage_execute (F, A, I, no_inline)
 
 #define clib_pipeline_init_loop				\
   for (_clib_pipeline_var(i) = 0;			\
