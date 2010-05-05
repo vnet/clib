@@ -26,10 +26,10 @@
 
 /* Unaligned loads/stores. */
 
-#define _(t)							\
-  static always_inline void t##_store_unaligned (t x, t * a)	\
-  { clib_mem_unaligned (a, t) = x; }				\
-  static always_inline t t##_load_unaligned (t * a)		\
+#define _(t)						\
+  always_inline void t##_store_unaligned (t x, t * a)	\
+  { clib_mem_unaligned (a, t) = x; }			\
+  always_inline t t##_load_unaligned (t * a)		\
   { return clib_mem_unaligned (a, t); }
 
 _ (u8x16)

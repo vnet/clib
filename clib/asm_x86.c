@@ -37,7 +37,7 @@ typedef union {
   u8 byte;
 } x86_insn_sib_byte_t;
 
-static always_inline uword
+always_inline uword
 x86_insn_has_modrm_byte (x86_insn_t * insn)
 {
   int i;
@@ -50,7 +50,7 @@ x86_insn_has_modrm_byte (x86_insn_t * insn)
   return 0;
 }
 
-static always_inline uword
+always_inline uword
 x86_insn_immediate_type (x86_insn_t * insn)
 {
   int i;

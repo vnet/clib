@@ -23,7 +23,7 @@
 
 #include <clib/mhash.h>
 
-static always_inline void *
+always_inline void *
 mhash_key_to_mem (mhash_t * h, uword key)
 {
   return ((key & 1)
@@ -31,7 +31,7 @@ mhash_key_to_mem (mhash_t * h, uword key)
 	  : uword_to_pointer (key, void *));
 }
 
-static always_inline u32
+always_inline u32
 load_partial_u32 (void * d, uword n)
 {
   if (n == 4)
@@ -46,7 +46,7 @@ load_partial_u32 (void * d, uword n)
   return 0;
 }
 
-static always_inline u32
+always_inline u32
 mhash_key_sum_inline (void * data, uword n_data_bytes, u32 seed)
 {
   u32 * d32 = data;
@@ -83,7 +83,7 @@ mhash_key_sum_inline (void * data, uword n_data_bytes, u32 seed)
   return c;
 }
 
-static always_inline uword
+always_inline uword
 mhash_key_equal_inline (void * k1, void * k2, uword n_data_bytes)
 {
   uword * kw1 = k1, * kw2 = k2;

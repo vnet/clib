@@ -206,7 +206,7 @@ void md5_init (md5_context_t * c)
   c->state[3] = 0x10325476;
 }
 
-static inline void
+always_inline void
 md5_fill_buffer_aligned (md5_context_t * c,
 			 u32 * d32)
 {

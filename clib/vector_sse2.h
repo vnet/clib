@@ -27,81 +27,81 @@
 #include <clib/error.h>		/* for ASSERT */
 
 /* 128 bit interleaves. */
-static always_inline u8x16 u8x16_interleave_hi (u8x16 a, u8x16 b)
+always_inline u8x16 u8x16_interleave_hi (u8x16 a, u8x16 b)
 { return (u8x16) __builtin_ia32_punpckhbw128 ((i8x16) a, (i8x16) b); }
 
-static always_inline u8x16 u8x16_interleave_lo (u8x16 a, u8x16 b)
+always_inline u8x16 u8x16_interleave_lo (u8x16 a, u8x16 b)
 { return (u8x16) __builtin_ia32_punpcklbw128 ((i8x16) a, (i8x16) b); }
 
-static always_inline u16x8 u16x8_interleave_hi (u16x8 a, u16x8 b)
+always_inline u16x8 u16x8_interleave_hi (u16x8 a, u16x8 b)
 { return (u16x8) __builtin_ia32_punpckhwd128 ((i16x8) a, (i16x8) b); }
 
-static always_inline u16x8 u16x8_interleave_lo (u16x8 a, u16x8 b)
+always_inline u16x8 u16x8_interleave_lo (u16x8 a, u16x8 b)
 { return (u16x8) __builtin_ia32_punpcklwd128 ((i16x8) a, (i16x8) b); }
 
-static always_inline u32x4 u32x4_interleave_hi (u32x4 a, u32x4 b)
+always_inline u32x4 u32x4_interleave_hi (u32x4 a, u32x4 b)
 { return (u32x4) __builtin_ia32_punpckhdq128 ((i32x4) a, (i32x4) b); }
 
-static always_inline u32x4 u32x4_interleave_lo (u32x4 a, u32x4 b)
+always_inline u32x4 u32x4_interleave_lo (u32x4 a, u32x4 b)
 { return (u32x4) __builtin_ia32_punpckldq128 ((i32x4) a, (i32x4) b); }
 
-static always_inline u64x2 u64x2_interleave_hi (u64x2 a, u64x2 b)
+always_inline u64x2 u64x2_interleave_hi (u64x2 a, u64x2 b)
 { return (u64x2) __builtin_ia32_punpckhqdq128 ((i64x2) a, (i64x2) b); }
 
-static always_inline u64x2 u64x2_interleave_lo (u64x2 a, u64x2 b)
+always_inline u64x2 u64x2_interleave_lo (u64x2 a, u64x2 b)
 { return (u64x2) __builtin_ia32_punpcklqdq128 ((i64x2) a, (i64x2) b); }
 
 /* 64 bit interleaves. */
-static always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
+always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
 { return (u8x8) __builtin_ia32_punpckhbw ((i8x8) a, (i8x8) b); }
 
-static always_inline u8x8 u8x8_interleave_lo (u8x8 a, u8x8 b)
+always_inline u8x8 u8x8_interleave_lo (u8x8 a, u8x8 b)
 { return (u8x8) __builtin_ia32_punpcklbw ((i8x8) a, (i8x8) b); }
 
-static always_inline u16x4 u16x4_interleave_hi (u16x4 a, u16x4 b)
+always_inline u16x4 u16x4_interleave_hi (u16x4 a, u16x4 b)
 { return (u16x4) __builtin_ia32_punpckhwd ((i16x4) a, (i16x4) b); }
 
-static always_inline u16x4 u16x4_interleave_lo (u16x4 a, u16x4 b)
+always_inline u16x4 u16x4_interleave_lo (u16x4 a, u16x4 b)
 { return (u16x4) __builtin_ia32_punpcklwd ((i16x4) a, (i16x4) b); }
 
-static always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
+always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
 { return (u32x2) __builtin_ia32_punpckhdq ((i32x2) a, (i32x2) b); }
 
-static always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
+always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
 { return (u32x2) __builtin_ia32_punpckldq ((i32x2) a, (i32x2) b); }
 
 /* 128 bit packs. */
-static always_inline u8x16 u16x8_pack (u16x8 lo, u16x8 hi)
+always_inline u8x16 u16x8_pack (u16x8 lo, u16x8 hi)
 { return (u8x16) __builtin_ia32_packuswb128 ((i16x8) lo, (i16x8) hi); }
 
-static always_inline i8x16 i16x8_pack (i16x8 lo, i16x8 hi)
+always_inline i8x16 i16x8_pack (i16x8 lo, i16x8 hi)
 { return (i8x16) __builtin_ia32_packsswb128 ((i16x8) lo, (i16x8) hi); }
 
-static always_inline u16x8 u32x4_pack (u32x4 lo, u32x4 hi)
+always_inline u16x8 u32x4_pack (u32x4 lo, u32x4 hi)
 { return (u16x8) __builtin_ia32_packssdw128 ((i32x4) lo, (i32x4) hi); }
 
 /* 64 bit packs. */
-static always_inline u8x8 u16x4_pack (u16x4 lo, u16x4 hi)
+always_inline u8x8 u16x4_pack (u16x4 lo, u16x4 hi)
 { return (u8x8) __builtin_ia32_packuswb ((i16x4) lo, (i16x4) hi); }
 
-static always_inline i8x8 i16x4_pack (i16x4 lo, i16x4 hi)
+always_inline i8x8 i16x4_pack (i16x4 lo, i16x4 hi)
 { return __builtin_ia32_packsswb (lo, hi); }
 
-static always_inline u16x4 u32x2_pack (u32x2 lo, u32x2 hi)
+always_inline u16x4 u32x2_pack (u32x2 lo, u32x2 hi)
 { return (u16x4) __builtin_ia32_packssdw ((i32x2) lo, (i32x2) hi); }
 
-static always_inline i16x4 i32x2_pack (i32x2 lo, i32x2 hi)
+always_inline i16x4 i32x2_pack (i32x2 lo, i32x2 hi)
 { return __builtin_ia32_packssdw (lo, hi); }
 
 /* Splats: replicate scalar value into vector. */
-static always_inline u64x2 u64x2_splat (u64 a)
+always_inline u64x2 u64x2_splat (u64 a)
 {
   u64x2 x = {a};
   x = u64x2_interleave_lo (x, x);
   return x;
 }
 
-static always_inline u32x4 u32x4_splat (u32 a)
+always_inline u32x4 u32x4_splat (u32 a)
 {
   u32x4 x = {a};
   x = u32x4_interleave_lo (x, x);
@@ -109,33 +109,33 @@ static always_inline u32x4 u32x4_splat (u32 a)
   return x;
  }
 
-static always_inline u16x8 u16x8_splat (u16 a)
+always_inline u16x8 u16x8_splat (u16 a)
 {
   u32 t = (u32) a | ((u32) a << 16);
   return (u16x8) u32x4_splat (t);
 }
 
-static always_inline u8x16 u8x16_splat (u8 a)
+always_inline u8x16 u8x16_splat (u8 a)
 {
   u32 t = (u32) a | ((u32) a << 8);
   t |= t << 16;
   return (u8x16) u16x8_splat (t);
 }
 
-static always_inline u32x2 u32x2_splat (u32 a)
+always_inline u32x2 u32x2_splat (u32 a)
 {
   u32x2 x = {a};
   x = u32x2_interleave_lo (x, x);
   return x;
  }
 
-static always_inline u16x4 u16x4_splat (u16 a)
+always_inline u16x4 u16x4_splat (u16 a)
 {
   u32 t = (u32) a | ((u32) a << 16);
   return (u16x4) u32x2_splat (t);
 }
 
-static always_inline u8x8 u8x8_splat (u8 a)
+always_inline u8x8 u8x8_splat (u8 a)
 {
   u32 t = (u32) a | ((u32) a << 8);
   t |= t << 16;
@@ -150,24 +150,24 @@ static always_inline u8x8 u8x8_splat (u8 a)
 #define i16x4_splat u16x4_splat
 #define i8x8_splat u8x8_splat
 
-static always_inline u64x2 u64x2_read_lo (u64x2 x, u64 * a)
+always_inline u64x2 u64x2_read_lo (u64x2 x, u64 * a)
 { return (u64x2) __builtin_ia32_loadlps ((f32x4) x, (void *) a); }
 
-static always_inline u64x2 u64x2_read_hi (u64x2 x, u64 * a)
+always_inline u64x2 u64x2_read_hi (u64x2 x, u64 * a)
 { return (u64x2) __builtin_ia32_loadhps ((f32x4) x, (void *) a); }
 
-static always_inline void u64x2_write_lo (u64x2 x, u64 * a)
+always_inline void u64x2_write_lo (u64x2 x, u64 * a)
 { __builtin_ia32_storehps ((void *) a, (f32x4) x); }
 
-static always_inline void u64x2_write_hi (u64x2 x, u64 * a)
+always_inline void u64x2_write_hi (u64x2 x, u64 * a)
 { __builtin_ia32_storelps ((void *) a, (f32x4) x); }
 
 /* Unaligned loads/stores. */
 
 #define _(t)							\
-  static always_inline void t##_store_unaligned (t x, t * a)	\
+  always_inline void t##_store_unaligned (t x, t * a)	\
   { __builtin_ia32_storedqu ((char *) a, (i8x16) x); }		\
-  static always_inline t t##_load_unaligned (t * a)		\
+  always_inline t t##_load_unaligned (t * a)		\
   { return (t) __builtin_ia32_loaddqu ((char *) a); }
 
 _ (u8x16)
@@ -183,12 +183,12 @@ _ (i64x2)
 
 #define _signed_binop(n,m,f,g)						\
   /* Unsigned */							\
-  static always_inline u##n##x##m					\
+  always_inline u##n##x##m					\
   u##n##x##m##_##f (u##n##x##m x, u##n##x##m y)				\
   { return (u##n##x##m) __builtin_ia32_##g ((i##n##x##m) x, (i##n##x##m) y); } \
 									\
   /* Signed */								\
-  static always_inline i##n##x##m					\
+  always_inline i##n##x##m					\
   i##n##x##m##_##f (i##n##x##m x, i##n##x##m y)				\
   { return (i##n##x##m) __builtin_ia32_##g ((i##n##x##m) x, (i##n##x##m) y); }
 
@@ -210,21 +210,21 @@ _signed_binop (8, 16, sub_saturate, psubusb128)
 _signed_binop (16, 8, sub_saturate, psubusw128)
 
 /* Multiplication. */
-static always_inline i16x8 i16x8_mul_lo (i16x8 x, i16x8 y)
+always_inline i16x8 i16x8_mul_lo (i16x8 x, i16x8 y)
 { return __builtin_ia32_pmullw128 (x, y); }
 
-static always_inline u16x8 u16x8_mul_lo (u16x8 x, u16x8 y)
+always_inline u16x8 u16x8_mul_lo (u16x8 x, u16x8 y)
 { return (u16x8) __builtin_ia32_pmullw128 ((i16x8) x, (i16x8) y); }
 
-static always_inline i16x8 i16x8_mul_hi (i16x8 x, i16x8 y)
+always_inline i16x8 i16x8_mul_hi (i16x8 x, i16x8 y)
 { return (i16x8) __builtin_ia32_pmulhuw128 ((i16x8) x, (i16x8) y); }
 
-static always_inline u16x8 u16x8_mul_hi (u16x8 x, u16x8 y)
+always_inline u16x8 u16x8_mul_hi (u16x8 x, u16x8 y)
 { return (u16x8) __builtin_ia32_pmulhuw128 ((i16x8) x, (i16x8) y); }
 
 /* 128 bit shifts. */
 #define _(t,ti,lr,f)						\
-  static always_inline t t##_shift_##lr (t x, int i)		\
+  always_inline t t##_shift_##lr (t x, int i)		\
   {								\
     if (__builtin_constant_p (i))				\
       return (t) __builtin_ia32_##f##i128 ((ti) x, i);		\
@@ -252,12 +252,12 @@ _ (i32x4, i32x4, right, psrad);
 /* 64 bit shifts. */
 #if __GNUC__ >= 4 && __GNUC_MINOR__ >= 4
 #define _(t,ti,lr,f)				\
-  static always_inline t			\
+  always_inline t			\
   t##_shift_##lr (t x, t i)			\
   { return (t) __builtin_ia32_##f ((ti) x, (ti) i); }
 #else
 #define _(t,ti,lr,f)				\
-  static always_inline t			\
+  always_inline t			\
   t##_shift_##lr (t x, t i)			\
   { return (t) __builtin_ia32_##f ((ti) x, (i64) i); }
 #endif
@@ -325,7 +325,7 @@ _ (i32x2, i32x2, right, psrad);
 
 /* SSE2 has no rotate instructions: use shifts to simulate them. */
 #define _(t,n,lr1,lr2)					\
-  static always_inline t##x##n				\
+  always_inline t##x##n				\
   t##x##n##_rotate_##lr1 (t##x##n w, int i)		\
   {							\
     ASSERT (i >= 0 && i <= BITS (t));			\
@@ -343,7 +343,7 @@ _ (u64, 2, right, left);
 #undef _
 
 #define _(t,n,lr1,lr2)						\
-  static always_inline t##x##n					\
+  always_inline t##x##n					\
   t##x##n##_word_rotate2_##lr1 (t##x##n w0, t##x##n w1, int i)	\
   {								\
     int m = sizeof (t##x##n) / sizeof (t);			\
@@ -352,7 +352,7 @@ _ (u64, 2, right, left);
 	    | t##x##n##_word_shift_##lr2 (w1, m - i));		\
   }								\
 								\
-  static always_inline t##x##n					\
+  always_inline t##x##n					\
   t##x##n##_word_rotate_##lr1 (t##x##n w0, int i)		\
   { return t##x##n##_word_rotate2_##lr1 (w0, w0, i); }
 
@@ -377,7 +377,7 @@ _signed_binop (32, 4, is_equal, pcmpeqd128)
 #define i16x8_extract(x,i) __builtin_ia32_vec_ext_v8hi (x, i)
 
 /* Extract low order 32 bit word. */
-static always_inline u32
+always_inline u32
 u32x4_get0 (u32x4 x)
 {
   u32 result;
@@ -387,7 +387,7 @@ u32x4_get0 (u32x4 x)
   return result;
 }
 
-static always_inline u32x4
+always_inline u32x4
 u32x4_set0 (u32 x)
 {
   u32x4 result;
@@ -398,31 +398,31 @@ u32x4_set0 (u32 x)
 }
 
 /* Converts all ones/zeros compare mask to bitmap. */
-static always_inline u32 u8x16_compare_mask (u8x16 x)
+always_inline u32 u8x16_compare_mask (u8x16 x)
 { return __builtin_ia32_pmovmskb128 ((i8x16) x); }
 
-static always_inline u32 u8x16_zero_mask (u8x16 x)
+always_inline u32 u8x16_zero_mask (u8x16 x)
 {
   u8x16 zero = {0};
   return u8x16_compare_mask (u8x16_is_equal (x, zero));
 }
 
-static always_inline u32 u16x8_zero_mask (u16x8 x)
+always_inline u32 u16x8_zero_mask (u16x8 x)
 {
   u16x8 zero = {0};
   return u8x16_compare_mask ((u8x16) u16x8_is_equal (x, zero));
 }
 
-static always_inline u32 u32x4_zero_mask (u32x4 x)
+always_inline u32 u32x4_zero_mask (u32x4 x)
 {
   u32x4 zero = {0};
   return u8x16_compare_mask ((u8x16) u32x4_is_equal (x, zero));
 }
 
-static always_inline u8x16 u8x16_max (u8x16 x, u8x16 y)
+always_inline u8x16 u8x16_max (u8x16 x, u8x16 y)
 { return (u8x16) __builtin_ia32_pmaxub128 ((i8x16) x, (i8x16) y); }
 
-static always_inline u32 u8x16_max_scalar (u8x16 x)
+always_inline u32 u8x16_max_scalar (u8x16 x)
 {
   x = u8x16_max (x, u8x16_word_shift_right (x, 8));
   x = u8x16_max (x, u8x16_word_shift_right (x, 4));
@@ -431,10 +431,10 @@ static always_inline u32 u8x16_max_scalar (u8x16 x)
   return u16x8_extract ((i16x8) x, 0) & 0xff;
 }
 
-static always_inline u8x16 u8x16_min (u8x16 x, u8x16 y)
+always_inline u8x16 u8x16_min (u8x16 x, u8x16 y)
 { return (u8x16) __builtin_ia32_pminub128 ((i8x16) x, (i8x16) y); }
 
-static always_inline u8 u8x16_min_scalar (u8x16 x)
+always_inline u8 u8x16_min_scalar (u8x16 x)
 {
   x = u8x16_min (x, u8x16_word_shift_right (x, 8));
   x = u8x16_min (x, u8x16_word_shift_right (x, 4));
@@ -443,10 +443,10 @@ static always_inline u8 u8x16_min_scalar (u8x16 x)
   return u16x8_extract ((i16x8) x, 0) & 0xff;
 }
 
-static always_inline i16x8 i16x8_max (i16x8 x, i16x8 y)
+always_inline i16x8 i16x8_max (i16x8 x, i16x8 y)
 { return __builtin_ia32_pmaxsw128 (x, y); }
 
-static always_inline i16 i16x8_max_scalar (i16x8 x)
+always_inline i16 i16x8_max_scalar (i16x8 x)
 {
   x = i16x8_max (x, i16x8_word_shift_right (x, 4));
   x = i16x8_max (x, i16x8_word_shift_right (x, 2));
@@ -454,10 +454,10 @@ static always_inline i16 i16x8_max_scalar (i16x8 x)
   return i16x8_extract (x, 0);
 }
 
-static always_inline i16x8 i16x8_min (i16x8 x, i16x8 y)
+always_inline i16x8 i16x8_min (i16x8 x, i16x8 y)
 { return __builtin_ia32_pminsw128 (x, y); }
 
-static always_inline i16 i16x8_min_scalar (i16x8 x)
+always_inline i16 i16x8_min_scalar (i16x8 x)
 {
   x = i16x8_min (x, i16x8_word_shift_right (x, 4));
   x = i16x8_min (x, i16x8_word_shift_right (x, 2));

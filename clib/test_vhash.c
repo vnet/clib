@@ -63,7 +63,7 @@ typedef struct {
   } get_stats, set_stats, unset_stats;
 } test_vhash_main_t;
 
-static always_inline u32
+always_inline u32
 test_vhash_key_gather (void * _tm, u32 vi, u32 i, u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
@@ -73,7 +73,7 @@ test_vhash_key_gather (void * _tm, u32 vi, u32 i, u32 n_key_u32s)
   return vec_elt (tm->keys, vi * n_key_u32s + i);
 }
 
-static always_inline u32
+always_inline u32
 test_vhash_get_result (void * _tm,
 		       u32 vector_index,
 		       u32 result_index,
@@ -85,7 +85,7 @@ test_vhash_get_result (void * _tm,
   return result_index;
 }
 
-static always_inline u32x4
+always_inline u32x4
 test_vhash_get_4result (void * _tm,
 			u32 vector_index,
 			u32x4 results,
@@ -97,7 +97,7 @@ test_vhash_get_4result (void * _tm,
   return results;
 }
 
-static always_inline u32
+always_inline u32
 test_vhash_set_result (void * _tm,
 		       u32 vector_index,
 		       u32 old_result,
@@ -110,7 +110,7 @@ test_vhash_set_result (void * _tm,
   return new_result;
 }
 
-static always_inline u32
+always_inline u32
 test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
@@ -120,7 +120,7 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
 }
 
 #define _(N_KEY_U32)							\
-  static always_inline u32						\
+  always_inline u32							\
   test_vhash_key_gather_##N_KEY_U32 (void * _tm, u32 vi, u32 i)		\
   { return test_vhash_key_gather (_tm, vi, i, N_KEY_U32); }		\
 									\

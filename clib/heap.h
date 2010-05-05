@@ -66,19 +66,19 @@ typedef struct {
 /* Use high bit of offset as free bit. */
 #define HEAP_ELT_FREE_BIT	(1 << 31)
 
-static always_inline uword heap_is_free (heap_elt_t * e)
+always_inline uword heap_is_free (heap_elt_t * e)
 { return (e->offset & HEAP_ELT_FREE_BIT) != 0; }
 
-static always_inline uword heap_offset (heap_elt_t * e)
+always_inline uword heap_offset (heap_elt_t * e)
 { return e->offset &~ HEAP_ELT_FREE_BIT; }
 
-static always_inline heap_elt_t * heap_next (heap_elt_t * e)
+always_inline heap_elt_t * heap_next (heap_elt_t * e)
 { return e + e->next; }
 
-static always_inline heap_elt_t * heap_prev (heap_elt_t * e)
+always_inline heap_elt_t * heap_prev (heap_elt_t * e)
 { return e + e->prev; }
 
-static always_inline uword heap_elt_size (void * v, heap_elt_t * e)
+always_inline uword heap_elt_size (void * v, heap_elt_t * e)
 {
   heap_elt_t * n = heap_next (e);
   uword next_offset = n != e ? heap_offset (n) : vec_len (v);
@@ -121,13 +121,13 @@ typedef struct {
 /* Start of heap elements is always cache aligned. */
 #define HEAP_DATA_ALIGN (CLIB_CACHE_LINE_BYTES)
 
-static always_inline heap_t * heap_header (void * v)
+always_inline heap_t * heap_header (void * v)
 { return vec_header_ha (v, sizeof (heap_t), HEAP_DATA_ALIGN); }
 
-static always_inline uword heap_header_bytes ()
+always_inline uword heap_header_bytes ()
 { return vec_header_bytes_ha (sizeof (heap_t), HEAP_DATA_ALIGN); }
 
-static always_inline void heap_dup_header (heap_t * old, heap_t * new)
+always_inline void heap_dup_header (heap_t * old, heap_t * new)
 {
   uword i;
 
@@ -143,7 +143,7 @@ static always_inline void heap_dup_header (heap_t * old, heap_t * new)
 /* Make a duplicate copy of a heap. */
 #define heap_dup(v) _heap_dup(v, vec_len (v) * sizeof (v[0]))
 
-static always_inline void * _heap_dup (void * v_old, uword v_bytes)
+always_inline void * _heap_dup (void * v_old, uword v_bytes)
 {
   heap_t * h_old, * h_new;
   void * v_new;
@@ -161,7 +161,7 @@ static always_inline void * _heap_dup (void * v_old, uword v_bytes)
   return v_new;
 }
 
-static always_inline uword heap_elts (void * v)
+always_inline uword heap_elts (void * v)
 {
   heap_t * h = heap_header (v);
   return h->used_count;
@@ -169,7 +169,7 @@ static always_inline uword heap_elts (void * v)
 
 uword heap_bytes (void * v);
 
-static always_inline void * heap_set_format (void * v, format_function_t * format_elt)
+always_inline void * heap_set_format (void * v, format_function_t * format_elt)
 {
   if (! v)
     v = _vec_resize (v, 0, 0, sizeof (heap_t), 0);
@@ -177,7 +177,7 @@ static always_inline void * heap_set_format (void * v, format_function_t * forma
   return v;
 }
 
-static always_inline void * heap_set_max_len (void * v, uword max_len)
+always_inline void * heap_set_max_len (void * v, uword max_len)
 {
   if (! v)
     v = _vec_resize (v, 0, 0, sizeof (heap_t), 0);
@@ -185,11 +185,11 @@ static always_inline void * heap_set_max_len (void * v, uword max_len)
   return v;
 }
 
-static always_inline uword heap_get_max_len (void * v)
+always_inline uword heap_get_max_len (void * v)
 { return v ? heap_header (v)->max_len : 0; }
 
 /* Create fixed size heap with given block of memory. */
-static always_inline void *
+always_inline void *
 heap_create_from_memory (void * memory, uword max_len, uword elt_bytes)
 {
   heap_t * h;
@@ -241,7 +241,7 @@ do {							\
   (v) + heap_offset (_e);					\
 })
 
-static always_inline uword
+always_inline uword
 heap_is_free_handle (void * v, uword heap_handle)
 {
   heap_t * h = heap_header (v);

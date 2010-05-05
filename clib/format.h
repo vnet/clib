@@ -54,7 +54,7 @@ word va_fformat (FILE * f, char * fmt, va_list * va);
 word fformat (FILE * f, char * fmt, ...);
 word fdformat (int fd, char * fmt, ...);
 
-static inline uword
+always_inline uword
 format_get_indent (u8 * s)
 {
   uword indent = 0;
@@ -129,7 +129,7 @@ typedef struct _unformat_input_t {
   void * fill_buffer_arg;
 } unformat_input_t;
 
-static inline void
+always_inline void
 unformat_init (unformat_input_t * i,
 	       uword (* fill_buffer) (unformat_input_t *),
 	       void * fill_buffer_arg)
@@ -139,7 +139,7 @@ unformat_init (unformat_input_t * i,
   i->fill_buffer_arg = fill_buffer_arg;
 }
 
-static inline void
+always_inline void
 unformat_free (unformat_input_t * i)
 {
   vec_free (i->buffer);
@@ -147,7 +147,7 @@ unformat_free (unformat_input_t * i)
   memset (i, 0, sizeof (i[0]));
 }
 
-static inline uword
+always_inline uword
 unformat_check_input (unformat_input_t * i)
 {
   /* Low level fill input function. */
@@ -161,7 +161,7 @@ unformat_check_input (unformat_input_t * i)
 }
 
 /* Return true if input is exhausted */
-static inline uword
+always_inline uword
 unformat_is_eof (unformat_input_t * input)
 {
   return unformat_check_input (input) == UNFORMAT_END_OF_INPUT;
@@ -169,7 +169,7 @@ unformat_is_eof (unformat_input_t * input)
 
 /* Return next element in input vector,
    possibly calling fill input to get more. */
-static inline uword
+always_inline uword
 unformat_get_input (unformat_input_t * input)
 {
   uword i = unformat_check_input (input);
@@ -182,12 +182,12 @@ unformat_get_input (unformat_input_t * input)
 }
 
 /* Back up input pointer by one. */
-static inline void
+always_inline void
 unformat_put_input (unformat_input_t * input)
 { input->index -= 1; }
 
 /* Peek current input character without advancing. */
-static inline uword
+always_inline uword
 unformat_peek_input (unformat_input_t * input)
 {
   uword c = unformat_get_input (input);
@@ -197,7 +197,7 @@ unformat_peek_input (unformat_input_t * input)
 }
 
 /* Skip current input line. */
-static inline void unformat_skip_line (unformat_input_t * i)
+always_inline void unformat_skip_line (unformat_input_t * i)
 {
   uword c;
 
@@ -230,7 +230,7 @@ void unformat_init_string (unformat_input_t * input,
 			   char * string,
 			   int string_len);
 
-static always_inline void
+always_inline void
 unformat_init_cstring (unformat_input_t * input,
                        char * string)
 { unformat_init_string (input, string, strlen (string)); }

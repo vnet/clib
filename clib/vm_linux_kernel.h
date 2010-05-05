@@ -29,16 +29,16 @@
 #include <asm/pgtable.h>       /* for PAGE_KERNEL */
 
 /* Allocate virtual address space. */
-static inline void * clib_mem_vm_alloc (uword size)
+always_inline void * clib_mem_vm_alloc (uword size)
 { return vmalloc (size); }
 
-static inline void clib_mem_vm_free (void * addr, uword size)
+always_inline void clib_mem_vm_free (void * addr, uword size)
 { vfree (addr); }
 
-static inline void * clib_mem_vm_unmap (void * addr, uword size)
+always_inline void * clib_mem_vm_unmap (void * addr, uword size)
 { return 0; }
 
-static inline void * clib_mem_vm_map (void * addr, uword size)
+always_inline void * clib_mem_vm_map (void * addr, uword size)
 { return addr; }
 
 #endif /* included_vm_linux_kernel_h */

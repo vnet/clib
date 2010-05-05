@@ -27,7 +27,7 @@
 #include <clib/clib.h>
 
 /* Population count from Hacker's Delight. */
-static always_inline uword count_set_bits (uword x)
+always_inline uword count_set_bits (uword x)
 {
 #if uword_bits == 64
   const uword c1 = 0x5555555555555555;
@@ -63,7 +63,7 @@ typedef struct {
   uword masks[1 + log2_uword_bits];
 } compress_main_t;
 
-static inline void
+always_inline void
 compress_init (compress_main_t * cm, uword mask)
 {
   uword q, m, zm, n, i;
@@ -90,7 +90,7 @@ compress_init (compress_main_t * cm, uword mask)
     }
 }
 
-static always_inline uword
+always_inline uword
 compress_bits (compress_main_t * cm, uword x)
 {
   uword q, r;
@@ -108,17 +108,17 @@ compress_bits (compress_main_t * cm, uword x)
   return r;
 }
 
-static always_inline uword
+always_inline uword
 rotate_left (uword x, uword i)
 { return (x << i) | (x >> (BITS (i) - i)); }
 
-static always_inline uword
+always_inline uword
 rotate_right (uword x, uword i)
 { return (x >> i) | (x << (BITS (i) - i)); }
 
 /* Returns snoob from Hacker's Delight.  Next highest number
    with same number of set bits. */
-static always_inline uword
+always_inline uword
 next_with_same_number_of_set_bits (uword x)
 {
   uword smallest, ripple, ones;
