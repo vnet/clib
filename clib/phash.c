@@ -714,7 +714,7 @@ static void guess_initial_parameters (phash_main_t * pm)
 
 /* compute p(x), where p is a permutation of 0..(1<<nbits)-1 */
 /* permute(0)=0.  This is intended and useful. */
-always_inline u32 scramble_permute (u32 x, u32 nbits)
+static inline u32 scramble_permute (u32 x, u32 nbits)
 {
   int i;
   int mask   = (1 << nbits) - 1;

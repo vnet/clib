@@ -26,12 +26,12 @@
 
 #include <clib/clib.h>
 
-always_inline f64 sqrt (f64 x)
+static always_inline f64 sqrt (f64 x)
 {
   return __builtin_sqrt (x);
 }
 
-always_inline f64 fabs (f64 x)
+static always_inline f64 fabs (f64 x)
 {
   return __builtin_fabs (x);
 }

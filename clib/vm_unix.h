@@ -28,7 +28,7 @@
 #include <sys/mman.h>
 
 /* Allocate virtual address space. */
-always_inline void * clib_mem_vm_alloc (uword size)
+static inline void * clib_mem_vm_alloc (uword size)
 {
   void * mmap_addr;
   uword flags = MAP_PRIVATE;
@@ -44,10 +44,10 @@ always_inline void * clib_mem_vm_alloc (uword size)
   return mmap_addr;
 }
 
-always_inline void clib_mem_vm_free (void * addr, uword size)
+static inline void clib_mem_vm_free (void * addr, uword size)
 { munmap (addr, size); }
 
-always_inline void * clib_mem_vm_unmap (void * addr, uword size)
+static inline void * clib_mem_vm_unmap (void * addr, uword size)
 {
   void * mmap_addr;
   uword flags = MAP_PRIVATE | MAP_FIXED;
@@ -63,7 +63,7 @@ always_inline void * clib_mem_vm_unmap (void * addr, uword size)
   return mmap_addr;
 }
 
-always_inline void * clib_mem_vm_map (void * addr, uword size)
+static inline void * clib_mem_vm_map (void * addr, uword size)
 {
   void * mmap_addr;
   uword flags = MAP_PRIVATE | MAP_FIXED;

@@ -35,7 +35,7 @@ typedef struct {
   u32 tail_index;
 } clib_fifo_header_t;
 
-always_inline clib_fifo_header_t *
+static inline clib_fifo_header_t *
 clib_fifo_header (void * f)
 { return vec_header (f, sizeof (clib_fifo_header_t)); }
 
@@ -44,7 +44,7 @@ clib_fifo_header (void * f)
 #define _clib_fifo_len(v) _vec_len(v)
 #define clib_fifo_end(v) vec_end(v)
 
-always_inline uword
+static inline uword
 clib_fifo_elts (void * v)
 {
   word l, r;
@@ -60,11 +60,11 @@ clib_fifo_elts (void * v)
   return r;
 }
 
-always_inline uword
+static inline uword
 clib_fifo_free_elts (void * v)
 { return clib_fifo_len (v) - clib_fifo_elts (v); }
 
-always_inline void
+static inline void
 clib_fifo_reset (void * v)
 {
   clib_fifo_header_t * f = clib_fifo_header (v);
@@ -78,7 +78,7 @@ void * _clib_fifo_resize (void * v, uword n_elts, uword elt_bytes);
 #define clib_fifo_resize(f,n_elts) \
   f = _clib_fifo_resize ((f), (n_elts), sizeof ((f)[0]))
 
-always_inline void *
+static inline void *
 _clib_fifo_validate (void * v, uword n_elts, uword elt_bytes)
 {
   if (clib_fifo_free_elts (v) < n_elts)
@@ -90,7 +90,7 @@ _clib_fifo_validate (void * v, uword n_elts, uword elt_bytes)
   f = _clib_fifo_validate ((f), (n_elts), sizeof (f[0]))
   
 /* Advance tail pointer by N_ELTS which can be either positive or negative. */
-always_inline void *
+static inline void *
 _clib_fifo_advance_tail (void * v, word n_elts, uword elt_bytes,
 			 uword * tail_return)
 {
@@ -142,7 +142,7 @@ _clib_fifo_advance_tail (void * v, word n_elts, uword elt_bytes,
   (f) + _i;								\
 })
 
-always_inline uword
+static inline uword
 clib_fifo_advance_head (void * v, uword n_elts)
 {
   clib_fifo_header_t * f;
@@ -214,14 +214,14 @@ do {						\
   (p) = (f) + _i;				\
 } while (0)
 
-always_inline uword
+static inline uword
 clib_fifo_head_index (void * v)
 {
   clib_fifo_header_t * f = clib_fifo_header (v);
   return v ? f->head_index : 0;
 }
 
-always_inline uword
+static inline uword
 clib_fifo_tail_index (void * v)
 {
   clib_fifo_header_t * f = clib_fifo_header (v);
@@ -233,7 +233,7 @@ clib_fifo_tail_index (void * v)
 
 #define clib_fifo_free(f) vec_free_h((f),sizeof(clib_fifo_header_t))
 
-always_inline uword
+static inline uword
 clib_fifo_elt_index (void * v, uword i)
 {
   clib_fifo_header_t * f = clib_fifo_header (v);

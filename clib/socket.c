@@ -37,14 +37,6 @@
 #include <clib/format.h>
 #include <clib/error.h>
 
-void socket_tx_add_formatted (socket_t * s, char * fmt, ...)
-{
-  va_list va;
-  va_start (va, fmt);
-  socket_tx_add_va_formatted (s, fmt, &va);
-  va_end (va);
-}
-
 /* Return and bind to an unused port. */
 static word find_free_port (word sock)
 {

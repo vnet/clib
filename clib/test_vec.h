@@ -34,7 +34,7 @@
 extern uword g_verbose;
 extern u32 g_seed;
 
-always_inline u8 * format_u32_binary (u8 * s, va_list * va)
+static inline u8 * format_u32_binary (u8 * s, va_list * va)
 {
     u32 val = va_arg (*va, u32);
     word i = 0;
@@ -170,7 +170,7 @@ uword_to_pointer (log2_align_up (pointer_to_uword (ptr), align), void *)
 
 /* Allocates pointer to memory whose address is:
    addr = <log2_align>-aligned address */
-always_inline void * alloc_aligned (uword size, uword log2_align, void ** ptr_to_free)
+static inline void * alloc_aligned (uword size, uword log2_align, void ** ptr_to_free)
 {
   void * p;
   
@@ -187,7 +187,7 @@ always_inline void * alloc_aligned (uword size, uword log2_align, void ** ptr_to
 
 /* Allocates pointer to memory whose address is:
    addr = MAX_LOG2_ALIGN-aligned address + <offset> */
-always_inline void * alloc_unaligned (uword size, uword offset, void ** ptr_to_free)
+static inline void * alloc_unaligned (uword size, uword offset, void ** ptr_to_free)
 {
   void * p;
 

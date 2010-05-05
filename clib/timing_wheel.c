@@ -31,7 +31,7 @@ timing_wheel_init (timing_wheel_t * w, u64 current_cpu_time, f64 cpu_clocks_per_
     = w->current_time_index + ((u64) 1 << (w->n_wheel_elt_time_bits - w->log2_clocks_per_bin));
 }
 
-always_inline uword
+static always_inline uword
 get_level_and_relative_time (timing_wheel_t * w, u64 cpu_time, uword * rtime_result)
 {
   u64 dt, rtime;
@@ -55,21 +55,21 @@ get_level_and_relative_time (timing_wheel_t * w, u64 cpu_time, uword * rtime_res
   return level_index;
 }
 
-always_inline uword
+static always_inline uword
 time_index_to_wheel_index (timing_wheel_t * w, uword level_index, u64 ti)
 { return (ti >> (level_index * w->log2_bins_per_wheel)) & w->bins_per_wheel_mask; }
 
 /* Find current time on this level. */
-always_inline uword
+static always_inline uword
 current_time_wheel_index (timing_wheel_t * w, uword level_index)
 { return time_index_to_wheel_index (w, level_index, w->current_time_index); }
 
 /* Circular wheel indexing. */
-always_inline uword
+static always_inline uword
 wheel_add (timing_wheel_t * w, word x)
 { return x & w->bins_per_wheel_mask; }
 
-always_inline uword
+static always_inline uword
 rtime_to_wheel_index (timing_wheel_t * w, uword level_index, uword rtime)
 {
   uword t = current_time_wheel_index (w, level_index);
@@ -148,7 +148,7 @@ void timing_wheel_validate (timing_wheel_t * w)
     }
 }
 
-always_inline void
+static always_inline void
 free_elt_vector (timing_wheel_t * w, timing_wheel_elt_t * ev)
 {
   /* Poison free elements so we never use them by mistake. */
@@ -218,7 +218,7 @@ static void timing_wheel_insert_helper (timing_wheel_t * w, u64 insert_cpu_time,
     }
 }
 
-always_inline uword
+static always_inline uword
 elt_is_deleted (timing_wheel_t * w, u32 user_data)
 {
   return (hash_elts (w->deleted_user_data_hash) > 0
@@ -359,18 +359,18 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
   }
 }
 
-static inline void
+static always_inline void
 insert_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
 {
   u64 t = w->cpu_time_base + e->cpu_time_relative_to_base;
   timing_wheel_insert_helper (w, t, e->user_data);
 }
 
-always_inline u64
+static always_inline u64
 elt_cpu_time (timing_wheel_t * w, timing_wheel_elt_t * e)
 { return w->cpu_time_base + e->cpu_time_relative_to_base; }
 
-always_inline void
+static always_inline void
 validate_expired_elt (timing_wheel_t * w, timing_wheel_elt_t * e,
 		      u64 current_cpu_time)
 {

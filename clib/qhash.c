@@ -55,7 +55,7 @@ _qhash_resize (void * v, uword length, uword elt_bytes)
 
 static u8 min_log2_table[256];
 
-static inline uword
+static always_inline uword
 qhash_min_log2 (uword x)
 {
   ASSERT (is_pow2 (x));
@@ -70,15 +70,15 @@ static void qhash_min_log2_init ()
     min_log2_table[i] = min_log2 (i);
 }
 
-always_inline uword
+static always_inline uword
 qhash_get_valid_elt_mask (qhash_t * h, uword i)
 { return h->hash_key_valid_bitmap[i / QHASH_KEYS_PER_BUCKET]; }
 
-always_inline void
+static always_inline void
 qhash_set_valid_elt_mask (qhash_t * h, uword i, uword mask)
 { h->hash_key_valid_bitmap[i / QHASH_KEYS_PER_BUCKET] = mask; }
 
-always_inline uword
+static always_inline uword
 qhash_search_bucket (uword * hash_keys, uword search_key,
 		     uword m)
 {
@@ -442,7 +442,7 @@ qhash_unset_overflow (void * v, uword key, uword bi, uword * n_elts)
   return result;
 }
 
-always_inline uword
+static always_inline uword
 qhash_find_free (uword i, uword valid_mask)
 { return first_set (~valid_mask & pow2_mask (QHASH_KEYS_PER_BUCKET)); }
 

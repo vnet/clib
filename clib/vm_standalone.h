@@ -26,16 +26,16 @@
 
 /* Stubs for standalone "system" which has no VM support. */
 
-always_inline void * clib_mem_vm_alloc (uword size)
+static inline void * clib_mem_vm_alloc (uword size)
 { return 0; }
 
-always_inline void clib_mem_vm_free (void * addr, uword size)
+static inline void clib_mem_vm_free (void * addr, uword size)
 { }
 
-always_inline void * clib_mem_vm_unmap (void * addr, uword size)
+static inline void * clib_mem_vm_unmap (void * addr, uword size)
 { return 0; }
 
-always_inline void * clib_mem_vm_map (void * addr, uword size)
+static inline void * clib_mem_vm_map (void * addr, uword size)
 { return addr; }
 
 #endif /* included_vm_standalone_h */

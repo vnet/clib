@@ -44,7 +44,7 @@ typedef struct {
   };
 } clib_random_buffer_t;
 
-always_inline void
+static inline void
 clib_random_buffer_free (clib_random_buffer_t * b)
 {
   vec_free (b->buffer);
@@ -57,7 +57,7 @@ void clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words);
 void clib_random_buffer_init (clib_random_buffer_t * b, uword seed);
 
 /* Returns word aligned random data, possibly filling buffer. */
-always_inline void *
+static inline void *
 clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
 {
   uword n_words, i, l;

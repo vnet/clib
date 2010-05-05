@@ -37,7 +37,7 @@ typedef struct {
   u32x4_union_t key[0];
 } vhash_overflow_search_bucket_t;
 
-always_inline void
+static always_inline void
 set_overflow_result (vhash_overflow_search_bucket_t * b,
 		     u32 i,
 		     u32 result,
@@ -47,7 +47,7 @@ set_overflow_result (vhash_overflow_search_bucket_t * b,
   b->key_hash.data_u32[i] = key_hash;
 }
 
-always_inline void
+static always_inline void
 free_overflow_bucket (vhash_overflow_buckets_t * ob,
 		      vhash_overflow_search_bucket_t * b,
 		      u32 i)
@@ -57,14 +57,14 @@ free_overflow_bucket (vhash_overflow_buckets_t * ob,
   vec_add1 (ob->free_indices, 4 * o + i);
 }
 
-always_inline vhash_overflow_search_bucket_t *
+static always_inline vhash_overflow_search_bucket_t *
 get_overflow_search_bucket (vhash_overflow_buckets_t * obs, u32 i, u32 n_key_u32s)
 {
   return ((vhash_overflow_search_bucket_t *)
 	  vec_elt_at_index (obs->search_buckets, i));
 }
 
-always_inline vhash_overflow_search_bucket_t *
+static always_inline vhash_overflow_search_bucket_t *
 next_overflow_bucket (vhash_overflow_search_bucket_t * b, u32 n_key_u32s)
 { return (vhash_overflow_search_bucket_t *) &b->key[n_key_u32s]; }
 
@@ -73,7 +73,7 @@ next_overflow_bucket (vhash_overflow_search_bucket_t * b, u32 n_key_u32s)
        (u32x4_union_t *) (b) < vec_end (ob->search_buckets);		\
        b = next_overflow_bucket (b, n_key_u32s))
 
-always_inline vhash_overflow_buckets_t *
+static always_inline vhash_overflow_buckets_t *
 get_overflow_buckets (vhash_t * h, u32 key)
 {
   u32 i = (((key & h->bucket_mask.data_u32[0]) >> 2) & 0xf);
@@ -281,7 +281,7 @@ void vhash_resize_set (vhash_resize_main_t * rm, u32 * key, u32 result)
     b->key[j].data_u32[i1] = key[j];
 }
 
-always_inline u32
+static always_inline u32
 vhash_resize_set_overflow_index (vhash_resize_main_t * rm,
 				 vhash_overflow_buckets_t * obs,
 				 vhash_overflow_search_bucket_t * ob,
@@ -300,7 +300,7 @@ vhash_resize_set_overflow_index (vhash_resize_main_t * rm,
   return i;
 }
 
-always_inline u32
+static always_inline u32
 vhash_resize_key_gather (void * _rm, u32 vi, u32 wi, u32 n_key_u32)
 {
   vhash_resize_main_t * rm = _rm;
@@ -323,7 +323,7 @@ vhash_resize_key_gather (void * _rm, u32 vi, u32 wi, u32 n_key_u32)
   return ob->key[wi].data_u32[ci % 4];
 }
 
-always_inline u32
+static always_inline u32
 vhash_resize_set_result (void * _rm, u32 vi, u32 old_result, u32 n_key_u32)
 {
   vhash_resize_main_t * rm = _rm;
@@ -347,7 +347,7 @@ vhash_resize_set_result (void * _rm, u32 vi, u32 old_result, u32 n_key_u32)
 }
 
 #define _(N_KEY_U32)							\
-  always_inline u32							\
+  static always_inline u32						\
   vhash_resize_key_gather_##N_KEY_U32 (void * _rm, u32 vi, u32 i)	\
   { return vhash_resize_key_gather (_rm, vi, i, N_KEY_U32); }		\
 									\

@@ -98,14 +98,14 @@ typedef struct {
   vhash_hashed_key_t * hash_state;
 } vhash_t;
 
-always_inline void
+static always_inline void
 vhash_free_overflow_buckets (vhash_overflow_buckets_t * obs)
 {
   vec_free (obs->search_buckets);
   vec_free (obs->free_indices);
 }
 
-always_inline void
+static always_inline void
 vhash_free (vhash_t * h)
 {
   uword i;
@@ -113,7 +113,7 @@ vhash_free (vhash_t * h)
     vhash_free_overflow_buckets (&h->overflow_buckets[i]);
 }
 
-always_inline void
+static always_inline void
 vhash_set_key_word (vhash_t * h, u32 wi, u32 vi, u32 value)
 {
   u32 i0 = (wi << h->log2_n_key_word_len_u32x) + (vi / VECTOR_WORD_TYPE_LEN (u32));
@@ -121,14 +121,14 @@ vhash_set_key_word (vhash_t * h, u32 wi, u32 vi, u32 value)
   vec_elt (h->key_words, i0).data_u32[i1] = value;
 }
 
-always_inline void
+static always_inline void
 vhash_set_key_word_u32x (vhash_t * h, u32 wi, u32 vi, u32x value)
 {
   u32 i0 = (wi << h->log2_n_key_word_len_u32x) + (vi / VECTOR_WORD_TYPE_LEN (u32));
   vec_elt (h->key_words, i0).data_u32x = value;
 }
 
-always_inline u32
+static always_inline u32
 vhash_get_key_word (vhash_t * h, u32 wi, u32 vi)
 {
   u32 i0 = (wi << h->log2_n_key_word_len_u32x) + (vi / VECTOR_WORD_TYPE_LEN (u32));
@@ -136,14 +136,14 @@ vhash_get_key_word (vhash_t * h, u32 wi, u32 vi)
   return vec_elt (h->key_words, i0).data_u32[i1];
 }
 
-always_inline u32x
+static always_inline u32x
 vhash_get_key_word_u32x (vhash_t * h, u32 wi, u32 vi)
 {
   u32 i0 = (wi << h->log2_n_key_word_len_u32x) + vi;
   return vec_elt (h->key_words, i0).data_u32x;
 }
 
-always_inline void
+static always_inline void
 vhash_validate_sizes (vhash_t * h, u32 n_key_u32, u32 n_vectors)
 {
   u32 n, l;
@@ -156,7 +156,7 @@ vhash_validate_sizes (vhash_t * h, u32 n_key_u32, u32 n_vectors)
   vec_validate_aligned (h->hash_state, n - 1, CLIB_CACHE_LINE_BYTES);
 }
 
-always_inline void
+static always_inline void
 vhash_gather_key_stage (vhash_t * h,
 			u32 vector_index,
 			u32 n_vectors,
@@ -176,7 +176,7 @@ vhash_gather_key_stage (vhash_t * h,
     }
 }
 
-always_inline void
+static always_inline void
 vhash_gather_4keys_stage (vhash_t * h,
 			  u32 vector_index,
 			  vhash_4key_function_t key_function,
@@ -189,7 +189,7 @@ vhash_gather_4keys_stage (vhash_t * h,
     vhash_set_key_word_u32x (h, j, vi, key_function (state, vi, j));
 }
 
-always_inline void
+static always_inline void
 vhash_mix_stage (vhash_t * h,
 		 u32 vector_index,
 		 u32 n_key_u32s)
@@ -223,7 +223,7 @@ vhash_mix_stage (vhash_t * h,
   }
 }
 
-always_inline vhash_search_bucket_t *
+static always_inline vhash_search_bucket_t *
 vhash_get_search_bucket_with_index (vhash_t * h, u32 i, u32 n_key_u32s)
 {
   return ((vhash_search_bucket_t *)
@@ -231,14 +231,14 @@ vhash_get_search_bucket_with_index (vhash_t * h, u32 i, u32 n_key_u32s)
 			    (i / 4) * ((sizeof (vhash_search_bucket_t) / sizeof (u32x4)) + n_key_u32s)));
 }
 
-always_inline vhash_search_bucket_t *
+static always_inline vhash_search_bucket_t *
 vhash_get_search_bucket (vhash_t * h, u32 key_hash, u32 n_key_u32s)
 {
   u32 i = key_hash & h->bucket_mask.data_u32[0];
   return vhash_get_search_bucket_with_index (h, i, n_key_u32s);
 }
 
-always_inline u32x4
+static always_inline u32x4
 vhash_get_4_search_buckets (vhash_t * h, u32x4 key_hash, u32 n_key_u32s)
 {
   vhash_search_bucket_t * b;
@@ -264,7 +264,7 @@ vhash_get_4_search_buckets (vhash_t * h, u32x4 key_hash, u32 n_key_u32s)
   return r;
 }
 
-always_inline void
+static always_inline void
 vhash_finalize_stage (vhash_t * h,
 		      u32 vector_index,
 		      u32 n_key_u32s)
@@ -320,7 +320,7 @@ vhash_finalize_stage (vhash_t * h,
   }
 }
 				 
-always_inline u32
+static always_inline u32
 vhash_merge_results (u32x4 r)
 {
   r = r | u32x4_word_shift_right (r, 2);
@@ -329,11 +329,11 @@ vhash_merge_results (u32x4 r)
 }
 
 /* Bucket is full if none of its 4 results are 0. */
-always_inline u32
+static always_inline u32
 vhash_search_bucket_is_full (u32x4 r)
 { return u32x4_zero_mask (r) == 0; }
 
-always_inline u32
+static always_inline u32
 vhash_non_empty_result_index (u32x4 x)
 {
   u32x4_union_t tmp;
@@ -354,7 +354,7 @@ vhash_non_empty_result_index (u32x4 x)
   return i;
 }
 
-always_inline u32
+static always_inline u32
 vhash_empty_result_index (u32x4 x)
 {
   u32x4_union_t tmp;
@@ -375,7 +375,7 @@ vhash_empty_result_index (u32x4 x)
   return i;
 }
 
-always_inline u32x4
+static always_inline u32x4
 vhash_bucket_compare (vhash_t * h,
 		      u32x4_union_t * bucket,
 		      u32 key_word_index,
@@ -391,7 +391,7 @@ u32 vhash_get_overflow (vhash_t * h,
 			u32 vi,
 			u32 n_key_u32s);
 
-always_inline void
+static always_inline void
 vhash_get_stage (vhash_t * h,
 		 u32 vector_index,
 		 u32 n_vectors,
@@ -427,7 +427,7 @@ vhash_get_stage (vhash_t * h,
     }
 }
 
-always_inline void
+static always_inline void
 vhash_get_4stage (vhash_t * h,
 		  u32 vector_index,
 		  u32 n_vectors,
@@ -523,7 +523,7 @@ vhash_set_overflow (vhash_t * h,
 		    u32 new_result,
 		    u32 n_key_u32s);
 
-always_inline void
+static always_inline void
 vhash_set_stage (vhash_t * h,
 		 u32 vector_index,
 		 u32 n_vectors,
@@ -620,7 +620,7 @@ vhash_unset_refill_from_overflow (vhash_t * h,
 				  u32 key_hash,
 				  u32 n_key_u32s);
 
-always_inline void
+static always_inline void
 vhash_unset_stage (vhash_t * h,
 		   u32 vector_index,
 		   u32 n_vectors,

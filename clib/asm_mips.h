@@ -184,35 +184,35 @@ typedef enum {
 } mips_insn_mdmx_funct_t;
 #undef _
 
-always_inline mips_insn_opcode_t
+static inline mips_insn_opcode_t
 mips_insn_get_op (u32 insn)
 { return (insn >> 26) & 0x3f; }
 
-always_inline u32
+static inline u32
 mips_insn_get_rs (u32 insn)
 { return (insn >> 21) & 0x1f; }
 
-always_inline u32
+static inline u32
 mips_insn_get_rt (u32 insn)
 { return (insn >> 16) & 0x1f; }
 
-always_inline u32
+static inline u32
 mips_insn_get_rd (u32 insn)
 { return (insn >> 11) & 0x1f; }
 
-always_inline u32
+static inline u32
 mips_insn_get_sa (u32 insn)
 { return (insn >> 6) & 0x1f; }
 
-always_inline u32
+static inline u32
 mips_insn_get_funct (u32 insn)
 { return (insn >> 0) & 0x3f; }
 
-always_inline i32
+static inline i32
 mips_insn_get_immediate (u32 insn)
 { return (((i32) insn) << 16) >> 16; }
 
-always_inline u32
+static inline u32
 mips_insn_encode_i_type (int op, int rs, int rt, int immediate)
 {
   u32 insn;
@@ -229,7 +229,7 @@ mips_insn_encode_i_type (int op, int rs, int rt, int immediate)
   return insn;
 }
 
-always_inline u32
+static inline u32
 mips_insn_encode_j_type (int op, u32 addr)
 {
   u32 insn;
@@ -240,7 +240,7 @@ mips_insn_encode_j_type (int op, u32 addr)
   return insn;
 }
 
-always_inline u32
+static inline u32
 mips_insn_encode_r_type (int op, int rs, int rt, int rd, int sa, int funct)
 {
   u32 insn;
@@ -273,7 +273,7 @@ mips_insn_encode_r_type (int op, int rs, int rt, int rd, int sa, int funct)
   mips_insn_encode_i_type (MIPS_OPCODE_##op, (rs), (rt), (imm))
 
 /* Generate unsigned load instructions of data of various sizes. */
-always_inline u32
+static inline u32
 mips_insn_load (u32 rd, i32 offset, u32 base, u32 log2_bytes)
 {
   int op;

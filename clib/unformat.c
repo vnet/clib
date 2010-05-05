@@ -52,7 +52,7 @@ uword _unformat_fill_input (unformat_input_t * i)
   return i->index;
 }
 
-always_inline uword
+static inline uword
 is_white_space (uword c)
 {
   switch (c)

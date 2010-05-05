@@ -348,17 +348,17 @@ static void elog_time_now (elog_time_stamp_t * et)
   et->os_nsec = os_time_now_nsec;
 }
 
-always_inline i64
+static always_inline i64
 elog_time_stamp_diff_os_nsec (elog_time_stamp_t * t1,
 			      elog_time_stamp_t * t2)
 { return (i64) t1->os_nsec - (i64) t2->os_nsec; }
 
-always_inline i64
+static always_inline i64
 elog_time_stamp_diff_cpu (elog_time_stamp_t * t1,
 			  elog_time_stamp_t * t2)
 { return (i64) t1->cpu - (i64) t2->cpu; }
 
-always_inline f64
+static always_inline f64
 elog_nsec_per_clock (elog_main_t * em)
 {
   return ((f64) elog_time_stamp_diff_os_nsec (&em->serialize_time,

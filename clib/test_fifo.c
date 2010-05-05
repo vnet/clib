@@ -28,7 +28,7 @@ typedef struct {
   int a, b, c;
 } A;
 
-always_inline void
+static inline void
 A_set (A * a, int k)
 {
   a->a = 1*k;
@@ -36,7 +36,7 @@ A_set (A * a, int k)
   a->c = 3*k;
 }
 
-always_inline int
+static inline int
 A_is_valid (A * a, int k)
 { return a->a == 1*k && a->b == 2*k && a->c == 3*k; }
 

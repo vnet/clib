@@ -70,16 +70,16 @@ socket_init (socket_t * socket);
 
 clib_error_t * socket_accept (socket_t * server, socket_t * client);
 
-always_inline uword socket_is_server (socket_t * sock)
+static inline uword socket_is_server (socket_t * sock)
 { return (sock->flags & SOCKET_IS_SERVER) != 0; }
 
-always_inline uword socket_is_client (socket_t * s)
+static inline uword socket_is_client (socket_t * s)
 { return ! socket_is_server (s); }
 
-always_inline int socket_rx_end_of_file (socket_t * s)
+static inline int socket_rx_end_of_file (socket_t * s)
 { return s->flags & SOCKET_RX_END_OF_FILE; }
 
-always_inline void *
+static inline void *
 socket_tx_add (socket_t * s, int n_bytes)
 {
   u8 * result;
@@ -87,19 +87,28 @@ socket_tx_add (socket_t * s, int n_bytes)
   return result;
 }
 
-always_inline void
+static inline void
 socket_tx_add_va_formatted (socket_t * s, char * fmt, va_list * va)
 { s->tx_buffer = va_format (s->tx_buffer, fmt, va); }
 
-always_inline clib_error_t *
+static inline void
+socket_tx_add_formatted (socket_t * s, char * fmt, ...)
+{
+  va_list va;
+  va_start (va, fmt);
+  socket_tx_add_va_formatted (s, fmt, &va);
+  va_end (va);
+}
+
+static inline clib_error_t *
 socket_tx (socket_t * s)
 { return s->write_func (s); }
 
-always_inline clib_error_t *
+static inline clib_error_t *
 socket_rx (socket_t * s, int n_bytes)
 { return s->read_func (s, n_bytes); }
 
-always_inline void
+static inline void
 socket_free (socket_t *s)
 {
   vec_free (s->tx_buffer);
@@ -109,16 +118,12 @@ socket_free (socket_t *s)
   memset (s, 0, sizeof (s[0]));
 }
 
-always_inline clib_error_t *
+static inline clib_error_t *
 socket_close (socket_t *sock)
 {
   clib_error_t * err;
   err = (* sock->close_func) (sock);
   return err;
 }
-
-void
-socket_tx_add_formatted (socket_t * s, char * fmt, ...);
-
 
 #endif /* _clib_included_socket_h */

@@ -124,7 +124,7 @@ _ (i64, /* is_signed */ 1);
 /* Signed <=> unsigned conversion.
       -1, -2, -3, ... =>    1, 3, 5, ... odds
    0, +1, +2, +3, ... => 0, 2, 4, 6, ... evens */
-always_inline uword
+static always_inline uword
 zvec_signed_to_unsigned (word s)
 {
   uword a = s < 0;
@@ -132,7 +132,7 @@ zvec_signed_to_unsigned (word s)
   return a ? -s : s;
 }
 
-always_inline word
+static always_inline word
 zvec_unsigned_to_signed (uword u)
 {
   uword a = u & 1;

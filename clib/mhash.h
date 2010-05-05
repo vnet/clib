@@ -51,7 +51,7 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes);
 void mhash_init_c_string (mhash_t * h, uword n_value_bytes);
 void mhash_init_vec_string (mhash_t * h, uword n_value_bytes);
 
-always_inline uword *
+static always_inline uword *
 mhash_get (mhash_t * h, void * key)
 { return hash_get_mem (h->hash, key); }
 

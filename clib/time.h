@@ -47,7 +47,7 @@ typedef struct {
 
 /* Return CPU time stamp as 64bit number. */
 #if defined(__x86_64__) || defined(i386)
-always_inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u32 a, d;
   asm volatile ("rdtsc"
@@ -57,7 +57,7 @@ always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__powerpc64__)
 
-always_inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u64 t;
   asm volatile ("mftb %0" : "=r" (t));
@@ -66,7 +66,7 @@ always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__SPU__)
 
-always_inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
 #ifdef _XLC
   return spu_rdch (0x8);
@@ -77,7 +77,7 @@ always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__powerpc__)
 
-always_inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u32 hi1, hi2, lo;
   asm volatile (
@@ -93,7 +93,7 @@ always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__arm__)
 
-always_inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 {
   u32 lo;
   asm volatile ("mrc p15, 0, %[lo], c15, c12, 1"
@@ -104,7 +104,7 @@ always_inline u64 clib_cpu_time_now (void)
 #elif defined (__xtensa__)
 
 /* Stub for now. */
-always_inline u64 clib_cpu_time_now (void)
+static always_inline u64 clib_cpu_time_now (void)
 { return 0; }
 
 #else
@@ -113,7 +113,7 @@ always_inline u64 clib_cpu_time_now (void)
 
 #endif
 
-always_inline f64
+static always_inline f64
 clib_time_now (clib_time_t * c)
 {
   u64 n = clib_cpu_time_now ();
@@ -125,7 +125,7 @@ clib_time_now (clib_time_t * c)
   return t * c->seconds_per_clock;
 }
 
-always_inline void clib_cpu_time_wait (u64 dt)
+static always_inline void clib_cpu_time_wait (u64 dt)
 {
   u64 t_end = clib_cpu_time_now () + dt;
   while (clib_cpu_time_now () < t_end)
@@ -143,7 +143,7 @@ void clib_time_init (clib_time_t * c);
 #include <sys/syscall.h>
 
 /* Use 64bit floating point to represent time offset from epoch. */
-always_inline f64 unix_time_now (void)
+static always_inline f64 unix_time_now (void)
 {
   /* clock_gettime without indirect syscall uses GLIBC wrappers which
      we don't want.  Just the bare metal, please. */
@@ -153,14 +153,14 @@ always_inline f64 unix_time_now (void)
 }
 
 /* As above but integer number of nano-seconds. */
-always_inline u64 unix_time_now_nsec (void)
+static always_inline u64 unix_time_now_nsec (void)
 {
   struct timespec ts;
   syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
   return 1e9*ts.tv_sec + ts.tv_nsec;
 }
 
-always_inline f64 unix_usage_now (void)
+static always_inline f64 unix_usage_now (void)
 {
   struct rusage u;
   getrusage (RUSAGE_SELF, &u);
@@ -168,7 +168,7 @@ always_inline f64 unix_usage_now (void)
     + u.ru_stime.tv_sec + 1e-6*u.ru_stime.tv_usec;
 }
 
-always_inline void unix_sleep (f64 dt)
+static always_inline void unix_sleep (f64 dt)
 {
   struct timespec t;
   t.tv_sec = dt;
@@ -178,16 +178,16 @@ always_inline void unix_sleep (f64 dt)
 
 #else  /* ! CLIB_UNIX */
 
-always_inline f64 unix_time_now (void)
+static always_inline f64 unix_time_now (void)
 { return 0; }
 
-always_inline u64 unix_time_now_nsec (void)
+static always_inline u64 unix_time_now_nsec (void)
 { return 0; }
 
-always_inline f64 unix_usage_now (void)
+static always_inline f64 unix_usage_now (void)
 { return 0; }
 
-always_inline void unix_sleep (f64 dt)
+static always_inline void unix_sleep (f64 dt)
 { }
 
 #endif
