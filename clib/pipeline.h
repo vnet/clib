@@ -26,16 +26,16 @@
 #ifndef included_clib_pipeline_h
 #define included_clib_pipeline_h
 
-#define clib_pipeline_stage(F,TYPE,ARG,I,BODY)			\
-  static always_inline void F##_inline (void * _, u32 I)	\
-  { TYPE ARG = _; { BODY; } }					\
-  static never_inline  void F##_no_inline (TYPE ARG, u32 I)	\
+#define clib_pipeline_stage(F,TYPE,ARG,I,BODY)		\
+  always_inline void F##_inline (void * _, u32 I)	\
+  { TYPE ARG = _; { BODY; } }				\
+  never_inline  void F##_no_inline (TYPE ARG, u32 I)	\
   { F##_inline (ARG, I); }
 
 #define clib_pipeline_stage_no_inline(F,TYPE,ARG,I,BODY)	\
-  static never_inline void F##_no_inline (void * _, u32 I)	\
+  never_inline void F##_no_inline (void * _, u32 I)		\
   { TYPE ARG = _; { BODY; } }					\
-  static never_inline  void F##_inline (TYPE ARG, u32 I)	\
+  never_inline  void F##_inline (TYPE ARG, u32 I)		\
   { F##_no_inline (ARG, I); }
 
 #define _clib_pipeline_var(v) _clib_pipeline_##v
