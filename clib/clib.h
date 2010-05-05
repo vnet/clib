@@ -65,7 +65,7 @@
 #define never_inline __attribute__ ((__noinline__))
 
 #if DEBUG > 0
-#define always_inline extern inline
+#define always_inline static inline
 #else
 #define always_inline extern inline __attribute__ ((always_inline))
 #endif
