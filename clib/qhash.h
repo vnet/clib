@@ -47,22 +47,22 @@ typedef struct {
   uword * hash_keys;
 } qhash_t;
 
-static always_inline qhash_t *
+always_inline qhash_t *
 qhash_header (void * v)
 { return vec_header (v, sizeof (qhash_t)); }
 
-static always_inline uword
+always_inline uword
 qhash_elts (void * v)
 { return v ? qhash_header (v)->n_elts : 0; }
 
-static always_inline uword
+always_inline uword
 qhash_n_overflow (void * v)
 { return v ? hash_elts (qhash_header (v)->overflow_hash) : 0; }
 
 #define QHASH_LOG2_KEYS_PER_BUCKET 2
 #define QHASH_KEYS_PER_BUCKET (1 << QHASH_LOG2_KEYS_PER_BUCKET)
 
-static always_inline uword
+always_inline uword
 qhash_hash_mix (qhash_t * h, uword key)
 {
   u32 a, b, c;

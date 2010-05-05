@@ -115,7 +115,7 @@ zvec_encode (uword coding,
   return ~0;
 }
 
-static always_inline uword
+always_inline uword
 get_data (void * data, uword data_bytes, uword is_signed)
 {
   if (data_bytes == 1)
@@ -133,7 +133,7 @@ get_data (void * data, uword data_bytes, uword is_signed)
     }
 }
 
-static always_inline void
+always_inline void
 put_data (void * data, uword data_bytes, uword is_signed, uword x)
 {
   if (data_bytes == 1)
@@ -170,7 +170,7 @@ put_data (void * data, uword data_bytes, uword is_signed, uword x)
     }
 }
 
-static always_inline uword *
+always_inline uword *
 zvec_encode_inline (uword * zvec,
 		    uword * zvec_n_bits,
 		    uword coding,
@@ -226,7 +226,7 @@ _ (i64, /* is_signed */ 1);
 
 #undef _
 
-static always_inline uword
+always_inline uword
 coding_max_n_bits (uword coding)
 {
   uword n_bits;
@@ -234,7 +234,7 @@ coding_max_n_bits (uword coding)
   return n_bits;
 }
 
-static always_inline void
+always_inline void
 zvec_decode_inline (uword * zvec,
 		    uword * zvec_n_bits,
 		    uword coding,

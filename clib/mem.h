@@ -105,7 +105,7 @@ extern clib_memfuncs_t * clib_memfuncs_malloc;
 extern clib_memfuncs_t * clib_memfuncs_mheap;
 
 /* Memory allocator which returns null when it fails. */
-static inline void *
+always_inline void *
 clib_mem_alloc_aligned_at_offset (uword size,
 				  uword align,
 				  uword align_offset)
@@ -137,11 +137,11 @@ clib_mem_alloc_aligned_at_offset (uword size,
 }
 
 /* Memory allocator which returns null when it fails. */
-static inline void *
+always_inline void *
 clib_mem_alloc (uword size)
 { return clib_mem_alloc_aligned_at_offset (size, 1, 0); }
 
-static inline void *
+always_inline void *
 clib_mem_alloc_aligned (uword size, uword align)
 { return clib_mem_alloc_aligned_at_offset (size, align, 0); }
 
@@ -162,7 +162,7 @@ clib_mem_alloc_aligned (uword size, uword align)
 /* Alias to stack allocator for naming consistency. */
 #define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
 
-static inline void clib_mem_free (void * p)
+always_inline void clib_mem_free (void * p)
 {
   clib_memfuncs_t * mf = clib_memfuncs;
 
@@ -178,7 +178,7 @@ static inline void clib_mem_free (void * p)
     mf->post_free_hook (p);
 }
 
-static inline void * clib_mem_realloc (void * p, uword new_size, uword old_size)
+always_inline void * clib_mem_realloc (void * p, uword new_size, uword old_size)
 {
   if (clib_memfuncs->realloc)
     return clib_memfuncs->realloc (p, new_size, old_size);
@@ -201,7 +201,7 @@ static inline void * clib_mem_realloc (void * p, uword new_size, uword old_size)
 }
 
 /* Hook functions: called before/after alloc/free calls. */
-static inline void *
+always_inline void *
 clib_mem_set_pre_alloc_hook (void * (* pre_alloc_hook)
 			     (uword size, uword align, uword align_offset))
 {
@@ -211,7 +211,7 @@ clib_mem_set_pre_alloc_hook (void * (* pre_alloc_hook)
   return old;
 }
 
-static inline void *
+always_inline void *
 clib_mem_set_post_alloc_hook (void (* post_alloc_hook)
 			      (uword size, uword align, uword align_offset, void * p))
 {
@@ -221,7 +221,7 @@ clib_mem_set_post_alloc_hook (void (* post_alloc_hook)
   return old;
 }
 
-static inline void *
+always_inline void *
 clib_mem_set_pre_free_hook (int (* pre_free_hook) (void * p))
 {
   clib_memfuncs_t * mf = clib_memfuncs;
@@ -230,7 +230,7 @@ clib_mem_set_pre_free_hook (int (* pre_free_hook) (void * p))
   return old;
 }
 
-static inline void *
+always_inline void *
 clib_mem_set_post_free_hook (void (* post_free_hook) (void * p))
 {
   clib_memfuncs_t * mf = clib_memfuncs;
@@ -239,53 +239,53 @@ clib_mem_set_post_free_hook (void (* post_free_hook) (void * p))
   return old;
 }
 
-static inline uword clib_mem_size (void * p)
+always_inline uword clib_mem_size (void * p)
 { return clib_memfuncs->size (p); }
 
-static inline uword clib_mem_is_heap_object (void * p)
+always_inline uword clib_mem_is_heap_object (void * p)
 {
   if (clib_memfuncs->is_heap_object)
     return clib_memfuncs->is_heap_object (p);
   return 1;
 }
 
-static inline void * clib_mem_get_heap (void)
+always_inline void * clib_mem_get_heap (void)
 {
   if (clib_memfuncs->get_heap)
     return clib_memfuncs->get_heap ();
   return 0;
 }
 
-static inline void * clib_mem_set_heap (void * heap)
+always_inline void * clib_mem_set_heap (void * heap)
 {
   return clib_memfuncs->set_heap
     ? clib_memfuncs->set_heap (heap)
     : 0;
 }
 
-static inline void * clib_mem_init (void * heap, uword size)
+always_inline void * clib_mem_init (void * heap, uword size)
 {
   return clib_memfuncs->init
     ? clib_memfuncs->init (heap, size)
     : 0;
 }
 
-static inline void clib_mem_exit (void)
+always_inline void clib_mem_exit (void)
 {
   if (clib_memfuncs->exit)
     clib_memfuncs->exit ();
 }
 
-static inline uword clib_mem_get_page_size (void)
+always_inline uword clib_mem_get_page_size (void)
 { return clib_memfuncs->get_page_size (); }
 
-static inline void clib_mem_validate (void)
+always_inline void clib_mem_validate (void)
 { 
   if (clib_memfuncs->validate)
     clib_memfuncs->validate ();
 }
 
-static inline void clib_mem_trace (int enable)
+always_inline void clib_mem_trace (int enable)
 {
   if (clib_memfuncs->trace)
     clib_memfuncs->trace (enable);
@@ -293,13 +293,13 @@ static inline void clib_mem_trace (int enable)
 
 #define format_clib_mem_usage clib_memfuncs->format_usage
 
-static inline void clib_mem_usage (clib_mem_usage_t * usage)
+always_inline void clib_mem_usage (clib_mem_usage_t * usage)
 {
   if (clib_memfuncs->query_usage)
     clib_memfuncs->query_usage (usage);
 }
 
-static inline void * clib_mem_set_funcs (clib_memfuncs_t * new)
+always_inline void * clib_mem_set_funcs (clib_memfuncs_t * new)
 {
   clib_memfuncs_t * old = clib_memfuncs;
   clib_memfuncs = new;

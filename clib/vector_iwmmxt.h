@@ -27,38 +27,38 @@
 #include <clib/error.h>		/* for ASSERT */
 
 /* 64 bit interleaves. */
-static always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
+always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
 { return __builtin_arm_wunpckihb (a, b); }
 
-static always_inline u8x8 u8x8_interleave_lo (u8x8 a, u8x8 b)
+always_inline u8x8 u8x8_interleave_lo (u8x8 a, u8x8 b)
 { return __builtin_arm_wunpckilb (a, b); }
 
-static always_inline u16x4 u16x4_interleave_hi (u16x4 a, u16x4 b)
+always_inline u16x4 u16x4_interleave_hi (u16x4 a, u16x4 b)
 { return __builtin_arm_wunpckihh (a, b); }
 
-static always_inline u16x4 u16x4_interleave_lo (u16x4 a, u16x4 b)
+always_inline u16x4 u16x4_interleave_lo (u16x4 a, u16x4 b)
 { return __builtin_arm_wunpckilh (a, b); }
 
-static always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
+always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
 { return __builtin_arm_wunpckihw (a, b); }
 
-static always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
+always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
 { return __builtin_arm_wunpckilw (a, b); }
 
-static always_inline u32x2 u32x2_splat (u32 a)
+always_inline u32x2 u32x2_splat (u32 a)
 {
   u32x2 x = {a};
   x = u32x2_interleave_lo (x, x);
   return x;
  }
 
-static always_inline u16x4 u16x4_splat (u16 a)
+always_inline u16x4 u16x4_splat (u16 a)
 {
   u32 t = (u32) a | ((u32) a << 16);
   return u32x2_splat (t);
 }
 
-static always_inline u8x8 u8x8_splat (u8 a)
+always_inline u8x8 u8x8_splat (u8 a)
 {
   u32 t = (u32) a | ((u32) a << 8);
   t |= t << 16;
@@ -74,7 +74,7 @@ static always_inline u8x8 u8x8_splat (u8 a)
 /* As of July 2008 the __builtin_arm shifts cause gcc-4.3.1 to crash
    so we use asm versions. */
 #define _(t,u,lr,f)				\
-  static always_inline t			\
+  always_inline t				\
   t##_##lr (t x, int i)				\
   {						\
     i16x4 y;					\

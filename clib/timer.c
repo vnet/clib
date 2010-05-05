@@ -41,7 +41,7 @@ typedef struct {
 static timer_callback_t * timers;
 
 /* Convert time from 64bit floating format to struct timeval. */
-static inline void f64_to_tv (f64 t, struct timeval * tv)
+always_inline void f64_to_tv (f64 t, struct timeval * tv)
 {
   tv->tv_sec = t;
   tv->tv_usec = 1e6*(t - tv->tv_sec);
@@ -189,7 +189,7 @@ void timer_call (timer_func_t * func, any arg, f64 dt)
 static f64 ave_delay = 0;
 static word ave_delay_count = 0;
 
-static inline update (f64 delay)
+always_inline update (f64 delay)
 {
   ave_delay += delay;
   ave_delay_count += 1;

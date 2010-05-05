@@ -28,16 +28,16 @@
 #include <clib/heap.h>
 #include <clib/error.h>
 
-static inline heap_elt_t * elt_at (heap_t * h, uword i)
+always_inline heap_elt_t * elt_at (heap_t * h, uword i)
 {
   ASSERT (i < vec_len (h->elts));
   return h->elts + i;
 }
 
-static inline heap_elt_t * last (heap_t * h)
+always_inline heap_elt_t * last (heap_t * h)
 { return elt_at (h, h->tail); }
 
-static inline heap_elt_t * first (heap_t * h)
+always_inline heap_elt_t * first (heap_t * h)
 { return elt_at (h, h->head); }
 
 /* Objects sizes are binned into N_BINS bins.
@@ -48,7 +48,7 @@ static inline heap_elt_t * first (heap_t * h)
    Sizes are in units of elt_bytes bytes. */
 
 /* Convert size to bin. */
-static inline uword size_to_bin (uword size)
+always_inline uword size_to_bin (uword size)
 {
   uword bin;
 
@@ -71,7 +71,7 @@ static inline uword size_to_bin (uword size)
 }
 
 /* Convert bin to size. */
-static inline uword bin_to_size (uword bin)
+always_inline uword bin_to_size (uword bin)
 {
   uword size;
 
@@ -122,7 +122,7 @@ static void elt_delete (heap_t * h, heap_elt_t * e)
   Before: P ... E
   After : P ... NEW ... E
 */
-static inline void elt_insert_before (heap_t * h, heap_elt_t * e, heap_elt_t * new)
+always_inline void elt_insert_before (heap_t * h, heap_elt_t * e, heap_elt_t * new)
 {
   heap_elt_t * p = heap_prev (e);
 
@@ -146,7 +146,7 @@ static inline void elt_insert_before (heap_t * h, heap_elt_t * e, heap_elt_t * n
   Before: E ... N
   After : E ... NEW ... N
 */
-static inline void elt_insert_after (heap_t * h, heap_elt_t * e, heap_elt_t * new)
+always_inline void elt_insert_after (heap_t * h, heap_elt_t * e, heap_elt_t * new)
 {
   heap_elt_t * n = heap_next (e);
 
@@ -166,7 +166,7 @@ static inline void elt_insert_after (heap_t * h, heap_elt_t * e, heap_elt_t * ne
     }
 }
 
-static inline heap_elt_t * elt_new (heap_t * h)
+always_inline heap_elt_t * elt_new (heap_t * h)
 {
   heap_elt_t * e;
   uword l;
@@ -182,13 +182,13 @@ static inline heap_elt_t * elt_new (heap_t * h)
 
 /* Return pointer to object at given offset.
    Used to write free list index of free objects. */
-static inline u32 * elt_data (void * v, heap_elt_t * e)
+always_inline u32 * elt_data (void * v, heap_elt_t * e)
 {
   heap_t * h = heap_header (v);
   return v + heap_offset (e) * h->elt_bytes;
 }
 
-static inline void set_free_elt (void * v, heap_elt_t * e, uword fi)
+always_inline void set_free_elt (void * v, heap_elt_t * e, uword fi)
 {
   *elt_data (v, e) = fi;
   e->offset |= HEAP_ELT_FREE_BIT;
@@ -202,7 +202,7 @@ do {							\
   fi = *elt_data (v, _e);				\
 } while (0)
 
-static inline void remove_free_block (void * v, uword b, uword i)
+always_inline void remove_free_block (void * v, uword b, uword i)
 {
   heap_t * h = heap_header (v);
   uword l;

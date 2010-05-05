@@ -26,7 +26,7 @@ typedef struct {
 #define X86_INSN_FLAG_GET_MODRM_REG_GROUP(f)	(((f) >> 10) & 0x3f)
 } x86_insn_t;
 
-static always_inline uword
+always_inline uword
 x86_insn_operand_is_valid (x86_insn_t * i, uword o)
 {
   ASSERT (o < ARRAY_LEN (i->operands));

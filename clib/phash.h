@@ -46,7 +46,7 @@ typedef struct {
   u32 water_b;
 } phash_tabb_t;
 
-static inline void
+always_inline void
 phash_tabb_free (phash_tabb_t * b)
 {
   vec_free (b->keys);
@@ -134,7 +134,7 @@ typedef struct {
   u32 n_seed_trials, n_perfect_calls;
 } phash_main_t;
 
-static inline void
+always_inline void
 phash_main_free_working_memory (phash_main_t * pm)
 {
   vec_free (pm->tabb);
@@ -145,7 +145,7 @@ phash_main_free_working_memory (phash_main_t * pm)
     vec_free (pm->scramble);
 }
 
-static inline void
+always_inline void
 phash_main_free (phash_main_t * pm)
 {
   phash_main_free_working_memory (pm);

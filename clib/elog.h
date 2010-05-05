@@ -146,19 +146,19 @@ typedef struct {
   elog_event_t * events;
 } elog_main_t;
 
-static always_inline uword
+always_inline uword
 elog_n_events_in_buffer (elog_main_t * em)
 { return clib_min (em->n_total_events, em->event_ring_size); }
 
-static always_inline uword
+always_inline uword
 elog_buffer_capacity (elog_main_t * em)
 { return em->event_ring_size; }
 
-static always_inline void
+always_inline void
 elog_enable_disable (elog_main_t * em, int is_enabled)
 { em->is_enabled = is_enabled; }
 
-static always_inline void
+always_inline void
 elog_reset_buffer (elog_main_t * em)
 {
   em->n_total_events = 0;
@@ -169,13 +169,13 @@ elog_reset_buffer (elog_main_t * em)
    This is used as a "debug trigger" when a certain event has occurred.
    Events will be logged both before and after the "event" but the
    event will not be lost as long as N < RING_SIZE. */
-static always_inline void
+always_inline void
 elog_disable_after_events (elog_main_t * em, uword n)
 { em->n_total_events_disable_limit = em->n_total_events + n; }
 
 /* Signal a trigger.  We do this when we encounter an event that we want to save
    context around (before and after). */
-static always_inline void
+always_inline void
 elog_disable_trigger (elog_main_t * em)
 { em->n_total_events_disable_limit = em->n_total_events + vec_len (em->event_ring) / 2; }
 
@@ -185,7 +185,7 @@ word elog_track_register (elog_main_t * em, elog_track_t * t);
 
 /* Add an event to the log.  Returns a pointer to the
    data for caller to write into. */
-static always_inline void *
+always_inline void *
 elog_event_data_inline (elog_main_t * em,
 			elog_event_type_t * type,
 			elog_track_t * track,
@@ -237,7 +237,7 @@ elog_event_data (elog_main_t * em,
 		 u64 cpu_time);
 
 /* Non-inline version. */
-static always_inline void *
+always_inline void *
 elog_event_data_not_inline (elog_main_t * em,
 			    elog_event_type_t * type,
 			    elog_track_t * track,
@@ -250,7 +250,7 @@ elog_event_data_not_inline (elog_main_t * em,
 }
 
 /* Most common form: log a single 32 bit datum. */
-static always_inline void
+always_inline void
 elog (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
   u32 * d = elog_event_data_not_inline
@@ -262,7 +262,7 @@ elog (elog_main_t * em, elog_event_type_t * type, u32 data)
 }
 
 /* Inline version of above. */
-static always_inline void
+always_inline void
 elog_inline (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
   u32 * d = elog_event_data_inline
@@ -273,7 +273,7 @@ elog_inline (elog_main_t * em, elog_event_type_t * type, u32 data)
   d[0] = data;
 }
 
-static always_inline void *
+always_inline void *
 elog_data (elog_main_t * em, elog_event_type_t * type, elog_track_t * track)
 {
   return elog_event_data_not_inline
@@ -281,7 +281,7 @@ elog_data (elog_main_t * em, elog_event_type_t * type, elog_track_t * track)
      clib_cpu_time_now ());
 }
 
-static always_inline void *
+always_inline void *
 elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * track)
 {
   return elog_event_data_inline
@@ -358,7 +358,7 @@ void unserialize_elog_main (serialize_main_t * m, va_list * va);
 void elog_init (elog_main_t * em, u32 n_ievents);
 
 #ifdef CLIB_UNIX
-static always_inline clib_error_t *
+always_inline clib_error_t *
 elog_write_file (elog_main_t * em, char * unix_file)
 {
   serialize_main_t m;
@@ -370,7 +370,7 @@ elog_write_file (elog_main_t * em, char * unix_file)
   return error;
 }
 
-static always_inline clib_error_t *
+always_inline clib_error_t *
 elog_read_file (elog_main_t * em, char * unix_file)
 {
   serialize_main_t m;

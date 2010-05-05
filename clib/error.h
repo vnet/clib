@@ -131,7 +131,7 @@ extern clib_error_t * _clib_error_report (clib_error_t * errors);
 
 u8 * format_clib_error (u8 * s, va_list * va);
 
-static inline word unix_error_is_fatal (word error)
+always_inline word unix_error_is_fatal (word error)
 {
 #ifdef CLIB_UNIX
   switch (error)

@@ -4,23 +4,23 @@
 #include <clib/vec.h>
 #include <clib/elf.h>
 
-static always_inline u8
+always_inline u8
 elf_swap_u8 (elf_main_t * em, u8 x)
 { return x; }
 
-static always_inline u16
+always_inline u16
 elf_swap_u16 (elf_main_t * em, u16 x)
 { return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
 
-static always_inline u32
+always_inline u32
 elf_swap_u32 (elf_main_t * em, u32 x)
 { return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
 
-static always_inline u64
+always_inline u64
 elf_swap_u64 (elf_main_t * em, u64 x)
 { return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
 
-static always_inline void
+always_inline void
 elf_swap_first_header (elf_main_t * em, elf_first_header_t * h)
 {
   h->architecture = elf_swap_u16 (em, h->architecture);
