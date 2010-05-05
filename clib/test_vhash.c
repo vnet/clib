@@ -84,10 +84,10 @@ test_vhash_4key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
   ASSERT (wi < n_key_u32s);
 
   p = vec_elt_at_index (tm->vhash_key_indices, vi + 0);
-  x.data_u32[0] = tm->keys[p[0] + wi];
-  x.data_u32[1] = tm->keys[p[1] + wi];
-  x.data_u32[2] = tm->keys[p[2] + wi];
-  x.data_u32[3] = tm->keys[p[3] + wi];
+  x.data_u32[0] = tm->keys[p[0] * n_key_u32s + wi];
+  x.data_u32[1] = tm->keys[p[1] * n_key_u32s + wi];
+  x.data_u32[2] = tm->keys[p[2] * n_key_u32s + wi];
+  x.data_u32[3] = tm->keys[p[3] * n_key_u32s + wi];
   return x.data_u32x4;
 }
 

@@ -372,6 +372,16 @@ _signed_binop (8, 16, is_equal, pcmpeqb128)
 _signed_binop (16, 8, is_equal, pcmpeqw128)
 _signed_binop (32, 4, is_equal, pcmpeqd128)
 
+#define u32x4_select(A,MASK)						\
+({									\
+  u32x4 _x, _y;								\
+  _x = (A);								\
+  asm volatile ("pshufd %[mask], %[x], %[y]"				\
+		: /* outputs */ [y] "=x" (_y)				\
+		: /* inputs */  [x] "x" (_x), [mask] "i" (MASK));	\
+  _y;									\
+})
+
 /* No built in function for pextrw. */
 #define u16x8_extract(x,i) __builtin_ia32_vec_ext_v8hi (x, i)
 #define i16x8_extract(x,i) __builtin_ia32_vec_ext_v8hi (x, i)

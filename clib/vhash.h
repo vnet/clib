@@ -57,6 +57,9 @@ typedef struct {
 
   /* Vector of bucket free indices. */
   u32 * free_indices;
+
+  /* Number of entries in this overflow bucket. */
+  u32 n_overflow;
 } vhash_overflow_buckets_t;
 
 typedef struct {
@@ -72,9 +75,6 @@ typedef struct {
 
   /* Total count of occupied elements in hash table. */
   u32 n_elts;
-
-  /* Total count of entries in overflow buckets. */
-  u32 n_overflow;
 
   u32 log2_n_keys;
 
@@ -98,6 +98,22 @@ typedef struct {
   vhash_hashed_key_t * hash_state;
 } vhash_t;
 
+always_inline vhash_overflow_buckets_t *
+vhash_get_overflow_buckets (vhash_t * h, u32 key)
+{
+  u32 i = (((key & h->bucket_mask.data_u32[0]) >> 2) & 0xf);
+  ASSERT (i < ARRAY_LEN (h->overflow_buckets));
+  return h->overflow_buckets + i;
+}
+
+always_inline uword
+vhash_is_non_empty_overflow_bucket (vhash_t * h, u32 key)
+{
+  u32 i = (((key & h->bucket_mask.data_u32[0]) >> 2) & 0xf);
+  ASSERT (i < ARRAY_LEN (h->overflow_buckets));
+  return h->overflow_buckets[i].n_overflow > 0;
+}
+
 always_inline void
 vhash_free_overflow_buckets (vhash_overflow_buckets_t * obs)
 {
@@ -111,6 +127,7 @@ vhash_free (vhash_t * h)
   uword i;
   for (i = 0; i < ARRAY_LEN (h->overflow_buckets); i++)
     vhash_free_overflow_buckets (&h->overflow_buckets[i]);
+  ASSERT (0);
 }
 
 always_inline void
@@ -457,10 +474,16 @@ vhash_get_4stage (vhash_t * h,
 
   for (i = 0; i < n_key_u32s; i++)
     {
-      r0 &= vhash_bucket_compare (h, &b0->key[0], i, vi + 0);
-      r1 &= vhash_bucket_compare (h, &b1->key[0], i, vi + 1);
-      r2 &= vhash_bucket_compare (h, &b2->key[0], i, vi + 2);
-      r3 &= vhash_bucket_compare (h, &b3->key[0], i, vi + 3);
+      u32x4 k4 = vhash_get_key_word_u32x (h, i, vector_index);
+      u32x4 k0 = u32x4_select (k4, 0x00);
+      u32x4 k1 = u32x4_select (k4, 0x55);
+      u32x4 k2 = u32x4_select (k4, 0xaa);
+      u32x4 k3 = u32x4_select (k4, 0xff);
+
+      r0 &= u32x4_is_equal (b0->key[i].data_u32x4, k0);
+      r1 &= u32x4_is_equal (b1->key[i].data_u32x4, k1);
+      r2 &= u32x4_is_equal (b2->key[i].data_u32x4, k2);
+      r3 &= u32x4_is_equal (b3->key[i].data_u32x4, k3);
     }
 
   /* 4x4 transpose so that 4 results are aligned. */
@@ -480,39 +503,38 @@ do {						\
 
   /* Gather together 4 results. */
   {
-    u32x4 r = r0 | r1 | r2 | r3;
-    u32x4 o = {1,1,1,1};
-    u32x4_union_t fu;
-    u32 zero_mask;
-    u32x4_union_t key_hash;
+    u32x4_union_t r;
+    u32x4 ones = {1,1,1,1};
 
-    key_hash.data_u32x4 = hk->hashed_key[2].data_u32x & h->bucket_mask.data_u32x;
-    zero_mask = u32x4_zero_mask (r);
-    if (zero_mask == 0)
+    r.data_u32x4 = r0 | r1 | r2 | r3;
+    if (! (u32x4_zero_mask (r0_before)
+	   && u32x4_zero_mask (r1_before)
+	   && u32x4_zero_mask (r2_before)
+	   && u32x4_zero_mask (r3_before)))
       {
-	result_function (state, vi, r - o, n_key_u32s);
-	return;
+	u32x4_union_t key_hash;
+	u32 zero_mask = u32x4_zero_mask (r.data_u32x4);
+
+	key_hash.data_u32x4 = hk->hashed_key[2].data_u32x & h->bucket_mask.data_u32x;
+	if (zero_mask & (1 << (4*0))
+	    && vhash_search_bucket_is_full (r0_before))
+	  r.data_u32[0] = vhash_get_overflow (h, key_hash.data_u32[0],
+					      vi + 0, n_key_u32s);
+	if (zero_mask & (1 << (4*1))
+	    && vhash_search_bucket_is_full (r1_before))
+	  r.data_u32[1] = vhash_get_overflow (h, key_hash.data_u32[1],
+					      vi + 1, n_key_u32s);
+	if (zero_mask & (1 << (4*2))
+	    && vhash_search_bucket_is_full (r2_before))
+	  r.data_u32[2] = vhash_get_overflow (h, key_hash.data_u32[2],
+					      vi + 2, n_key_u32s);
+	if (zero_mask & (1 << (4*3))
+	    && vhash_search_bucket_is_full (r3_before))
+	  r.data_u32[3] = vhash_get_overflow (h, key_hash.data_u32[3],
+					      vi + 3, n_key_u32s);
       }
 
-    fu.data_u32x4 = r;
-    if (zero_mask & (1 << (4*0))
-	&& vhash_search_bucket_is_full (r0_before))
-      fu.data_u32[0] = vhash_get_overflow (h, key_hash.data_u32[0],
-					   vi + 0, n_key_u32s);
-    if (zero_mask & (1 << (4*1))
-	&& vhash_search_bucket_is_full (r1_before))
-      fu.data_u32[1] = vhash_get_overflow (h, key_hash.data_u32[1],
-					   vi + 1, n_key_u32s);
-    if (zero_mask & (1 << (4*2))
-	&& vhash_search_bucket_is_full (r2_before))
-      fu.data_u32[2] = vhash_get_overflow (h, key_hash.data_u32[2],
-					   vi + 2, n_key_u32s);
-    if (zero_mask & (1 << (4*3))
-	&& vhash_search_bucket_is_full (r3_before))
-      fu.data_u32[3] = vhash_get_overflow (h, key_hash.data_u32[3],
-					   vi + 3, n_key_u32s);
-
-    result_function (state, vi, fu.data_u32x4 - o, n_key_u32s);
+    result_function (state, vi, r.data_u32x4 - ones, n_key_u32s);
   }
 }
 

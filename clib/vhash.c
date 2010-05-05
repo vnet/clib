@@ -73,21 +73,13 @@ next_overflow_bucket (vhash_overflow_search_bucket_t * b, u32 n_key_u32s)
        (u32x4_union_t *) (b) < vec_end (ob->search_buckets);		\
        b = next_overflow_bucket (b, n_key_u32s))
 
-always_inline vhash_overflow_buckets_t *
-get_overflow_buckets (vhash_t * h, u32 key)
-{
-  u32 i = (((key & h->bucket_mask.data_u32[0]) >> 2) & 0xf);
-  ASSERT (i < ARRAY_LEN (h->overflow_buckets));
-  return h->overflow_buckets + i;
-}
-
 u32
 vhash_get_overflow (vhash_t * h,
 		    u32 key_hash,
 		    u32 vi,
 		    u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * ob = get_overflow_buckets (h, key_hash);
+  vhash_overflow_buckets_t * ob = vhash_get_overflow_buckets (h, key_hash);
   vhash_overflow_search_bucket_t * b;
   u32 i, result = 0;
 
@@ -113,7 +105,7 @@ vhash_set_overflow (vhash_t * h,
 		    u32 new_result,
 		    u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * ob = get_overflow_buckets (h, key_hash);
+  vhash_overflow_buckets_t * ob = vhash_get_overflow_buckets (h, key_hash);
   vhash_overflow_search_bucket_t * b;
   u32 i_set, i, old_result;
 
@@ -161,7 +153,7 @@ vhash_set_overflow (vhash_t * h,
   for (i = 0; i < n_key_u32s; i++)
     b->key[i].data_u32[i_set] = vhash_get_key_word (h, i, vi);
 
-  h->n_overflow++;
+  ob->n_overflow++;
   h->n_elts++;
 
   return /* old result was invalid */ 0;
@@ -173,7 +165,7 @@ vhash_unset_overflow (vhash_t * h,
 		      u32 vi,
 		      u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * ob = get_overflow_buckets (h, key_hash);
+  vhash_overflow_buckets_t * ob = vhash_get_overflow_buckets (h, key_hash);
   vhash_overflow_search_bucket_t * b;
   u32 i_set, i, old_result;
 
@@ -197,8 +189,8 @@ vhash_unset_overflow (vhash_t * h,
 
 	  free_overflow_bucket (ob, b, i_set);
 
-	  ASSERT (h->n_overflow > 0);
-	  h->n_overflow--;
+	  ASSERT (ob->n_overflow > 0);
+	  ob->n_overflow--;
 	  h->n_elts--;
 	  return old_result;
 	}
@@ -214,7 +206,7 @@ vhash_unset_refill_from_overflow (vhash_t * h,
 				  u32 key_hash,
 				  u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * obs = get_overflow_buckets (h, key_hash);
+  vhash_overflow_buckets_t * obs = vhash_get_overflow_buckets (h, key_hash);
   vhash_overflow_search_bucket_t * ob;
   u32 i, j, i_refill, bucket_mask = h->bucket_mask.data_u32[0];
 
