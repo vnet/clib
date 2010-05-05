@@ -643,7 +643,7 @@ unset_slow_path (void * v, uword elt_bytes,
 		 uword * n_elts)
 {
   qhash_t * h = qhash_header (v);
-  uword i, j, k, l, t = ~0;
+  uword i, j = 0, k, l, t = ~0;
   hash_pair_t * p, * found;
 
   if (! match0)
