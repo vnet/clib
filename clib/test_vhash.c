@@ -64,13 +64,31 @@ typedef struct {
 } test_vhash_main_t;
 
 always_inline u32
-test_vhash_key_gather (void * _tm, u32 vi, u32 i, u32 n_key_u32s)
+test_vhash_key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
   ASSERT (n_key_u32s == tm->n_key_u32);
-  ASSERT (i < n_key_u32s);
+  ASSERT (wi < n_key_u32s);
   vi = vec_elt (tm->vhash_key_indices, vi);
-  return vec_elt (tm->keys, vi * n_key_u32s + i);
+  return vec_elt (tm->keys, vi * n_key_u32s + wi);
+}
+
+always_inline u32x4
+test_vhash_4key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
+{
+  test_vhash_main_t * tm = _tm;
+  u32 * p, vi0, vi1, vi2, vi3;
+  u32x4_union_t x;
+
+  ASSERT (n_key_u32s == tm->n_key_u32);
+  ASSERT (wi < n_key_u32s);
+
+  p = vec_elt_at_index (tm->vhash_key_indices, vi + 0);
+  x.data_u32[0] = tm->keys[p[0] + wi];
+  x.data_u32[1] = tm->keys[p[1] + wi];
+  x.data_u32[2] = tm->keys[p[2] + wi];
+  x.data_u32[3] = tm->keys[p[3] + wi];
+  return x.data_u32x4;
 }
 
 always_inline u32
@@ -124,15 +142,18 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
   test_vhash_key_gather_##N_KEY_U32 (void * _tm, u32 vi, u32 i)		\
   { return test_vhash_key_gather (_tm, vi, i, N_KEY_U32); }		\
 									\
+  always_inline u32x4							\
+  test_vhash_key_gather_4_##N_KEY_U32 (void * _tm, u32 vi, u32 i)	\
+  {  return test_vhash_4key_gather (_tm, vi, i, N_KEY_U32); }		\
+									\
   clib_pipeline_stage							\
   (test_vhash_gather_keys_stage_##N_KEY_U32,				\
    test_vhash_main_t *, tm, i,						\
    {									\
-     vhash_gather_key_stage						\
+     vhash_gather_4key_stage						\
        (&tm->vhash,							\
 	/* vector_index */ i,						\
-	/* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),			\
-	test_vhash_key_gather_##N_KEY_U32,				\
+	test_vhash_key_gather_4_##N_KEY_U32,				\
 	tm,								\
 	N_KEY_U32);							\
    })									\

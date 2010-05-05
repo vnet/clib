@@ -177,11 +177,11 @@ vhash_gather_key_stage (vhash_t * h,
 }
 
 always_inline void
-vhash_gather_4keys_stage (vhash_t * h,
-			  u32 vector_index,
-			  vhash_4key_function_t key_function,
-			  void * state,
-			  u32 n_key_u32s)
+vhash_gather_4key_stage (vhash_t * h,
+			 u32 vector_index,
+			 vhash_4key_function_t key_function,
+			 void * state,
+			 u32 n_key_u32s)
 {
   u32 j, vi;
   vi = vector_index * VECTOR_WORD_TYPE_LEN (u32);
