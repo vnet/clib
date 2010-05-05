@@ -77,7 +77,7 @@ always_inline u32x4
 test_vhash_4key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
 {
   test_vhash_main_t * tm = _tm;
-  u32 * p, vi0, vi1, vi2, vi3;
+  u32 * p;
   u32x4_union_t x;
 
   ASSERT (n_key_u32s == tm->n_key_u32);
