@@ -372,6 +372,24 @@ _signed_binop (8, 16, is_equal, pcmpeqb128)
 _signed_binop (16, 8, is_equal, pcmpeqw128)
 _signed_binop (32, 4, is_equal, pcmpeqd128)
 
+always_inline u8x16 u8x16_is_zero (u8x16 x)
+{
+  u8x16 zero = {0};
+  return u8x16_is_equal (x, zero);
+}
+
+always_inline u16x8 u16x8_is_zero (u16x8 x)
+{
+  u16x8 zero = {0};
+  return u16x8_is_equal (x, zero);
+}
+
+always_inline u32x4 u32x4_is_zero (u32x4 x)
+{
+  u32x4 zero = {0};
+  return u32x4_is_equal (x, zero);
+}
+
 #define u32x4_select(A,MASK)						\
 ({									\
   u32x4 _x, _y;								\
