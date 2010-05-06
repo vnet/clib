@@ -350,12 +350,12 @@ vhash_merge_results (u32x4 r)
 /* Bucket is full if none of its 4 results are 0. */
 always_inline u32
 vhash_search_bucket_is_full (u32x4 r)
-{ return u32x4_zero_mask (r) == 0; }
+{ return u32x4_zero_byte_mask (r) == 0; }
 
 always_inline u32
 vhash_non_empty_result_index (u32x4 x)
 {
-  u32 empty_mask = u32x4_zero_mask (x);
+  u32 empty_mask = u32x4_zero_byte_mask (x);
   ASSERT (empty_mask != 0xffff);
   return min_log2 (0xffff &~ empty_mask) / 4;
 }
@@ -363,7 +363,7 @@ vhash_non_empty_result_index (u32x4 x)
 always_inline u32
 vhash_empty_result_index (u32x4 x)
 {
-  u32 empty_mask = u32x4_zero_mask (x);
+  u32 empty_mask = u32x4_zero_byte_mask (x);
   ASSERT (empty_mask != 0);
   return min_log2 (0xffff & empty_mask) / 4;
 }
@@ -495,7 +495,7 @@ do {						\
     u32 not_found_mask;
 
     r.data_u32x4 = r0 | r1 | r2 | r3;
-    not_found_mask = u32x4_zero_mask (r.data_u32x4);
+    not_found_mask = u32x4_zero_byte_mask (r.data_u32x4);
     not_found_mask &= ((vhash_search_bucket_is_full (r0_before) << (4*0))
 		       | (vhash_search_bucket_is_full (r1_before) << (4*1))
 		       | (vhash_search_bucket_is_full (r2_before) << (4*2))
@@ -686,21 +686,23 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32,
 void vhash_resize (vhash_t * old, u32 log2_n_keys);
 
 typedef struct {
-  vhash_t * old, * new;
+  vhash_t * vhash;
 
-  /* Identifies old keys/results which need to be copied from old to new. */
-  u32 * copy_indices;
+  u32 * keys;
 
-  /* While resizing a table we temporarily save away sets/unsets until after resize is
-     done.  unsets are saved as sets with zero results.  Same format as search_buckets. */
-  u32x4_union_t * pending_sets_and_unsets;
-
-  u32 n_pending_sets_and_unsets;
+  u32 * results;
 
   u32 n_vectors_div_4;
   u32 n_vectors_mod_4;
-} vhash_resize_main_t;
+  u32 n_key_u32;
+} vhash_main_t;
 
-u32 vhash_resize_incremental (vhash_resize_main_t * rm, u32 vector_index, u32 n_vectors);
+typedef struct {
+  vhash_main_t new;
+
+  vhash_t * old;
+} vhash_resize_t;
+
+u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_vectors);
 
 #endif /* included_clib_vhash_h */

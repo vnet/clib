@@ -258,151 +258,140 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
     h->hash_seeds[i].data_u32x = u32x_splat (hash_seeds[i]);
 }
 
-void vhash_resize_set (vhash_resize_main_t * rm, u32 * key, u32 result)
+always_inline u32
+vhash_main_key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32)
 {
-  u32 i, i0, i1, j;
-  vhash_search_bucket_t * b;
-
-  i = rm->n_pending_sets_and_unsets++;
-  i0 = i / 4;
-  i1 = i % 4;
-  b = (vhash_search_bucket_t *) vec_elt_at_index (rm->pending_sets_and_unsets, i0);
-  
-  b->result.data_u32[i1] = result;
-  for (j = 0; j < rm->old->n_key_u32; j++)
-    b->key[j].data_u32[i1] = key[j];
+  vhash_main_t * vm = _vm;
+  return vec_elt (vm->keys, vi * n_key_u32 + wi);
 }
 
 always_inline u32
-vhash_resize_set_overflow_index (vhash_resize_main_t * rm,
-				 vhash_overflow_buckets_t * obs,
-				 vhash_overflow_search_bucket_t * ob,
-				 u32 i_set)
+vhash_main_set_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
-  vhash_t * old = rm->old;
-  u32 i;
-
-  /* Main search keys use first 2^log2_n_keys indices. */
-  i =  1 << old->log2_n_keys;
-
-  i += ((obs - old->overflow_buckets) + 
-	ARRAY_LEN (old->overflow_buckets)
-	* (4 * ((u32x4_union_t *) ob - obs->search_buckets) + i_set));
-
-  return i;
+  vhash_main_t * vm = _vm;
+  u32 * p = vec_elt_at_index (vm->results, vi);
+  u32 new_result = p[0];
+  p[0] = old_result;
+  return new_result;
 }
 
 always_inline u32
-vhash_resize_key_gather (void * _rm, u32 vi, u32 wi, u32 n_key_u32)
+vhash_main_get_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
-  vhash_resize_main_t * rm = _rm;
-  vhash_t * h = rm->old;
-  vhash_overflow_buckets_t * obs;
-  vhash_overflow_search_bucket_t * ob;
-  u32 ci;
-
-  ci = vec_elt (rm->copy_indices, vi);
-  if (0 == (ci >> h->log2_n_keys))
-    {
-      vhash_search_bucket_t * b = vhash_get_search_bucket_with_index (h, ci, n_key_u32);
-      return b->key[wi].data_u32[ci % 4];
-    }
-
-  ci -= 1 << h->log2_n_keys;
-  obs = h->overflow_buckets + (ci % ARRAY_LEN (h->overflow_buckets));
-  ci /= ARRAY_LEN (h->overflow_buckets);
-  ob = get_overflow_search_bucket (obs, ci / 4, n_key_u32);
-  return ob->key[wi].data_u32[ci % 4];
-}
-
-always_inline u32
-vhash_resize_set_result (void * _rm, u32 vi, u32 old_result, u32 n_key_u32)
-{
-  vhash_resize_main_t * rm = _rm;
-  vhash_t * h = rm->old;
-  vhash_overflow_buckets_t * obs;
-  vhash_overflow_search_bucket_t * ob;
-  u32 ci;
-
-  ci = vec_elt (rm->copy_indices, vi);
-  if (0 == (ci >> h->log2_n_keys))
-    {
-      vhash_search_bucket_t * b = vhash_get_search_bucket_with_index (h, ci / 4, n_key_u32);
-      return b->result.data_u32[ci % 4];
-    }
-
-  ci -= 1 << h->log2_n_keys;
-  obs = h->overflow_buckets + (ci % ARRAY_LEN (h->overflow_buckets));
-  ci /= ARRAY_LEN (h->overflow_buckets);
-  ob = get_overflow_search_bucket (obs, ci / 4, n_key_u32);
-  return ob->result.data_u32[ci % 4];
+  vhash_main_t * vm = _vm;
+  vec_elt (vm->results, vi) = old_result;
+  return old_result;
 }
 
 #define _(N_KEY_U32)							\
   always_inline u32							\
-  vhash_resize_key_gather_##N_KEY_U32 (void * _rm, u32 vi, u32 i)	\
-  { return vhash_resize_key_gather (_rm, vi, i, N_KEY_U32); }		\
+  vhash_main_key_gather_##N_KEY_U32 (void * _vm, u32 vi, u32 i)		\
+  { return vhash_main_key_gather (_vm, vi, i, N_KEY_U32); }		\
 									\
   clib_pipeline_stage							\
-  (vhash_resize_gather_keys_stage_##N_KEY_U32,				\
-   vhash_resize_main_t *, rm, i,					\
+  (vhash_main_gather_keys_stage_##N_KEY_U32,				\
+   vhash_main_t *, vm, i,						\
    {									\
      vhash_gather_key_stage						\
-       (rm->new,							\
+       (vm->vhash,							\
 	/* vector_index */ i,						\
 	/* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),			\
-	vhash_resize_key_gather_##N_KEY_U32,				\
-	rm,								\
+	vhash_main_key_gather_##N_KEY_U32,				\
+	vm,								\
 	N_KEY_U32);							\
    })									\
 									\
   clib_pipeline_stage_no_inline						\
-  (vhash_resize_gather_keys_mod_stage_##N_KEY_U32,			\
-   vhash_resize_main_t *, rm, i,					\
+  (vhash_main_gather_keys_mod_stage_##N_KEY_U32,			\
+   vhash_main_t *, vm, i,						\
    {									\
      vhash_gather_key_stage						\
-       (rm->new,							\
-	/* vector_index */ rm->n_vectors_div_4,				\
-	/* n_vectors */ rm->n_vectors_mod_4,				\
-	vhash_resize_key_gather_##N_KEY_U32,				\
-	rm,								\
+       (vm->vhash,							\
+	/* vector_index */ vm->n_vectors_div_4,				\
+	/* n_vectors */ vm->n_vectors_mod_4,				\
+	vhash_main_key_gather_##N_KEY_U32,				\
+	vm,								\
 	N_KEY_U32);							\
    })									\
 									\
   clib_pipeline_stage							\
-  (vhash_resize_hash_finalize_stage_##N_KEY_U32,			\
-   vhash_resize_main_t *, rm, i,					\
+  (vhash_main_hash_finalize_stage_##N_KEY_U32,				\
+   vhash_main_t *, vm, i,						\
    {									\
-     vhash_finalize_stage (rm->new, i, N_KEY_U32);			\
+     vhash_finalize_stage (vm->vhash, i, N_KEY_U32);			\
    })									\
 									\
   clib_pipeline_stage_no_inline						\
-  (vhash_resize_hash_finalize_mod_stage_##N_KEY_U32,			\
-   vhash_resize_main_t *, rm, i,					\
+  (vhash_main_hash_finalize_mod_stage_##N_KEY_U32,			\
+   vhash_main_t *, vm, i,						\
    {									\
-     vhash_finalize_stage (rm->new, rm->n_vectors_div_4, N_KEY_U32);	\
+     vhash_finalize_stage (vm->vhash, vm->n_vectors_div_4, N_KEY_U32);	\
    })									\
 									\
   clib_pipeline_stage							\
-  (vhash_resize_set_stage_##N_KEY_U32,					\
-   vhash_resize_main_t *, rm, i,					\
+  (vhash_main_get_stage_##N_KEY_U32,					\
+   vhash_main_t *, vm, i,						\
    {									\
-     vhash_set_stage (rm->new,						\
+     vhash_get_stage (vm->vhash,					\
 		      /* vector_index */ i,				\
 		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
-		      vhash_resize_set_result,				\
-		      rm, N_KEY_U32);					\
+		      vhash_main_get_result,				\
+		      vm, N_KEY_U32);					\
    })									\
 									\
   clib_pipeline_stage_no_inline						\
-  (vhash_resize_set_mod_stage_##N_KEY_U32,				\
-   vhash_resize_main_t *, rm, i,					\
+  (vhash_main_get_mod_stage_##N_KEY_U32,				\
+   vhash_main_t *, vm, i,						\
    {									\
-     vhash_set_stage (rm->new,						\
-		      /* vector_index */ rm->n_vectors_div_4,		\
-		      /* n_vectors */ rm->n_vectors_mod_4,		\
-		      vhash_resize_set_result,				\
-		      rm, N_KEY_U32);					\
+     vhash_get_stage (vm->vhash,					\
+		      /* vector_index */ vm->n_vectors_div_4,		\
+		      /* n_vectors */ vm->n_vectors_mod_4,			\
+		      vhash_main_get_result,				\
+		      vm, N_KEY_U32);					\
+   })									\
+									\
+  clib_pipeline_stage							\
+  (vhash_main_set_stage_##N_KEY_U32,					\
+   vhash_main_t *, vm, i,						\
+   {									\
+     vhash_set_stage (vm->vhash,					\
+		      /* vector_index */ i,				\
+		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+		      vhash_main_set_result,				\
+		      vm, N_KEY_U32);					\
+   })									\
+									\
+  clib_pipeline_stage_no_inline						\
+  (vhash_main_set_mod_stage_##N_KEY_U32,				\
+   vhash_main_t *, vm, i,						\
+   {									\
+     vhash_set_stage (vm->vhash,					\
+		      /* vector_index */ vm->n_vectors_div_4,		\
+		      /* n_vectors */ vm->n_vectors_mod_4,			\
+		      vhash_main_set_result,				\
+		      vm, N_KEY_U32);					\
+   })									\
+									\
+  clib_pipeline_stage							\
+  (vhash_main_unset_stage_##N_KEY_U32,					\
+   vhash_main_t *, vm, i,						\
+   {									\
+     vhash_unset_stage (vm->vhash,					\
+		      /* vector_index */ i,				\
+		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+		      vhash_main_get_result,				\
+		      vm, N_KEY_U32);					\
+   })									\
+									\
+  clib_pipeline_stage_no_inline						\
+  (vhash_main_unset_mod_stage_##N_KEY_U32,				\
+   vhash_main_t *, vm, i,						\
+   {									\
+     vhash_unset_stage (vm->vhash,					\
+		      /* vector_index */ vm->n_vectors_div_4,		\
+		      /* n_vectors */ vm->n_vectors_mod_4,			\
+		      vhash_main_get_result,				\
+		      vm, N_KEY_U32);					\
    })
 
 _ (1);
@@ -416,17 +405,17 @@ _ (6);
 
 #define _(N_KEY_U32)						\
   clib_pipeline_stage						\
-  (vhash_resize_hash_mix_stage_##N_KEY_U32,			\
-   vhash_resize_main_t *, rm, i,				\
+  (vhash_main_hash_mix_stage_##N_KEY_U32,			\
+   vhash_main_t *, vm, i,					\
    {								\
-     vhash_mix_stage (rm->new, i, N_KEY_U32);			\
+     vhash_mix_stage (vm->vhash, i, N_KEY_U32);			\
    })								\
 								\
   clib_pipeline_stage_no_inline					\
-  (vhash_resize_hash_mix_mod_stage_##N_KEY_U32,			\
-   vhash_resize_main_t *, rm, i,				\
+  (vhash_main_hash_mix_mod_stage_##N_KEY_U32,			\
+   vhash_main_t *, vm, i,					\
    {								\
-     vhash_mix_stage (rm->new, rm->n_vectors_div_4, N_KEY_U32);	\
+     vhash_mix_stage (vm->vhash, vm->n_vectors_div_4, N_KEY_U32);	\
    })
 
 _ (4);
@@ -435,18 +424,25 @@ _ (6);
 
 #undef _
 
-static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
+typedef enum {
+  GET, SET, UNSET,
+} vhash_main_op_t;
+
+static void
+vhash_main_op (vhash_main_t * vm, vhash_main_op_t op)
 {
-  vhash_t * h = rm->new;
-  uword n_keys = vec_len (rm->copy_indices);
+  u32 n_keys = vec_len (vm->results);
 
-  vhash_validate_sizes (h, h->n_key_u32, n_keys);
-  rm->n_vectors_div_4 = n_keys / 4;
-  rm->n_vectors_mod_4 = n_keys % 4;
+  vm->n_key_u32 = vm->vhash->n_key_u32;
 
-  if (rm->n_vectors_div_4 > 0)
+  vhash_validate_sizes (vm->vhash, vm->n_key_u32, n_keys);
+
+  vm->n_vectors_div_4 = n_keys / 4;
+  vm->n_vectors_mod_4 = n_keys % 4;
+
+  if (vm->n_vectors_div_4 > 0)
     {
-      switch (h->n_key_u32)
+      switch (vm->n_key_u32)
 	{
 	default:
 	  ASSERT (0);
@@ -454,12 +450,27 @@ static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
 
 #define _(N_KEY_U32)						\
 	case N_KEY_U32:						\
-	  clib_pipeline_run_3_stage				\
-	    (rm->n_vectors_div_4,				\
-	     rm,						\
-	     vhash_resize_gather_keys_stage_##N_KEY_U32,	\
-	     vhash_resize_hash_finalize_stage_##N_KEY_U32,	\
-	     vhash_resize_set_stage_##N_KEY_U32);		\
+	  if (op == GET)					\
+	    clib_pipeline_run_3_stage				\
+	      (vm->n_vectors_div_4,				\
+	       vm,						\
+	       vhash_main_gather_keys_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_stage_##N_KEY_U32,	\
+	       vhash_main_get_stage_##N_KEY_U32);		\
+	  else if (op == SET)					\
+	    clib_pipeline_run_3_stage				\
+	      (vm->n_vectors_div_4,				\
+	       vm,						\
+	       vhash_main_gather_keys_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_stage_##N_KEY_U32,	\
+	       vhash_main_set_stage_##N_KEY_U32);		\
+	  else							\
+	    clib_pipeline_run_3_stage				\
+	      (vm->n_vectors_div_4,				\
+	       vm,						\
+	       vhash_main_gather_keys_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_stage_##N_KEY_U32,	\
+	       vhash_main_unset_stage_##N_KEY_U32);		\
 	  break;
 
 	      _ (1);
@@ -470,13 +481,30 @@ static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
 
 #define _(N_KEY_U32)						\
 	case N_KEY_U32:						\
-	  clib_pipeline_run_4_stage				\
-	    (rm->n_vectors_div_4,				\
-	     rm,						\
-	     vhash_resize_gather_keys_stage_##N_KEY_U32,	\
-	     vhash_resize_hash_mix_stage_##N_KEY_U32,		\
-	     vhash_resize_hash_finalize_stage_##N_KEY_U32,	\
-	     vhash_resize_set_stage_##N_KEY_U32);		\
+	  if (op == GET)					\
+	    clib_pipeline_run_4_stage				\
+	      (vm->n_vectors_div_4,				\
+	       vm,						\
+	       vhash_main_gather_keys_stage_##N_KEY_U32,	\
+	       vhash_main_hash_mix_stage_##N_KEY_U32,		\
+	       vhash_main_hash_finalize_stage_##N_KEY_U32,	\
+	       vhash_main_get_stage_##N_KEY_U32);		\
+	  else if (op == SET)					\
+	    clib_pipeline_run_4_stage				\
+	      (vm->n_vectors_div_4,				\
+	       vm,						\
+	       vhash_main_gather_keys_stage_##N_KEY_U32,	\
+	       vhash_main_hash_mix_stage_##N_KEY_U32,		\
+	       vhash_main_hash_finalize_stage_##N_KEY_U32,	\
+	       vhash_main_set_stage_##N_KEY_U32);		\
+	  else							\
+	    clib_pipeline_run_4_stage				\
+	      (vm->n_vectors_div_4,				\
+	       vm,						\
+	       vhash_main_gather_keys_stage_##N_KEY_U32,	\
+	       vhash_main_hash_mix_stage_##N_KEY_U32,		\
+	       vhash_main_hash_finalize_stage_##N_KEY_U32,	\
+	       vhash_main_unset_stage_##N_KEY_U32);		\
 	  break;
 
 	      _ (4);
@@ -488,9 +516,9 @@ static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
     }
 
 
-  if (rm->n_vectors_mod_4 > 0)
+  if (vm->n_vectors_mod_4 > 0)
     {
-      switch (h->n_key_u32)
+      switch (vm->n_key_u32)
 	{
 	default:
 	  ASSERT (0);
@@ -498,12 +526,27 @@ static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
 
 #define _(N_KEY_U32)						\
 	case N_KEY_U32:						\
-	  clib_pipeline_run_3_stage				\
-	    (1,							\
-	     rm,						\
-	     vhash_resize_gather_keys_mod_stage_##N_KEY_U32,	\
-	     vhash_resize_hash_finalize_mod_stage_##N_KEY_U32,	\
-	     vhash_resize_set_mod_stage_##N_KEY_U32);		\
+	  if (op == GET)					\
+	    clib_pipeline_run_3_stage				\
+	      (1,						\
+	       vm,						\
+	       vhash_main_gather_keys_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_mod_stage_##N_KEY_U32,	\
+	       vhash_main_get_mod_stage_##N_KEY_U32);		\
+	  else if (op == SET)					\
+	    clib_pipeline_run_3_stage				\
+	      (1,						\
+	       vm,						\
+	       vhash_main_gather_keys_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_mod_stage_##N_KEY_U32,	\
+	       vhash_main_set_mod_stage_##N_KEY_U32);		\
+	  else							\
+	    clib_pipeline_run_3_stage				\
+	      (1,						\
+	       vm,						\
+	       vhash_main_gather_keys_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_mod_stage_##N_KEY_U32,	\
+	       vhash_main_unset_mod_stage_##N_KEY_U32);		\
 	break;
 
       _ (1);
@@ -514,13 +557,30 @@ static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
 
 #define _(N_KEY_U32)						\
 	case N_KEY_U32:						\
-	  clib_pipeline_run_4_stage				\
-	    (1,							\
-	     rm,						\
-	     vhash_resize_gather_keys_mod_stage_##N_KEY_U32,	\
-	     vhash_resize_hash_mix_mod_stage_##N_KEY_U32,	\
-	     vhash_resize_hash_finalize_mod_stage_##N_KEY_U32,	\
-	     vhash_resize_set_mod_stage_##N_KEY_U32);		\
+	  if (op == GET)					\
+	    clib_pipeline_run_4_stage				\
+	      (1,						\
+	       vm,						\
+	       vhash_main_gather_keys_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_mix_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_mod_stage_##N_KEY_U32,	\
+	       vhash_main_get_mod_stage_##N_KEY_U32);		\
+	  else if (op == SET)					\
+	    clib_pipeline_run_4_stage				\
+	      (1,						\
+	       vm,						\
+	       vhash_main_gather_keys_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_mix_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_mod_stage_##N_KEY_U32,	\
+	       vhash_main_set_mod_stage_##N_KEY_U32);		\
+	  else							\
+	    clib_pipeline_run_4_stage				\
+	      (1,						\
+	       vm,						\
+	       vhash_main_gather_keys_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_mix_mod_stage_##N_KEY_U32,	\
+	       vhash_main_hash_finalize_mod_stage_##N_KEY_U32,	\
+	       vhash_main_unset_mod_stage_##N_KEY_U32);		\
 	  break;
 
 	      _ (4);
@@ -532,19 +592,14 @@ static void vhash_resize_copy_keys (vhash_resize_main_t * rm)
     }
 }
 
-static void vhash_resize_do_pending_sets_and_unsets (vhash_resize_main_t * rm)
+u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_this_call)
 {
-  ASSERT (rm->n_pending_sets_and_unsets == 0);
-  vec_reset_length (rm->pending_sets_and_unsets);
-  rm->n_pending_sets_and_unsets = 0;
-}
+  vhash_t * old = vr->old;
+  vhash_main_t * vm = &vr->new;
+  vhash_t * new = vm->vhash;
+  uword i, j, n_key_u32;
 
-u32 vhash_resize_incremental (vhash_resize_main_t * rm, u32 vector_index,
-			      u32 n_copy_this_call)
-{
-  vhash_t * old = rm->old;
-  vhash_t * new = rm->new;
-  uword i;
+  n_key_u32 = old->n_key_u32;
 
   if (vector_index == 0)
     {
@@ -552,35 +607,39 @@ u32 vhash_resize_incremental (vhash_resize_main_t * rm, u32 vector_index,
       hash_seeds[0] = old->hash_seeds[0].data_u32[0];
       hash_seeds[1] = old->hash_seeds[1].data_u32[0];
       hash_seeds[2] = old->hash_seeds[2].data_u32[0];
-      vhash_init (new, old->log2_n_keys + 1, old->n_key_u32, hash_seeds);
+      vhash_init (new, old->log2_n_keys + 1, n_key_u32, hash_seeds);
     }
 
-  vec_reset_length (rm->copy_indices);
+  vec_reset_length (vm->keys);
+  vec_reset_length (vm->results);
 
   if (0 == (vector_index >> old->log2_n_keys))
     {
       for (i = vector_index; 0 == (i >> (old->log2_n_keys - 2)); i++)
 	{
-	  vhash_search_bucket_t * b = vhash_get_search_bucket_with_index (old, i, old->n_key_u32);
-	  u32 empty_mask, * p, * p0;
-	
-	  empty_mask = u32x4_zero_mask (b->result.data_u32x4);
-	  vec_add2 (rm->copy_indices, p, 4);
-	  p0 = p;
-	  p[0] = 4 * i + 0;
-	  p += ! (empty_mask & (1 << (4 * 0)));
-	  p[0] = 4 * i + 1;
-	  p += ! (empty_mask & (1 << (4 * 1)));
-	  p[0] = 4 * i + 2;
-	  p += ! (empty_mask & (1 << (4 * 2)));
-	  p[0] = 4 * i + 3;
-	  p += ! (empty_mask & (1 << (4 * 3)));
-	  _vec_len (rm->copy_indices) -= (4 - (p - p0));
+	  vhash_search_bucket_t * b = vhash_get_search_bucket_with_index (old, 4 * i, n_key_u32);
+	  u32 r, * k;
 
-	  if (_vec_len (rm->copy_indices) >= n_copy_this_call)
+#define _(I)					\
+  if ((r = b->result.data_u32[I]) != 0)		\
+    {						\
+      vec_add1 (vm->results, r - 1);		\
+      vec_add2 (vm->keys, k, n_key_u32);	\
+      for (j = 0; j < n_key_u32; j++)		\
+	k[j] = b->key[j].data_u32[I];		\
+    }
+
+	  _ (0);
+	  _ (1);
+	  _ (2);
+	  _ (3);
+
+#undef _
+
+	  if (vec_len (vm->results) >= n_keys_this_call)
 	    {
-	      vhash_resize_copy_keys (rm);
-	      return 4*(i + 1);
+	      vhash_main_op (vm, SET);
+	      return i;
 	    }
 	}
     }
@@ -596,28 +655,28 @@ u32 vhash_resize_incremental (vhash_resize_main_t * rm, u32 vector_index,
       {
 	foreach_vhash_overflow_bucket (b, ob, old->n_key_u32)
 	  {
-	    u32 * p0, * p;
-	    u32 empty_mask = u32x4_zero_mask (b->result.data_u32x4);
+	    u32 r, * k;
 
-	    vec_add2 (rm->copy_indices, p, 4);
-	    p0 = p;
-	    p[0] = vhash_resize_set_overflow_index (rm, ob, b, 0);
-	    p += ! (empty_mask & (1 << (4 * 0)));
-	    p[0] = vhash_resize_set_overflow_index (rm, ob, b, 1);
-	    p += ! (empty_mask & (1 << (4 * 1)));
-	    p[0] = vhash_resize_set_overflow_index (rm, ob, b, 2);
-	    p += ! (empty_mask & (1 << (4 * 2)));
-	    p[0] = vhash_resize_set_overflow_index (rm, ob, b, 3);
-	    p += ! (empty_mask & (1 << (4 * 3)));
-	    _vec_len (rm->copy_indices) -= (4 - (p - p0));
+#define _(I)					\
+  if ((r = b->result.data_u32[I]) != 0)		\
+    {						\
+      vec_add1 (vm->results, r - 1);		\
+      vec_add2 (vm->keys, k, n_key_u32);	\
+      for (j = 0; j < n_key_u32; j++)		\
+	k[j] = b->key[j].data_u32[I];		\
+    }
+
+	  _ (0);
+	  _ (1);
+	  _ (2);
+	  _ (3);
+
+#undef _
 	  }
       }
   }
 
-  vhash_resize_copy_keys (rm);
-
-  /* Add pending sets / unsets. */
-  vhash_resize_do_pending_sets_and_unsets (rm);
+  vhash_main_op (vm, SET);
 
   /* Let caller know we are done. */
   return ~0;
@@ -625,17 +684,20 @@ u32 vhash_resize_incremental (vhash_resize_main_t * rm, u32 vector_index,
 
 void vhash_resize (vhash_t * old, u32 log2_n_keys)
 {
-  static vhash_resize_main_t rm;
+  static vhash_resize_t vr;
   vhash_t new;
   u32 i = 0;
 
-  rm.old = old;
-  rm.new = &new;
+  vr.old = old;
+  vr.new.vhash = &new;
 
   while (1)
     {
-      i = vhash_resize_incremental (&rm, i, 1024);
+      i = vhash_resize_incremental (&vr, i, 1024);
       if (i == ~0)
 	break;
     }
+
+  vhash_free (old);
+  *old = new;
 }
