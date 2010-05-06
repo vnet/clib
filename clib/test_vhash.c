@@ -189,11 +189,10 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
   (test_vhash_get_stage_##N_KEY_U32,					\
    test_vhash_main_t *, tm, i,						\
    {									\
-     vhash_get_4stage (&tm->vhash,					\
-		       /* vector_index */ i,				\
-		       /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
-		       test_vhash_get_4result,				\
-		       tm, N_KEY_U32);					\
+     vhash_get_4_stage (&tm->vhash,					\
+			/* vector_index */ i,				\
+			test_vhash_get_4result,				\
+			tm, N_KEY_U32);					\
    })									\
 									\
   clib_pipeline_stage_no_inline						\
@@ -678,13 +677,15 @@ int test_vhash_main (unformat_input_t * input)
 		  (f64) tm->get_stats.n_vectors / (f64) tm->get_stats.n_calls,
 		  (f64) tm->get_stats.n_vectors / (f64) (tm->get_stats.n_clocks * ct.seconds_per_clock));
     if (tm->set_stats.n_calls > 0)
-      clib_warning ("%.4e clocks/set %.4e sets/call",
+      clib_warning ("%.4e clocks/set %.4e sets/call %.4e sets/sec",
 		    (f64) tm->set_stats.n_clocks / (f64) tm->set_stats.n_vectors,
-		    (f64) tm->set_stats.n_vectors / (f64) tm->set_stats.n_calls);
+		    (f64) tm->set_stats.n_vectors / (f64) tm->set_stats.n_calls,
+		    (f64) tm->set_stats.n_vectors / (f64) (tm->set_stats.n_clocks * ct.seconds_per_clock));
     if (tm->unset_stats.n_calls > 0)
-      clib_warning ("%.4e clocks/unset %.4e unsets/call",
+      clib_warning ("%.4e clocks/unset %.4e unsets/call %.4e unsets/sec",
 		    (f64) tm->unset_stats.n_clocks / (f64) tm->unset_stats.n_vectors,
-		    (f64) tm->unset_stats.n_vectors / (f64) tm->unset_stats.n_calls);
+		    (f64) tm->unset_stats.n_vectors / (f64) tm->unset_stats.n_calls,
+		    (f64) tm->unset_stats.n_vectors / (f64) (tm->unset_stats.n_clocks * ct.seconds_per_clock));
   }
 
  done:
