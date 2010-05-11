@@ -107,7 +107,7 @@ always_inline u32x4 u32x4_splat (u32 a)
   x = u32x4_interleave_lo (x, x);
   x = (u32x4) u64x2_interleave_lo ((u64x2) x, (u64x2) x);
   return x;
- }
+}
 
 always_inline u16x8 u16x8_splat (u16 a)
 {
@@ -164,9 +164,9 @@ always_inline void u64x2_write_hi (u64x2 x, u64 * a)
 
 /* Unaligned loads/stores. */
 
-#define _(t)							\
+#define _(t)						\
   always_inline void t##_store_unaligned (t x, t * a)	\
-  { __builtin_ia32_storedqu ((char *) a, (i8x16) x); }		\
+  { __builtin_ia32_storedqu ((char *) a, (i8x16) x); }	\
   always_inline t t##_load_unaligned (t * a)		\
   { return (t) __builtin_ia32_loaddqu ((char *) a); }
 
@@ -183,12 +183,12 @@ _ (i64x2)
 
 #define _signed_binop(n,m,f,g)						\
   /* Unsigned */							\
-  always_inline u##n##x##m					\
+  always_inline u##n##x##m						\
   u##n##x##m##_##f (u##n##x##m x, u##n##x##m y)				\
   { return (u##n##x##m) __builtin_ia32_##g ((i##n##x##m) x, (i##n##x##m) y); } \
 									\
   /* Signed */								\
-  always_inline i##n##x##m					\
+  always_inline i##n##x##m						\
   i##n##x##m##_##f (i##n##x##m x, i##n##x##m y)				\
   { return (i##n##x##m) __builtin_ia32_##g ((i##n##x##m) x, (i##n##x##m) y); }
 
@@ -224,16 +224,11 @@ always_inline u16x8 u16x8_mul_hi (u16x8 x, u16x8 y)
 
 /* 128 bit shifts. */
 #define _(t,ti,lr,f)						\
-  always_inline t t##_shift_##lr (t x, int i)		\
-  {								\
-    if (__builtin_constant_p (i))				\
-      return (t) __builtin_ia32_##f##i128 ((ti) x, i);		\
-    else							\
-      {								\
-	ti _n = {i};						\
-	return (t) __builtin_ia32_##f##128 ((ti) x, _n);	\
-      }								\
-  }
+  always_inline t t##_ishift_##lr (t x, int i)			\
+  { return (t) __builtin_ia32_##f##i128 ((ti) x, i); }		\
+								\
+  always_inline t t##_shift_##lr (t x, t y)			\
+  { return (t) __builtin_ia32_##f##128 ((ti) x, (ti) y); }
 
 _ (u16x8, i16x8, left, psllw);
 _ (u32x4, i32x4, left, pslld);
@@ -325,12 +320,20 @@ _ (i32x2, i32x2, right, psrad);
 
 /* SSE2 has no rotate instructions: use shifts to simulate them. */
 #define _(t,n,lr1,lr2)					\
-  always_inline t##x##n				\
-  t##x##n##_rotate_##lr1 (t##x##n w, int i)		\
+  always_inline t##x##n					\
+  t##x##n##_irotate_##lr1 (t##x##n w, int i)		\
   {							\
     ASSERT (i >= 0 && i <= BITS (t));			\
+    return (t##x##n##_ishift_##lr1 (w, i)		\
+	    | t##x##n##_ishift_##lr2 (w, BITS (t) - i)); \
+  }							\
+							\
+  always_inline t##x##n					\
+  t##x##n##_rotate_##lr1 (t##x##n w, t##x##n i)		\
+  {							\
+    t##x##n j = t##x##n##_splat (BITS (t));		\
     return (t##x##n##_shift_##lr1 (w, i)		\
-	    | t##x##n##_shift_##lr2 (w, BITS (t) - i));	\
+	    | t##x##n##_shift_##lr2 (w, j - i));	\
   }
 
 _ (u16, 8, left, right);
@@ -399,6 +402,12 @@ always_inline u32x4 u32x4_is_zero (u32x4 x)
 		: /* inputs */  [x] "x" (_x), [mask] "i" (MASK));	\
   _y;									\
 })
+
+#define u32x4_splat_word(x,i)			\
+  u32x4_select ((x), (((i) << (2*0))		\
+		      | ((i) << (2*1))		\
+		      | ((i) << (2*2))		\
+		      | ((i) << (2*3))))
 
 /* No built in function for pextrw. */
 #define u16x8_extract(x,i) __builtin_ia32_vec_ext_v8hi (x, i)
