@@ -125,7 +125,7 @@ u64 hash_memory64 (void * p, word n_bytes, u64 state)
 
 #else /* if uword_bits == 64 */
 
-always_inline u32 zap32 (u32 x, word n)
+static inline u32 zap32 (u32 x, word n)
 {
 #define _(n) (((u32) 1 << (u32) (8*(n))) - (u32) 1)
   static u32 masks_little_endian[] = {
