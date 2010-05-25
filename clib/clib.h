@@ -66,9 +66,12 @@
 
 #if DEBUG > 0
 #define always_inline static inline
+#define static_always_inline static inline
 #else
-#define always_inline extern inline __attribute__ ((always_inline))
+#define always_inline extern inline __attribute__ ((__always_inline__))
+#define static_always_inline static inline __attribute__ ((__always_inline__))
 #endif
+
 
 /* Reserved (unused) structure element with address offset between
    from and to. */

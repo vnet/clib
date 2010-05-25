@@ -23,6 +23,8 @@
 
 #include <clib/vhash.h>
 
+#ifdef CLIB_HAVE_VEC128
+
 /* Overflow search buckets have an extra u32x4 for saving key_hash data.
    This makes it easier to refill main search bucket from overflow vector. */
 typedef struct {
@@ -739,3 +741,5 @@ void vhash_resize (vhash_t * old, u32 log2_n_keys)
   vhash_free (old);
   *old = new;
 }
+
+#endif /* CLIB_HAVE_VEC128 */

@@ -24,6 +24,8 @@
 #ifndef included_clib_vhash_h
 #define included_clib_vhash_h
 
+#ifdef CLIB_HAVE_VEC128
+
 #include <clib/cache.h>
 #include <clib/hash.h>
 #include <clib/pipeline.h>
@@ -808,5 +810,7 @@ typedef struct {
 } vhash_resize_t;
 
 u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_vectors);
+
+#endif /* CLIB_HAVE_VEC128 */
 
 #endif /* included_clib_vhash_h */

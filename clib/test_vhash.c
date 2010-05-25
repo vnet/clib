@@ -21,8 +21,10 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#if 0
 #ifdef __OPTIMIZE__
 #undef DEBUG
+#endif
 #endif
 
 #include <clib/bitmap.h>
@@ -31,6 +33,8 @@
 #include <clib/random.h>
 #include <clib/time.h>
 #include <clib/vhash.h>
+
+#ifdef CLIB_HAVE_VEC128
 
 typedef struct {
   u32 n_iter;
@@ -693,6 +697,13 @@ int test_vhash_main (unformat_input_t * input)
     clib_error_report (error);
   return 0;
 }
+
+#endif /* CLIB_HAVE_VEC128 */
+
+#ifndef CLIB_HAVE_VEC128
+int test_vhash_main (unformat_input_t * input)
+{ return 0; }
+#endif
 
 #ifdef CLIB_UNIX
 int main (int argc, char * argv [])
