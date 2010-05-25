@@ -1188,8 +1188,10 @@ u8 * format_mheap (u8 * s, va_list * va)
 	    continue;
 
 	if (t == traces_copy)
-	  s = format (s, "%=9s%=9s Traceback\n", "Bytes", "Count");
-	s = format (s, "%9d%9d", t->n_bytes, t->n_allocations);
+	  s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count", 
+            "Sample");
+	s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, 
+                    t->offset + v);
 	indent = format_get_indent (s);
 	for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
 	  {
@@ -1416,6 +1418,7 @@ static void mheap_get_trace (u8 * v, uword offset, uword size)
 
   t->n_allocations += 1;
   t->n_bytes += size;
+  t->offset = offset;           /* keep a sample to autopsy */
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
 }
 
