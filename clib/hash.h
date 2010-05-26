@@ -24,9 +24,11 @@
 #ifndef included_hash_h
 #define included_hash_h
 
-#include <clib/vec.h>
-#include <clib/format.h>
+#include <clib/bitops.h>	/* for rotate_left */
 #include <clib/error.h>
+#include <clib/format.h>
+#include <clib/vec.h>
+#include <clib/vector.h>
 
 struct hash_header;
 
@@ -77,26 +79,26 @@ typedef struct hash_header {
   uword is_user[0];
 } hash_t;
 
-static inline uword hash_header_bytes (void * v)
+always_inline uword hash_header_bytes (void * v)
 {
   hash_t * h;
   uword is_user_bytes = (sizeof (h->is_user[0]) * vec_len (v)) / BITS (h->is_user[0]);
   return sizeof (h[0]) + is_user_bytes;
 }
 
-static inline hash_t * hash_header (void * v)
+always_inline hash_t * hash_header (void * v)
 { return vec_header (v, hash_header_bytes (v)); }
 
-static inline uword hash_elts (void * v)
+always_inline uword hash_elts (void * v)
 {
   hash_t * h = hash_header (v);
   return v ? h->elts : 0;
 }
 
-static inline uword hash_capacity (void * v)
+always_inline uword hash_capacity (void * v)
 { return vec_len (v); }
 
-static inline uword hash_is_user (void * v, uword i)
+always_inline uword hash_is_user (void * v, uword i)
 {
   hash_t * h = hash_header (v);
   uword i0 = i / BITS(h->is_user[0]);
@@ -104,7 +106,7 @@ static inline uword hash_is_user (void * v, uword i)
   return (h->is_user[i0] & ((uword) 1 << i1)) != 0;
 }
 
-static inline void
+always_inline void
 hash_set_pair_format (void * v,
 		      format_function_t * format_pair,
 		      void * format_pair_arg)
@@ -114,7 +116,7 @@ hash_set_pair_format (void * v,
   h->format_pair_arg = format_pair_arg;
 }
 
-static inline void hash_set_flags (void * v, uword flags)
+always_inline void hash_set_flags (void * v, uword flags)
 { hash_header (v)->flags |= flags; }
 
 /* Key value pairs. */
@@ -143,10 +145,10 @@ typedef union {
 #define PAIR_BITS	(BITS (uword) - LOG2_ALLOC_BITS)
 
 /* Log2 number of bytes allocated in pairs array. */
-static inline uword indirect_pair_get_log2_bytes (hash_pair_indirect_t * p)
+always_inline uword indirect_pair_get_log2_bytes (hash_pair_indirect_t * p)
 { return p->alloc_len >> PAIR_BITS; }
 
-static inline uword
+always_inline uword
 indirect_pair_get_len (hash_pair_indirect_t * p)
 {
   if (! p->pairs)
@@ -155,7 +157,7 @@ indirect_pair_get_len (hash_pair_indirect_t * p)
     return p->alloc_len & (((uword) 1 << PAIR_BITS) - 1);
 }
 
-static inline void
+always_inline void
 indirect_pair_set (hash_pair_indirect_t * p,
 			       uword log2_alloc,
 			       uword len)
@@ -199,13 +201,13 @@ extern void * _hash_free (void * v);
 
 clib_error_t * hash_validate (void * v);
 
-static inline uword hash_value_bytes (hash_t * h)
+always_inline uword hash_value_bytes (hash_t * h)
 {
   hash_pair_t * p;
   return (sizeof (p->value[0]) << h->log2_pair_size) - sizeof (p->key);
 }
 
-static inline uword hash_pair_log2_bytes (hash_t * h)
+always_inline uword hash_pair_log2_bytes (hash_t * h)
 {
   uword log2_bytes = h->log2_pair_size;
   ASSERT (BITS (hash_pair_t) == 32
@@ -217,13 +219,13 @@ static inline uword hash_pair_log2_bytes (hash_t * h)
   return log2_bytes;
 }
 
-static inline uword hash_pair_bytes (hash_t * h)
+always_inline uword hash_pair_bytes (hash_t * h)
 { return (uword) 1 << hash_pair_log2_bytes (h); }
 
-static inline void * hash_forward1 (hash_t * h, void * v)
+always_inline void * hash_forward1 (hash_t * h, void * v)
 { return (u8 *) v + hash_pair_bytes (h); }
 
-static inline void * hash_forward (hash_t * h, void * v, uword n)
+always_inline void * hash_forward (hash_t * h, void * v, uword n)
 { return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size); }
 
 /* Iterate over hash pairs. */
@@ -321,7 +323,7 @@ hash_pair_t * hash_next (void * v, hash_next_t * hn);
 
 void * _hash_create (uword elts, hash_t * h);
 
-static inline void hash_set_value_bytes (hash_t * h, uword value_bytes)
+always_inline void hash_set_value_bytes (hash_t * h, uword value_bytes)
 {
   hash_pair_t * p;
   h->log2_pair_size =
@@ -377,6 +379,71 @@ do {						\
   hash_mix32_step_2 (a0, b0, c0);		\
   hash_mix32_step_3 (a0, b0, c0);		\
 } while (0)					\
+
+/* Finalize from Bob Jenkins lookup3.c */
+
+#define hash_v3_mix32(a,b,c)				\
+do {							\
+  (a) -= (c); (a) ^= rotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= rotate_left ((a), 6); (a) += (c);	\
+  (c) -= (b); (c) ^= rotate_left ((b), 8); (b) += (a);	\
+  (a) -= (c); (a) ^= rotate_left ((c),16); (c) += (b);	\
+  (b) -= (a); (b) ^= rotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= rotate_left ((b), 4); (b) += (a);	\
+} while (0)
+
+#define hash_v3_finalize32(a,b,c)		\
+do {						\
+  (c) ^= (b); (c) -= rotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= rotate_left ((c), 11);	\
+  (b) ^= (a); (b) -= rotate_left ((a), 25);	\
+  (c) ^= (b); (c) -= rotate_left ((b), 16);	\
+  (a) ^= (c); (a) -= rotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= rotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= rotate_left ((b), 24);	\
+} while (0)
+
+/* Vector v3 mixing/finalize. */
+#define hash_v3_mix_step_1_u32x(a,b,c)				\
+do {								\
+  (a) -= (c); (a) ^= u32x_irotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= u32x_irotate_left ((a), 6); (a) += (c);	\
+  (c) -= (b); (c) ^= u32x_irotate_left ((b), 8); (b) += (a);	\
+} while (0)
+
+#define hash_v3_mix_step_2_u32x(a,b,c)				\
+do {								\
+  (a) -= (c); (a) ^= u32x_irotate_left ((c),16); (c) += (b);	\
+  (b) -= (a); (b) ^= u32x_irotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= u32x_irotate_left ((b), 4); (b) += (a);	\
+} while (0)
+
+#define hash_v3_finalize_step_1_u32x(a,b,c)		\
+do {							\
+  (c) ^= (b); (c) -= u32x_irotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= u32x_irotate_left ((c), 11);	\
+  (b) ^= (a); (b) -= u32x_irotate_left ((a), 25);	\
+} while (0)
+
+#define hash_v3_finalize_step_2_u32x(a,b,c)		\
+do {							\
+  (c) ^= (b); (c) -= u32x_irotate_left ((b), 16);	\
+  (a) ^= (c); (a) -= u32x_irotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= u32x_irotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= u32x_irotate_left ((b), 24);	\
+} while (0)
+
+#define hash_v3_mix_u32x(a,b,c)			\
+do {						\
+  hash_v3_mix_step_1_u32x(a,b,c);		\
+  hash_v3_mix_step_2_u32x(a,b,c);		\
+} while (0)
+
+#define hash_v3_finalize_u32x(a,b,c)		\
+do {						\
+  hash_v3_finalize_step_1_u32x(a,b,c);		\
+  hash_v3_finalize_step_2_u32x(a,b,c);		\
+} while (0)
 
 extern u64 hash_memory64 (void * p, word n_bytes, u64 state);
 extern u32 hash_memory32 (void * p, word n_bytes, u32 state);

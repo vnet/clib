@@ -42,10 +42,10 @@ typedef struct {
   u8 pad[MHEAP_ALIGN_PAD_BYTES (sizeof(2*sizeof (void *) + sizeof (_VEC)))];
 } pool_header_t;
 
-static inline pool_header_t * pool_header (void * v)
+always_inline pool_header_t * pool_header (void * v)
 { return vec_header (v, sizeof (pool_header_t)); }
 
-static inline void pool_validate (void * v)
+always_inline void pool_validate (void * v)
 {
   pool_header_t * p = pool_header (v);
   uword i, n_free_bitmap;
@@ -59,7 +59,7 @@ static inline void pool_validate (void * v)
     ASSERT (clib_bitmap_get (p->free_bitmap, p->free_indices[i]) == 1);
 }
 
-static inline uword pool_elts (void * v)
+always_inline uword pool_elts (void * v)
 {
   uword ret = vec_len (v);
   if (v)
@@ -71,7 +71,7 @@ static inline uword pool_elts (void * v)
 #define _pool_len(p)	_vec_len(p)
 
 /* Memory usage of pool. */
-static inline uword
+always_inline uword
 pool_header_bytes (void * v)
 {
   pool_header_t * p = pool_header (v);
@@ -88,7 +88,7 @@ pool_header_bytes (void * v)
 #define _pool_var(v) _pool_##v
 
 /* Queries whether pool has at least N_FREE free elements. */
-static inline uword
+always_inline uword
 pool_free_elts (void * v)
 {
   pool_header_t * p = pool_header (v);
@@ -182,7 +182,7 @@ do {									\
 
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
 
-static inline void * _pool_free_aligned (void * v, uword align)
+always_inline void * _pool_free_aligned (void * v, uword align)
 {
   pool_header_t * p = pool_header (v);
   if (! v)

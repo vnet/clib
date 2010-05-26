@@ -146,5 +146,5 @@ void clib_time_init (clib_time_t * c)
   memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
   c->seconds_per_clock = 1 / c->clocks_per_second;
-  c->last_cpu_time = clib_cpu_time_now ();
+  c->last_cpu_time = c->init_cpu_time = clib_cpu_time_now ();
 }

@@ -40,11 +40,14 @@ typedef struct {
   /* 1 / cpu clock frequency: conversion factor
      from clock cycles into seconds. */
   f64 seconds_per_clock;
+
+  /* Time stamp of call to clib_time_init call. */
+  u64 init_cpu_time;
 } clib_time_t;
 
 /* Return CPU time stamp as 64bit number. */
 #if defined(__x86_64__) || defined(i386)
-static always_inline u64 clib_cpu_time_now (void)
+always_inline u64 clib_cpu_time_now (void)
 {
   u32 a, d;
   asm volatile ("rdtsc"
@@ -54,7 +57,7 @@ static always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__powerpc64__)
 
-static always_inline u64 clib_cpu_time_now (void)
+always_inline u64 clib_cpu_time_now (void)
 {
   u64 t;
   asm volatile ("mftb %0" : "=r" (t));
@@ -63,7 +66,7 @@ static always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__SPU__)
 
-static always_inline u64 clib_cpu_time_now (void)
+always_inline u64 clib_cpu_time_now (void)
 {
 #ifdef _XLC
   return spu_rdch (0x8);
@@ -74,18 +77,23 @@ static always_inline u64 clib_cpu_time_now (void)
 
 #elif defined (__powerpc__)
 
-static always_inline u64 clib_cpu_time_now (void)
+always_inline u64 clib_cpu_time_now (void)
 {
-  u32 hi, lo;
-  asm volatile ("mftbu %[hi]\n"
-		"mftb  %[lo]\n"
-		: [hi] "=r" (hi), [lo] "=r" (lo));
-  return (u64) lo + ((u64) hi << (u64) 32);
+  u32 hi1, hi2, lo;
+  asm volatile (
+    "1:\n"
+    "mftbu %[hi1]\n"
+    "mftb  %[lo]\n"
+    "mftbu %[hi2]\n"
+    "cmpw %[hi1],%[hi2]\n"
+    "bne 1b\n"
+    : [hi1] "=r" (hi1), [hi2] "=r" (hi2), [lo] "=r" (lo));
+  return (u64) lo + ((u64) hi2 << (u64) 32);
 }
 
 #elif defined (__arm__)
 
-static always_inline u64 clib_cpu_time_now (void)
+always_inline u64 clib_cpu_time_now (void)
 {
   u32 lo;
   asm volatile ("mrc p15, 0, %[lo], c15, c12, 1"
@@ -96,7 +104,7 @@ static always_inline u64 clib_cpu_time_now (void)
 #elif defined (__xtensa__)
 
 /* Stub for now. */
-static always_inline u64 clib_cpu_time_now (void)
+always_inline u64 clib_cpu_time_now (void)
 { return 0; }
 
 #else
@@ -105,7 +113,7 @@ static always_inline u64 clib_cpu_time_now (void)
 
 #endif
 
-static always_inline f64
+always_inline f64
 clib_time_now (clib_time_t * c)
 {
   u64 n = clib_cpu_time_now ();
@@ -117,7 +125,7 @@ clib_time_now (clib_time_t * c)
   return t * c->seconds_per_clock;
 }
 
-static always_inline void clib_cpu_time_wait (u64 dt)
+always_inline void clib_cpu_time_wait (u64 dt)
 {
   u64 t_end = clib_cpu_time_now () + dt;
   while (clib_cpu_time_now () < t_end)
@@ -135,7 +143,7 @@ void clib_time_init (clib_time_t * c);
 #include <sys/syscall.h>
 
 /* Use 64bit floating point to represent time offset from epoch. */
-static always_inline f64 unix_time_now (void)
+always_inline f64 unix_time_now (void)
 {
   /* clock_gettime without indirect syscall uses GLIBC wrappers which
      we don't want.  Just the bare metal, please. */
@@ -145,14 +153,14 @@ static always_inline f64 unix_time_now (void)
 }
 
 /* As above but integer number of nano-seconds. */
-static always_inline u64 unix_time_now_nsec (void)
+always_inline u64 unix_time_now_nsec (void)
 {
   struct timespec ts;
   syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
   return 1e9*ts.tv_sec + ts.tv_nsec;
 }
 
-static always_inline f64 unix_usage_now (void)
+always_inline f64 unix_usage_now (void)
 {
   struct rusage u;
   getrusage (RUSAGE_SELF, &u);
@@ -160,7 +168,7 @@ static always_inline f64 unix_usage_now (void)
     + u.ru_stime.tv_sec + 1e-6*u.ru_stime.tv_usec;
 }
 
-static always_inline void unix_sleep (f64 dt)
+always_inline void unix_sleep (f64 dt)
 {
   struct timespec t;
   t.tv_sec = dt;
@@ -170,16 +178,16 @@ static always_inline void unix_sleep (f64 dt)
 
 #else  /* ! CLIB_UNIX */
 
-static always_inline f64 unix_time_now (void)
+always_inline f64 unix_time_now (void)
 { return 0; }
 
-static always_inline u64 unix_time_now_nsec (void)
+always_inline u64 unix_time_now_nsec (void)
 { return 0; }
 
-static always_inline f64 unix_usage_now (void)
+always_inline f64 unix_usage_now (void)
 { return 0; }
 
-static always_inline void unix_sleep (f64 dt)
+always_inline void unix_sleep (f64 dt)
 { }
 
 #endif

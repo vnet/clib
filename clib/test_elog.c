@@ -31,7 +31,7 @@
 int test_elog_main (unformat_input_t * input)
 {
   clib_error_t * error = 0;
-  u32 i, type, n_iter, seed, max_events;
+  u32 i, n_iter, seed, max_events;
   elog_main_t _em, * em = &_em;
   u32 verbose;
   f64 min_sample_time;
@@ -75,14 +75,14 @@ int test_elog_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (load_file)
     {
-      if (error = elog_read_file (em, load_file))
+      if ((error = elog_read_file (em, load_file)))
 	goto done;
     }
 
   else if (merge_files)
     {
       uword i;
-      elog_main_t * m, * ems;
+      elog_main_t * ems;
 
       vec_clone (ems, merge_files);
 
@@ -103,13 +103,13 @@ int test_elog_main (unformat_input_t * input)
       ELOG_TYPE_XF (zap);
       ELOG_TYPE_DECLARE (bar) = {
 	.format = "bar %d.%d.%d.%d",
-	.format_args = "0000",
+	.format_args = "i1i1i1i1",
       };
       ELOG_TYPE_DECLARE (fumble) = {
 	.format = "fumble %s %.9f",
-	.format_args = "se",
-	.n_strings = 4,
-	.strings = {
+	.format_args = "t4f4",
+	.n_enum_strings = 4,
+	.enum_strings = {
 	  "string0",
 	  "string1",
 	  "string2",
@@ -161,7 +161,7 @@ int test_elog_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (dump_file)
     {
-      if (error = elog_write_file (em, dump_file))
+      if ((error = elog_write_file (em, dump_file)))
 	goto done;
     }
 #endif

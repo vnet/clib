@@ -70,6 +70,10 @@ typedef struct {
 
   /* Count of bytes allocated with this traceback. */
   u32 n_bytes;
+
+  /* Offset of this item */
+  uword offset;    
+
 } mheap_trace_t;
 
 typedef struct {
@@ -121,19 +125,19 @@ typedef struct {
   mheap_trace_main_t trace_main;
 } mheap_t;
 
-static inline mheap_t * mheap_header (u8 * v)
+always_inline mheap_t * mheap_header (u8 * v)
 { return vec_header (v, sizeof (mheap_t)); }
 
-static inline u8 * mheap_vector (mheap_t * h)
+always_inline u8 * mheap_vector (mheap_t * h)
 { return vec_header_end (h, sizeof (mheap_t)); }
 
 /* Round all sizes to multiples of 8 bytes.  So, the minimum sized
    objects is 8 bytes of overhead plus 8 bytes of data. */
-static inline uword mheap_round_size (uword size)
+always_inline uword mheap_round_size (uword size)
 { return (size + sizeof (mheap_elt_t) - 1) &~ (sizeof (mheap_elt_t) - 1); }
 
 /* Round size down to minimum size multiple. */
-static inline uword mheap_trunc_size (uword size)
+always_inline uword mheap_trunc_size (uword size)
 { return size &~ (sizeof (mheap_elt_t) - 1); }
 
 #define MHEAP_ALIGN_PAD_BYTES(size)				\
@@ -141,19 +145,19 @@ static inline uword mheap_trunc_size (uword size)
    ? 0								\
    : sizeof (mheap_elt_t) - ((size) % sizeof (mheap_elt_t)))
 
-static inline uword mheap_is_first (mheap_elt_t * e)
+always_inline uword mheap_is_first (mheap_elt_t * e)
 { return e->size & MHEAP_IS_FIRST; }
 
-static inline uword mheap_is_last (mheap_elt_t * e)
+always_inline uword mheap_is_last (mheap_elt_t * e)
 { return e->size & MHEAP_IS_LAST; }
 
-static inline uword mheap_elt_offset (u8 * v, mheap_elt_t * e)
+always_inline uword mheap_elt_offset (u8 * v, mheap_elt_t * e)
 { return (u8 *) (e + 1) - v; }
 
-static inline mheap_elt_t * _mheap_elt_at_offset (u8 * v, uword offset)
+always_inline mheap_elt_t * _mheap_elt_at_offset (u8 * v, uword offset)
 { return (mheap_elt_t *) (v + offset) - 1; }
 
-static inline mheap_elt_t * mheap_elt_at_offset (u8 * v, uword i)
+always_inline mheap_elt_t * mheap_elt_at_offset (u8 * v, uword i)
 {
   /* First element is special. */
   if (i == 0)
@@ -162,7 +166,7 @@ static inline mheap_elt_t * mheap_elt_at_offset (u8 * v, uword i)
     return _mheap_elt_at_offset (v, i);
 }
 
-static inline mheap_elt_t * mheap_next_elt (u8 * v, mheap_elt_t * e)
+always_inline mheap_elt_t * mheap_next_elt (u8 * v, mheap_elt_t * e)
 {
   ASSERT (! mheap_is_last (e));
 
@@ -176,30 +180,30 @@ static inline mheap_elt_t * mheap_next_elt (u8 * v, mheap_elt_t * e)
     }
 }
 
-static inline mheap_elt_t * mheap_prev_elt (u8 * v, mheap_elt_t * e)
+always_inline mheap_elt_t * mheap_prev_elt (u8 * v, mheap_elt_t * e)
 {
   mheap_elt_t * p = (mheap_elt_t *) ((u8 *) e - mheap_trunc_size (e->prev_size));
 
   return (u8 *) p > v ? p : &mheap_header(v)->first;
 }
 
-static inline mheap_size_t * mheap_elt_data (u8 * v, mheap_elt_t * e)
+always_inline mheap_size_t * mheap_elt_data (u8 * v, mheap_elt_t * e)
 { return (mheap_size_t *) (v + (mheap_is_first (e) ? 0 : mheap_elt_offset (v, e))); }
 
 /* Exported operations. */
 
-static inline uword mheap_elts (u8 * v)
+always_inline uword mheap_elts (u8 * v)
 { return v ? mheap_header (v)->n_elts : 0; }
 
-static inline uword mheap_max_size (u8 * v)
+always_inline uword mheap_max_size (u8 * v)
 { return v ? mheap_header (v)->max_size : ~0; }
 
 /* For debugging we keep track of offsets for valid objects.
    We make sure user is not trying to free object with invalid offset. */
-static inline uword mheap_offset_is_valid (u8 * v, uword offset)
+always_inline uword mheap_offset_is_valid (u8 * v, uword offset)
 { return offset < vec_len (v); }
 
-static inline void * mheap_data (u8 * v, uword i)
+always_inline void * mheap_data (u8 * v, uword i)
 {
   mheap_elt_t * e;
   ASSERT (mheap_offset_is_valid (v, i));
@@ -207,7 +211,7 @@ static inline void * mheap_data (u8 * v, uword i)
   return mheap_elt_data (v, e);
 }
 
-static inline uword mheap_data_bytes (u8 * v, uword i)
+always_inline uword mheap_data_bytes (u8 * v, uword i)
 {
   mheap_elt_t * e;
   ASSERT (mheap_offset_is_valid (v, i));
@@ -223,7 +227,7 @@ u8 * mheap_get_aligned (u8 * v, uword size, uword align, uword align_offset,
 
 /* Allocate size bytes.  New heap and offset are returned.
    offset == ~0 means allocation failed. */
-static inline u8 * mheap_get (u8 * v, uword size, uword * offset_return)
+always_inline u8 * mheap_get (u8 * v, uword size, uword * offset_return)
 { return mheap_get_aligned (v, size, 0, 0, offset_return); }
 
 /* Free previously allocated offset. */

@@ -67,7 +67,7 @@ typedef struct {
 #define _vec_round_size(s) \
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
 
-static always_inline uword
+always_inline uword
 vec_header_bytes_ha (uword header_bytes,
 		     uword align_bytes)
 {
@@ -77,11 +77,11 @@ vec_header_bytes_ha (uword header_bytes,
     return header_bytes;
 }
 
-static always_inline void *
+always_inline void *
 vec_header_ha (void * v, uword header_bytes, uword align_bytes)
 { return v - vec_header_bytes_ha (header_bytes, align_bytes); }
 
-static inline void *
+always_inline void *
 vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
 { return v + vec_header_bytes_ha (header_bytes, align_bytes); }
 
@@ -94,6 +94,7 @@ vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
    (e.g. _vec_len (v) = 99). */
 #define _vec_len(v)	(_vec_find(v)->len)
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
+#define vec_reset_length(v) do { if (v) _vec_len (v) = 0; } while (0)
 
 /* Number of data bytes in vector. */
 #define vec_bytes(v) (vec_len (v) * sizeof (v[0]))
@@ -302,6 +303,13 @@ do {										\
   _v(l) -= 1;					\
   _vec_len (V) = _v (l);			\
   (V)[_v(l)];					\
+})
+
+#define vec_pop2(V,E)				\
+({						\
+  uword _v(l) = vec_len (V);			\
+  if (_v(l) > 0) (E) = vec_pop (V);		\
+  _v(l) > 0;					\
 })
 
 /* Resize vector by N elements starting from element M.

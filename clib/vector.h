@@ -64,19 +64,19 @@ typedef float f32x2 _vector_size (8);
 
 #ifdef CLIB_HAVE_VEC128
 /* Signed 128 bit. */
-typedef char i8x16 _vector_size (16);
-typedef short i16x8 _vector_size (16);
-typedef int i32x4 _vector_size (16);
+typedef i8 i8x16 _vector_size (16);
+typedef i16 i16x8 _vector_size (16);
+typedef i32 i32x4 _vector_size (16);
 typedef long long i64x2 _vector_size (16);
 
 /* Unsigned 128 bit. */
-typedef unsigned char u8x16 _vector_size (16);
-typedef unsigned short u16x8 _vector_size (16);
-typedef unsigned int u32x4 _vector_size (16);
-typedef unsigned long long u64x2 _vector_size (16);
+typedef u8 u8x16 _vector_size (16);
+typedef u16 u16x8 _vector_size (16);
+typedef u32 u32x4 _vector_size (16);
+typedef u64 u64x2 _vector_size (16);
 
-typedef float f32x4 _vector_size (16);
-typedef double f64x2 _vector_size (16);
+typedef f32 f32x4 _vector_size (16);
+typedef f64 f64x2 _vector_size (16);
 #endif /* CLIB_HAVE_VEC128 */
 
 /* Vector word sized types. */
@@ -98,7 +98,8 @@ typedef  u8  u8x _vector_size (16);
 typedef u16 u16x _vector_size (16);
 typedef u32 u32x _vector_size (16);
 typedef u64 u64x _vector_size (16);
-#else /* CLIB_HAVE_VEC64 */
+#endif
+#if CLIB_VECTOR_WORD_BITS == 64
 typedef  i8  i8x _vector_size (8);
 typedef i16 i16x _vector_size (8);
 typedef i32 i32x _vector_size (8);
@@ -113,6 +114,68 @@ typedef u64 u64x _vector_size (8);
 
 #define VECTOR_WORD_TYPE(t) t##x
 #define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
+
+/* Union types. */
+#if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
+
+#define _(t)					\
+  typedef union {				\
+    t##x data_##t##x;				\
+    t data_##t[VECTOR_WORD_TYPE_LEN (t)];	\
+  } t##x##_union_t;
+
+_ (u8);
+_ (u16);
+_ (u32);
+_ (u64);
+_ (i8);
+_ (i16);
+_ (i32);
+_ (i64);
+
+#undef _
+
+#endif
+
+#ifdef CLIB_HAVE_VEC64
+
+#define _(t,n)					\
+  typedef union {				\
+    t##x##n data_##t##x##n;			\
+    t data_##t[n];				\
+  } t##x##n##_union_t;				\
+
+_ (u8, 8);
+_ (u16, 4);
+_ (u32, 2);
+_ (i8, 8);
+_ (i16, 4);
+_ (i32, 2);
+
+#undef _
+
+#endif
+
+#ifdef CLIB_HAVE_VEC128
+
+#define _(t,n)					\
+  typedef union {				\
+    t##x##n data_##t##x##n;			\
+    t data_##t[n];				\
+  } t##x##n##_union_t;				\
+
+_ (u8, 16);
+_ (u16, 8);
+_ (u32, 4);
+_ (u64, 2);
+_ (i8, 16);
+_ (i16, 8);
+_ (i32, 4);
+_ (i64, 2);
+
+#undef _
+
+#endif
 
 #if defined (__SSE2__)
 #include <clib/vector_sse2.h>

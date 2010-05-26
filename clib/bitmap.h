@@ -31,7 +31,7 @@
 #include <clib/error.h>
 #include <clib/bitops.h>	/* for count_set_bits */
 
-static inline uword
+always_inline uword
 clib_bitmap_is_zero (uword * ai)
 {
   uword i;
@@ -41,7 +41,7 @@ clib_bitmap_is_zero (uword * ai)
   return 1;
 }
 
-static inline uword
+always_inline uword
 clib_bitmap_is_equal (uword * a, uword * b)
 {
   uword i;
@@ -64,7 +64,7 @@ clib_bitmap_is_equal (uword * a, uword * b)
 
 #define clib_bitmap_validate(v,n_bits) vec_validate ((v), (n_bits) / BITS (uword))
 
-static inline uword *
+always_inline uword *
 _clib_bitmap_remove_trailing_zeros (uword * a)
 {
   word i;
@@ -79,7 +79,7 @@ _clib_bitmap_remove_trailing_zeros (uword * a)
 }
 
 /* Sets given bit.  Returns old value. */
-static inline uword
+always_inline uword
 clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 {
   uword i0 = i / BITS (a[0]);
@@ -99,7 +99,7 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 }
 
 /* Set bit I to value (either non-zero or zero). */
-static inline uword *
+always_inline uword *
 clib_bitmap_set (uword * ai, uword i, uword value)
 {
   uword i0 = i / BITS (ai[0]);
@@ -125,7 +125,7 @@ clib_bitmap_set (uword * ai, uword i, uword value)
 }
 
 /* Fetch bit I. */
-static inline uword
+always_inline uword
 clib_bitmap_get (uword * ai, uword i)
 {
   uword i0 = i / BITS (ai[0]);
@@ -134,7 +134,7 @@ clib_bitmap_get (uword * ai, uword i)
 }
 
 /* Fetch bit I. */
-static inline uword
+always_inline uword
 clib_bitmap_get_no_check (uword * ai, uword i)
 {
   uword i0 = i / BITS (ai[0]);
@@ -142,8 +142,17 @@ clib_bitmap_get_no_check (uword * ai, uword i)
   return 0 != ((ai[i0] >> i1) & 1);
 }
 
+always_inline uword
+clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
+{
+  uword i0 = i / BITS (ai[0]);
+  uword i1 = i % BITS (ai[0]);
+  ASSERT (i1 + n_bits <= BITS (uword));
+  return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
+}
+
 /* Fetch bits I through I + N_BITS. */
-static inline uword
+always_inline uword
 clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
 {
   uword i0, i1, result;
@@ -176,7 +185,7 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
 
 /* Set bits I through I + N_BITS to given value.
    New bitmap will be returned. */
-static inline uword *
+always_inline uword *
 clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 {
   uword i0, i1, l, t, m;
@@ -219,7 +228,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 }
 
 /* For a multi-word region set all bits to given value. */
-static inline uword *
+always_inline uword *
 clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
   uword a0, a1, b0, b1;
@@ -280,7 +289,7 @@ do {									\
 
 /* Return lowest numbered set bit in bitmap.
    Return infinity (~0) if bitmap is zero. */
-static inline uword clib_bitmap_first_set (uword * ai)
+always_inline uword clib_bitmap_first_set (uword * ai)
 {
   uword i = ~0;
   if (! clib_bitmap_is_zero (ai))
@@ -290,7 +299,7 @@ static inline uword clib_bitmap_first_set (uword * ai)
   return i;
 }
 
-static inline uword
+always_inline uword
 clib_bitmap_first_clear (uword * ai)
 {
     uword i, x, result = 0;
@@ -308,7 +317,7 @@ clib_bitmap_first_clear (uword * ai)
 }
 
 /* Count number of set bits. */
-static inline uword
+always_inline uword
 clib_bitmap_count_set_bits (uword * ai)
 {
   uword i;
@@ -320,7 +329,7 @@ clib_bitmap_count_set_bits (uword * ai)
 
 /* ALU function definition macro for functions taking two bitmaps. */
 #define _(name, body, check_zero)				\
-static inline uword *						\
+always_inline uword *						\
 clib_bitmap_##name (uword * ai, uword * bi)			\
 {								\
   uword i, a, b, bi_len, n_trailing_zeros;			\
@@ -353,7 +362,7 @@ _ (xor, a = a ^ b, 1)
 /* Define functions which duplicate first argument.
    (Normal functions over-write first argument.) */
 #define _(name)						\
-  static inline uword *					\
+  always_inline uword *					\
   clib_bitmap_dup_##name (uword * ai, uword * bi)	\
 { return clib_bitmap_##name (clib_bitmap_dup (ai), bi); }
 
@@ -366,7 +375,7 @@ _ (xor);
 
 /* ALU function definition macro for functions taking one bitmap and an immediate. */
 #define _(name, body, check_zero)			\
-static inline uword *					\
+always_inline uword *					\
 clib_bitmap_##name (uword * ai, uword i)		\
 {							\
   uword i0 = i / BITS (ai[0]);				\
@@ -391,10 +400,10 @@ _ (xori, a = a ^ b, 1)
 #undef _
 
 /* Returns random bitmap of given length. */
-static inline uword *
-clib_bitmap_random (uword n_bits, u32 * seed)
+always_inline uword *
+clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
-  uword * ai = 0;
+  vec_reset_length (ai);
 
   if (n_bits > 0)
     {
@@ -421,7 +430,7 @@ clib_bitmap_random (uword n_bits, u32 * seed)
 }
 
 /* Returns next set bit starting at bit i (~0 if not found). */
-static inline uword
+always_inline uword
 clib_bitmap_next_set (uword * ai, uword i)
 {
   uword i0 = i / BITS (ai[0]);

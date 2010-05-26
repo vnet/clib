@@ -756,15 +756,14 @@ typedef struct {
   uword * symbol_by_name;
 } elf_symbol_table_t;
 
-static always_inline void
+always_inline void
 elf_symbol_table_free (elf_symbol_table_t * s)
 {
   vec_free (s->symbols);
-  vec_free (s->string_table);
   hash_free (s->symbol_by_name);
 }
 
-static always_inline u8 *
+always_inline u8 *
 elf_symbol_name (elf_symbol_table_t * t, elf64_symbol_t * sym)
 { return vec_elt_at_index (t->string_table, sym->name); }
 
@@ -774,7 +773,7 @@ typedef struct {
   u32 section_index;
 } elf_relocation_table_t;
 
-static always_inline void
+always_inline void
 elf_relocation_table_free (elf_relocation_table_t * r)
 {
   vec_free (r->relocations);
@@ -809,13 +808,13 @@ typedef struct {
   elf_relocation_table_t * relocation_tables;
 } elf_main_t;
 
-static always_inline void
+always_inline void
 elf_main_init (elf_main_t * em)
 {
   memset (em, 0, sizeof (em[0]));
 }
 
-static always_inline void
+always_inline void
 elf_main_free (elf_main_t * em)
 {
   uword i;
@@ -835,7 +834,7 @@ elf_main_free (elf_main_t * em)
     elf_relocation_table_free (em->relocation_tables + i);
 }
 
-static always_inline void *
+always_inline void *
 elf_get_contents (elf_main_t * em,
 		  void * data,
 		  uword file_offset,
@@ -854,7 +853,7 @@ elf_get_contents (elf_main_t * em,
   return v;
 }
 
-static always_inline void *
+always_inline void *
 elf_section_contents (elf_main_t * em,
 		      void * data,
 		      uword section_index,
@@ -867,7 +866,7 @@ elf_section_contents (elf_main_t * em,
   return s->contents;
 }
 
-static always_inline void *
+always_inline void *
 elf_segment_contents (elf_main_t * em,
 		      void * data,
 		      uword segment_index)
@@ -879,7 +878,7 @@ elf_segment_contents (elf_main_t * em,
   return s->contents;
 }
 
-static always_inline u8 *
+always_inline u8 *
 elf_section_name (elf_main_t * em, elf_section_t * s)
 {
   elf_section_t * es = vec_elt_at_index (em->sections, em->file_header.section_header_string_table_index);

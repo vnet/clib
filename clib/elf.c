@@ -4,23 +4,23 @@
 #include <clib/vec.h>
 #include <clib/elf.h>
 
-static always_inline u8
+always_inline u8
 elf_swap_u8 (elf_main_t * em, u8 x)
 { return x; }
 
-static always_inline u16
+always_inline u16
 elf_swap_u16 (elf_main_t * em, u16 x)
 { return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
 
-static always_inline u32
+always_inline u32
 elf_swap_u32 (elf_main_t * em, u32 x)
 { return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
 
-static always_inline u64
+always_inline u64
 elf_swap_u64 (elf_main_t * em, u64 x)
 { return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
 
-static always_inline void
+always_inline void
 elf_swap_first_header (elf_main_t * em, elf_first_header_t * h)
 {
   h->architecture = elf_swap_u16 (em, h->architecture);
@@ -471,6 +471,7 @@ add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
     {
       tab->symbols = elf_section_contents (em, data, s - em->sections,
 					   sizeof (tab->symbols[0]));
+      tab->symbols = vec_dup (tab->symbols);
       for (i = 0; i < vec_len (tab->symbols); i++)
 	{
 #define _(t,f) tab->symbols[i].f = elf_swap_##t (em, tab->symbols[i].f);
@@ -526,6 +527,8 @@ add_relocation_table (elf_main_t * em, void * data, elf_section_t * s)
 
       r = elf_section_contents (em, data, t->section_index, 
 				sizeof (r[0]) + has_addend * sizeof (r->addend[0]));
+      r = vec_dup (r);
+
       if (em->need_byte_swap)
 	for (i = 0; i < vec_len (r); i++)
 	  {
@@ -655,8 +658,8 @@ clib_error_t * elf_read_file (elf_main_t * em, char * file_name)
 {
   int fd;
   struct stat fd_stat;
-  uword mmap_length;
-  void * data;
+  uword mmap_length = 0;
+  void * data = 0;
   clib_error_t * error = 0;
 
   elf_main_init (em);
@@ -770,7 +773,7 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
       {
 	u8 * name = elf_section_name (em, s);
 	s->header.name = vec_len (st);
-	vec_add (st, name, strlen (name) + 1);
+	vec_add (st, name, strlen ((char *) name) + 1);
       }
 
     s = vec_elt_at_index (em->sections, em->file_header.section_header_string_table_index);

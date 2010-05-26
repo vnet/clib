@@ -273,13 +273,17 @@ test_qhash_main (unformat_input_t * input)
   tm->hash_set_time /= tm->set_count;
   tm->hash_unset_time /= tm->unset_count;
 
-  fformat (stderr, "get/set/unset clocks %.2e %.2e %.2e clib %.2e %.2e %.2e\n",
+  fformat (stderr, "get/set/unset clocks %.2e %.2e %.2e clib %.2e %.2e %.2e ratio %.2f %.2f %.2f\n",
 	   tm->get_time * tm->time.clocks_per_second,
 	   tm->set_time * tm->time.clocks_per_second,
 	   tm->unset_time * tm->time.clocks_per_second,
 	   tm->hash_get_time * tm->time.clocks_per_second,
 	   tm->hash_set_time * tm->time.clocks_per_second,
-	   tm->hash_unset_time * tm->time.clocks_per_second);
+	   tm->hash_unset_time * tm->time.clocks_per_second,
+	   tm->hash_get_time / tm->get_time,
+	   tm->hash_set_time / tm->set_time,
+	   tm->hash_unset_time / tm->unset_time);
+	   
 
  done:
   return error;

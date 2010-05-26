@@ -26,13 +26,13 @@
 #include <clib/mem.h>
 #include <clib/byte_order.h>	/* for clib_arch_is_big_endian */
 
-static inline void zero_pair (hash_t * h, hash_pair_t * p)
+always_inline void zero_pair (hash_t * h, hash_pair_t * p)
 { memset (p, 0, hash_pair_bytes (h)); }
 
-static inline void init_pair (hash_t * h, hash_pair_t * p)
+always_inline void init_pair (hash_t * h, hash_pair_t * p)
 { memset (p->value, ~0, hash_value_bytes (h)); }
 
-static inline hash_pair_union_t *
+always_inline hash_pair_union_t *
 get_pair (void * v, uword i)
 {
   hash_t * h = hash_header (v);
@@ -43,7 +43,7 @@ get_pair (void * v, uword i)
   return (hash_pair_union_t *) p;
 }
 
-static inline void set_is_user (void * v, uword i, uword is_user)
+always_inline void set_is_user (void * v, uword i, uword is_user)
 {
   hash_t * h = hash_header (v);
   uword i0 = i / BITS(h->is_user[0]);
@@ -203,7 +203,7 @@ uword hash_memory (void * p, word n_bytes, uword state)
 }
 
 #if uword_bits == 64
-static inline uword hash_uword (uword x)
+always_inline uword hash_uword (uword x)
 {
   u64 a, b, c;
 
@@ -214,7 +214,7 @@ static inline uword hash_uword (uword x)
   return c;
 }
 #else
-static inline uword hash_uword (uword x)
+always_inline uword hash_uword (uword x)
 {
   u32 a, b, c;
 
@@ -228,7 +228,7 @@ static inline uword hash_uword (uword x)
 
 /* Call sum function.  Hash code will be sum function value
    modulo the prime length of the hash table. */
-static inline uword key_sum (hash_t * h, uword key)
+always_inline uword key_sum (hash_t * h, uword key)
 {
   uword sum;
   switch (pointer_to_uword ((void *) h->key_sum))
@@ -257,7 +257,7 @@ static inline uword key_sum (hash_t * h, uword key)
   return sum;
 }
 
-static inline uword key_equal1 (hash_t * h, uword key1, uword key2, uword e)
+always_inline uword key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 {
   switch (pointer_to_uword ((void *) h->key_equal))
     {
@@ -284,7 +284,7 @@ static inline uword key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 }
 
 /* Compares two keys: returns 1 if equal, 0 if not. */
-static inline uword key_equal (hash_t * h, uword key1, uword key2)
+always_inline uword key_equal (hash_t * h, uword key1, uword key2)
 {
   uword e = key1 == key2;
   if (DEBUG > 0 && key1 == key2)

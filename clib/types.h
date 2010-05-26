@@ -28,8 +28,8 @@
 
 /* Define signed and unsigned 8, 16, 32, and 64 bit types
    and machine signed/unsigned word for all architectures. */
-typedef signed char i8;
-typedef signed short i16;
+typedef char i8;
+typedef short i16;
 
 typedef __complex__ short ci16;
 typedef __complex__ int ci32;
@@ -109,7 +109,7 @@ typedef u32 clib_address_t;
    MIPS is currently the only machine that can have different sized
    pointers and machine words (but only when compiling with 64 bit
    registers and 32 bit pointers). */
-static inline uword
+extern inline __attribute__ ((always_inline)) uword
 pointer_to_uword (const void * p)
 { return (uword) (clib_address_t) p; }
 

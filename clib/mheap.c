@@ -37,7 +37,7 @@ static void mheap_get_trace (u8 * v, uword offset, uword size);
 static void mheap_put_trace (u8 * v, uword offset, uword size);
 static int mheap_trace_sort (const void * t1, const void * t2);
 
-static always_inline void mheap_lock_init (mheap_t * h)
+always_inline void mheap_lock_init (mheap_t * h)
 {
 #ifdef MHEAP_LOCK_PTHREAD
   {
@@ -52,7 +52,7 @@ static always_inline void mheap_lock_init (mheap_t * h)
 #endif
 }
 
-static always_inline void mheap_maybe_lock (void * v)
+always_inline void mheap_maybe_lock (void * v)
 {
   mheap_t * h = mheap_header (v);
   if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
@@ -63,7 +63,7 @@ static always_inline void mheap_maybe_lock (void * v)
 #endif
 }
 
-static always_inline void mheap_maybe_unlock (void * v)
+always_inline void mheap_maybe_unlock (void * v)
 {
   mheap_t * h = mheap_header (v);
   if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
@@ -74,11 +74,11 @@ static always_inline void mheap_maybe_unlock (void * v)
 #endif
 }
 
-static always_inline uword
+always_inline uword
 mheap_prev_is_free (mheap_elt_t * e)
 { return (e->prev_size & MHEAP_PREV_IS_FREE) != 0; }
 
-static always_inline uword
+always_inline uword
 mheap_is_free (u8 * v, mheap_elt_t * e)
 {
   /* Final element is never free since it would have been
@@ -89,7 +89,7 @@ mheap_is_free (u8 * v, mheap_elt_t * e)
     return mheap_prev_is_free (mheap_next_elt (v, e));
 }
 
-static always_inline void
+always_inline void
 mheap_elt_set_size (u8 * v, uword offset, uword size, uword flags)
 {
   mheap_elt_t * e = mheap_elt_at_offset (v, offset);
@@ -104,7 +104,7 @@ mheap_elt_set_size (u8 * v, uword offset, uword size, uword flags)
    to write a free element header. */
 #define MHEAP_MIN_SIZE (sizeof (mheap_elt_t) + mheap_round_size (1))
 
-static always_inline uword
+always_inline uword
 size_to_bin (uword size)
 {
   uword bin;
@@ -130,7 +130,7 @@ size_to_bin (uword size)
   return bin;
 }
 
-static always_inline uword
+always_inline uword
 bin_to_size (uword bin)
 {
   uword size;
@@ -156,7 +156,7 @@ bin_to_size (uword bin)
    and resize them then.  This way we ensure that mheap_{get,put}
    operations are not recursive. */
 
-static always_inline uword
+always_inline uword
 free_list_length_needs_resize (uword current_len, uword max_len)
 {
   ASSERT (max_len >= current_len);
@@ -164,7 +164,7 @@ free_list_length_needs_resize (uword current_len, uword max_len)
 }
 
 /* Returns offset of free list vector for given bin. */
-static always_inline uword
+always_inline uword
 free_list_offset (void * v, uword i)
 {
   mheap_t * h = mheap_header (v);
@@ -176,7 +176,7 @@ free_list_offset (void * v, uword i)
 
 /* Max number of free heap elements we can store in given
    free list bin. */
-static always_inline uword
+always_inline uword
 free_list_max_len (void * v, uword i)
 {
   mheap_t * h = mheap_header (v);
@@ -251,7 +251,7 @@ free_list_resize (void * v)
   return v;
 }
 
-static always_inline mheap_free_elt_t *
+always_inline mheap_free_elt_t *
 add_to_free_list (void * v, uword bin)
 {
   mheap_t * h = mheap_header (v);
@@ -270,14 +270,14 @@ add_to_free_list (void * v, uword bin)
   return f + l;
 }
 
-static always_inline void
+always_inline void
 set_free_elt2 (u8 * v, mheap_elt_t * e, mheap_elt_t * n, uword fi)
 {
   *mheap_elt_data (v, e) = fi;
   n->prev_size |= MHEAP_PREV_IS_FREE;
 }
 
-static always_inline void
+always_inline void
 set_free_elt (u8 * v, uword i, uword fi)
 {
   mheap_elt_t * e = mheap_elt_at_offset (v, i);
@@ -293,7 +293,7 @@ do {							\
   fi = *mheap_elt_data (v, e);				\
 } while (0)
 
-static always_inline void
+always_inline void
 add_free_elt (u8 * v, uword offset, uword size)
 {
   mheap_t * h = mheap_header (v);
@@ -308,7 +308,7 @@ add_free_elt (u8 * v, uword offset, uword size)
   set_free_elt (v, f->offset, f - h->free_lists[bin]);
 }
 
-static always_inline void
+always_inline void
 remove_free_elt (u8 * v, uword b, uword i)
 {
   mheap_t * h = mheap_header (v);
@@ -343,10 +343,10 @@ static uword mheap_vm_elt (u8 * v, uword flags, uword offset);
 
 static uword mheap_page_size;
 
-static always_inline uword mheap_page_round (uword addr)
+static inline uword mheap_page_round (uword addr)
 { return (addr + mheap_page_size - 1) &~ (mheap_page_size - 1); }
 
-static always_inline uword mheap_page_truncate (uword addr)
+static inline uword mheap_page_truncate (uword addr)
 { return addr &~ (mheap_page_size - 1); }
 
 /* Search free lists for object with given size and alignment. */
@@ -871,7 +871,7 @@ static void combine_free_elts (u8 * v, mheap_elt_t * e0, mheap_elt_t * e1)
     mheap_vm_elt (v, MHEAP_VM_UNMAP, g->offset);
 }
 
-static always_inline uword
+always_inline uword
 mheap_vm_alloc_size (void * v)
 {
   mheap_t * h = mheap_header (v);
@@ -1028,7 +1028,7 @@ void mheap_foreach (u8 * v,
 }
 
 /* Bytes in mheap header overhead not including data bytes. */
-static always_inline uword
+always_inline uword
 mheap_bytes_overhead (u8 * v)
 {
   mheap_t * h = mheap_header (v);
@@ -1188,8 +1188,10 @@ u8 * format_mheap (u8 * s, va_list * va)
 	    continue;
 
 	if (t == traces_copy)
-	  s = format (s, "%=9s%=9s Traceback\n", "Bytes", "Count");
-	s = format (s, "%9d%9d", t->n_bytes, t->n_allocations);
+	  s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count", 
+            "Sample");
+	s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, 
+                    t->offset + v);
 	indent = format_get_indent (s);
 	for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
 	  {
@@ -1416,6 +1418,7 @@ static void mheap_get_trace (u8 * v, uword offset, uword size)
 
   t->n_allocations += 1;
   t->n_bytes += size;
+  t->offset = offset;           /* keep a sample to autopsy */
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
 }
 
@@ -1461,7 +1464,7 @@ static int mheap_trace_sort (const void * _t1, const void * _t2)
   return cmp;
 }
 
-static always_inline void
+always_inline void
 mheap_trace_main_free (mheap_trace_main_t * tm)
 {
   vec_free (tm->traces);

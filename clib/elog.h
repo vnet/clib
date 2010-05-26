@@ -31,71 +31,34 @@
 #include <clib/serialize.h>
 #include <clib/time.h>		/* for clib_cpu_time_now */
 
-typedef union {
-  /* 16 byte short form integer events for high speed gathering. */
-  struct {
-    /* Negative means long form.
-       Low log2_n_event_types bits gives event type.
-       Higher bits are track number. */
-    i32 type_and_track;
+typedef struct{
+  union {
+    /* Absolute time stamp in CPU clock cycles. */
+    u64 time_cycles;
 
-    /* Time difference in clock cycles from last event collected. */
-    u32 dt_lo;
-
-    /* Up to 8 bytes of event data.  8 byte aligned. */
-    u8 data[8];
+    /* Absolute time as floating point number in seconds. */
+    f64 time;
   };
 
-  /* Long form additions which follow short form. */
-  struct {
-    /* 12 more bytes of data for long form.  Must be first
-       so that first and second ievent data fields are next
-       to each other in memory. */
-    u8 data_continued[12];
+  /* Event type index. */
+  u16 type;
 
-    /* High 32 bits of time difference. */
-    u32 dt_hi;
-  };
-} elog_ievent_t;
+  /* Track for this event.  Tracks allow events to be sorted and
+     displayed by track.  Think of 2 dimensional display with time and
+     track being the x and y axes.*/
+  u16 track;
 
-static always_inline uword
-elog_ievent_is_long_form (elog_ievent_t * i)
-{ return i->type_and_track < 0; }
-
-static always_inline uword
-elog_ievent_get_type (elog_ievent_t * i)
-{
-  i32 tt = i->type_and_track;
-  return (tt < 0 ? ~tt : tt) & 0xffff;
-}
-
-static always_inline uword
-elog_ievent_get_track (elog_ievent_t * i)
-{
-  i32 tt = i->type_and_track;
-  return ((tt < 0 ? ~tt : tt) >> 16) & 0xffff;
-}
-
-/* Generic events with floating point time.
-   These are used when we don't care about speed and compactness. */
-typedef struct {
-  /* Always positive event type and track. */
-  u16 type, track;
-
-  /* Up to 20 bytes of data for this event. */
+  /* 20-bytes of data follows and pads to 32 bytes. */
   u8 data[20];
-
-  /* Absolute time of this event in seconds. */
-  f64 time;
 } elog_event_t;
 
 typedef struct {
-  /* Negative type index assigned to this type.
+  /* Type index plus one assigned to this type.
      This is used to mark type as seen. */
   u32 type_index_plus_one;
 
   /* String table as a vector constructed when type is registered. */
-  char ** string_table;
+  char ** enum_strings_vector;
 
   /* Format string. (example: "my-event (%d,%d)"). */
   char * format;
@@ -103,7 +66,8 @@ typedef struct {
   /* Specifies how arguments to format are parsed from event data.
      String of characters '0' '1' or '2' '3' to specify log2 size of data
      (e.g. for u8, u16, u32 or u64),
-     's' means argument is an index into string table for this type.
+     's' means a null-terminated C string
+     't' means argument is an index into enum string table for this type.
      'e' is a float,
      'f' is a double. */
   char * format_args;
@@ -111,13 +75,11 @@ typedef struct {
   /* Function name generating event. */
   char * function;
 
-  u32 n_data_bytes;
-
-  /* Number of elements in string table. */
-  u32 n_strings;
+  /* Number of elements in string enum table. */
+  u32 n_enum_strings;
 
   /* String table for enum/number to string formatting. */
-  char * strings[];
+  char * enum_strings[];
 } elog_event_type_t;
 
 typedef struct {
@@ -138,28 +100,26 @@ typedef struct {
 } elog_time_stamp_t;
 
 typedef struct {
-  /* Time stamp of last event.  Used to compute
-     time difference between current and previous events. */
-  u64 cpu_time_last_event;
-
-  /* Vector of ievents (circular buffer).  Power of 2 size. */
-  elog_ievent_t * ievent_ring;
-
-  /* Total number of ievents inserted into buffer. */
-  u64 n_total_ievents;
+  /* Total number of events in buffer (long/short form both count
+     as 1 event). */
+  u64 n_total_events;
 
   /* When count reaches limit logging is disabled.  This is
      used for event triggers. */
-  u64 n_total_ievents_disable_limit;
+  u64 n_total_events_disable_limit;
 
-  /* Power of 2 number of elements in circular buffer. */
-  u32 ievent_ring_size;
+  /* Dummy event to use when logger is disabled. */
+  elog_event_t dummy_event;
+
+  /* Vector of events (circular buffer).  Power of 2 size.
+     Used when events are being collected. */
+  elog_event_t * event_ring;
+
+  /* Power of 2 number of elements in ring. */
+  u32 event_ring_size;
 
   /* Set/unset to globally enable/disable logging of events. */
   u32 is_enabled;
-
-  /* Dummy ievents to use when logger is disabled. */
-  elog_ievent_t dummy_ievents[2];
 
   /* Vector of event types. */
   elog_event_type_t * event_types;
@@ -186,37 +146,38 @@ typedef struct {
   elog_event_t * events;
 } elog_main_t;
 
-static always_inline uword
+always_inline uword
 elog_n_events_in_buffer (elog_main_t * em)
-{ return clib_min (em->n_total_ievents, em->ievent_ring_size); }
+{ return clib_min (em->n_total_events, em->event_ring_size); }
 
-static always_inline uword
+always_inline uword
 elog_buffer_capacity (elog_main_t * em)
-{ return em->ievent_ring_size; }
+{ return em->event_ring_size; }
 
-static always_inline void
+always_inline void
 elog_enable_disable (elog_main_t * em, int is_enabled)
 { em->is_enabled = is_enabled; }
 
-static always_inline void
+always_inline void
 elog_reset_buffer (elog_main_t * em)
 {
-  em->n_total_ievents = 0;
-  em->n_total_ievents_disable_limit = ~0ULL;
+  em->n_total_events = 0;
+  em->n_total_events_disable_limit = ~0ULL;
 }
 
 /* Disable logging after specified number of ievents have been logged.
    This is used as a "debug trigger" when a certain event has occurred.
    Events will be logged both before and after the "event" but the
    event will not be lost as long as N < RING_SIZE. */
-static always_inline void
+always_inline void
 elog_disable_after_events (elog_main_t * em, uword n)
-{ em->n_total_ievents_disable_limit = em->n_total_ievents + n; }
+{ em->n_total_events_disable_limit = em->n_total_events + n; }
 
-/* Signal a trigger. */
-static always_inline void
+/* Signal a trigger.  We do this when we encounter an event that we want to save
+   context around (before and after). */
+always_inline void
 elog_disable_trigger (elog_main_t * em)
-{ em->n_total_ievents_disable_limit = em->n_total_ievents + em->ievent_ring_size / 2; }
+{ em->n_total_events_disable_limit = em->n_total_events + vec_len (em->event_ring) / 2; }
 
 /* External function to register types/tracks. */
 word elog_event_type_register (elog_main_t * em, elog_event_type_t * t);
@@ -224,21 +185,18 @@ word elog_track_register (elog_main_t * em, elog_track_t * t);
 
 /* Add an event to the log.  Returns a pointer to the
    data for caller to write into. */
-static always_inline void *
+always_inline void *
 elog_event_data_inline (elog_main_t * em,
 			elog_event_type_t * type,
 			elog_track_t * track,
-			u64 cpu_time,
-			uword n_data_bytes)
+			u64 cpu_time)
 {
-  elog_ievent_t * e;
-  i64 dt;
+  elog_event_t * e;
   word type_index, track_index;
-  uword tt, is_long_form;
 
   /* Return the user dummy memory to scribble data into. */
   if (PREDICT_FALSE (! em->is_enabled))
-    return em->dummy_ievents[0].data;
+    return em->dummy_event.data;
 
   type_index = (word) type->type_index_plus_one - 1;
   track_index = (word) track->track_index_plus_one - 1;
@@ -252,33 +210,20 @@ elog_event_data_inline (elog_main_t * em,
 
   ASSERT (type_index < vec_len (em->event_types));
   ASSERT (track_index < vec_len (em->tracks));
+  ASSERT (is_pow2 (vec_len (em->event_ring)));
 
-  dt = cpu_time - em->cpu_time_last_event;
-  ASSERT (dt >= 0);
-  em->cpu_time_last_event = cpu_time;
+  e = vec_elt_at_index (em->event_ring,
+			em->n_total_events & (em->event_ring_size - 1));
 
-  ASSERT (is_pow2 (em->ievent_ring_size));
+  e->time_cycles = cpu_time;
+  e->type = type_index;
+  e->track = track_index;
 
-  e = vec_elt_at_index (em->ievent_ring,
-			em->n_total_ievents & (em->ievent_ring_size - 1));
-
-  e->dt_lo = dt;
-  is_long_form = e->dt_lo != dt || n_data_bytes > sizeof (e->data);
-
-  /* Encode type track and long/short form flag. */
-  tt = type_index + (track_index << 16);
-  e->type_and_track = is_long_form ? ~tt : tt;
-
-  /* For long form save high bits of time difference. */
-  e[1].dt_hi = dt >> 32;
-
-  /* Circular buffer indexing. For long form events (2 slots) at end of
-     circular buffer we reserve an extra slot. */
-  em->n_total_ievents += 1 + (is_long_form && e + 1 - em->ievent_ring < em->ievent_ring_size);
+  em->n_total_events += 1;
 
   /* Keep logging enabled as long as we are below trigger limit. */
-  ASSERT (em->n_total_ievents_disable_limit != 0);
-  em->is_enabled &= em->n_total_ievents < em->n_total_ievents_disable_limit;
+  ASSERT (em->n_total_events_disable_limit != 0);
+  em->is_enabled &= em->n_total_events < em->n_total_events_disable_limit;
 
   /* Return user data for caller to fill in. */
   return e->data;
@@ -289,85 +234,86 @@ void *
 elog_event_data (elog_main_t * em,
 		 elog_event_type_t * type,
 		 elog_track_t * track,
-		 u64 cpu_time,
-		 uword n_data_bytes);
+		 u64 cpu_time);
 
 /* Non-inline version. */
-static always_inline void *
+always_inline void *
 elog_event_data_not_inline (elog_main_t * em,
 			    elog_event_type_t * type,
 			    elog_track_t * track,
-			    u64 cpu_time,
-			    uword n_data_bytes)
+			    u64 cpu_time)
 {
   /* Return the user dummy memory to scribble data into. */
   if (PREDICT_FALSE (! em->is_enabled))
-    return em->dummy_ievents[0].data;
-  return elog_event_data (em, type, track, cpu_time, n_data_bytes);
+    return em->dummy_event.data;
+  return elog_event_data (em, type, track, cpu_time);
 }
 
 /* Most common form: log a single 32 bit datum. */
-static always_inline void
+always_inline void
 elog (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
   u32 * d = elog_event_data_not_inline
     (em,
      type,
      &em->default_track,
-     clib_cpu_time_now (),
-     sizeof (d[0]));
+     clib_cpu_time_now ());
   d[0] = data;
 }
 
 /* Inline version of above. */
-static always_inline void
+always_inline void
 elog_inline (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
   u32 * d = elog_event_data_inline
     (em,
      type,
      &em->default_track,
-     clib_cpu_time_now (),
-     sizeof (d[0]));
+     clib_cpu_time_now ());
   d[0] = data;
 }
 
-static always_inline void *
+always_inline void *
 elog_data (elog_main_t * em, elog_event_type_t * type, elog_track_t * track)
 {
   return elog_event_data_not_inline
     (em, type, track,
-     clib_cpu_time_now (),
-     type->n_data_bytes);
+     clib_cpu_time_now ());
 }
 
-static always_inline void *
+always_inline void *
 elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * track)
 {
   return elog_event_data_inline
     (em, type, track,
-     clib_cpu_time_now (),
-     type->n_data_bytes);
+     clib_cpu_time_now ());
 }
 
 /* Macro shorthands for generating/declaring events. */
-#define __ELOG_TYPE_VAR(f) __elog_type_##f
+#define __ELOG_TYPE_VAR(f) f
+#define __ELOG_TRACK_VAR(f) f
 
 #define ELOG_TYPE_DECLARE(f) static elog_event_type_t __ELOG_TYPE_VAR(f)
 
-#define ELOG_TYPE_DECLARE_HELPER(f,fmt,func)		\
-  static elog_event_type_t __ELOG_TYPE_VAR(f) = {	\
-    .format = fmt,					\
-    .function = func,					\
-  }
+#define ELOG_TYPE_INIT_FORMAT_AND_FUNCTION(fmt,func) \
+  { .format = fmt, .function = func, }
 
-#define ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt) \
+#define ELOG_TYPE_INIT(fmt) \
+  ELOG_TYPE_INIT_FORMAT_AND_FUNCTION(fmt,(char *) __FUNCTION__)
+
+#define ELOG_TYPE_DECLARE_HELPER(f,fmt,func)		\
+  static elog_event_type_t __ELOG_TYPE_VAR(f) =		\
+    ELOG_TYPE_INIT_FORMAT_AND_FUNCTION (fmt, func)
+
+#define ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt)		\
   ELOG_TYPE_DECLARE_HELPER (f, fmt, (char *) __FUNCTION__)
-#define ELOG_TYPE_DECLARE_FORMAT(f,fmt) \
+
+#define ELOG_TYPE_DECLARE_FORMAT(f,fmt)		\
   ELOG_TYPE_DECLARE_HELPER (f, fmt, 0)
 
 /* Shorthands with and without __FUNCTION__.
    D for decimal; X for hex.  F for __FUNCTION__. */
+#define ELOG_TYPE(f,fmt) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION(f,fmt)
 #define ELOG_TYPE_D(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " %d")
 #define ELOG_TYPE_X(f)  ELOG_TYPE_DECLARE_FORMAT (f, #f " 0x%x")
 #define ELOG_TYPE_DF(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " %d")
@@ -375,26 +321,29 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 #define ELOG_TYPE_FD(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " %d")
 #define ELOG_TYPE_FX(f) ELOG_TYPE_DECLARE_FORMAT_AND_FUNCTION (f, #f " 0x%x")
 
-#define __ELOG_TRACK_VAR(f) __elog_track_##f
 #define ELOG_TRACK_DECLARE(f) static elog_track_t __ELOG_TRACK_VAR(f)
 #define ELOG_TRACK(f) ELOG_TRACK_DECLARE(f) = { .name = #f, }
 
 /* Log 32 bits of data. */
-#define ELOG(em,f,data) elog (em, &__ELOG_TYPE_VAR(f), data)
-#define ELOG_INLINE(em,f,data) elog_inline (em, &__ELOG_TYPE_VAR(f), data)
+#define ELOG(em,f,data) elog ((em), &__ELOG_TYPE_VAR(f), data)
+#define ELOG_INLINE(em,f,data) elog_inline ((em), &__ELOG_TYPE_VAR(f), data)
 
 /* Return data pointer to fill in. */
 #define ELOG_TRACK_DATA(em,f,track) \
-  elog_data (em, &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
+  elog_data ((em), &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
 #define ELOG_TRACK_DATA_INLINE(em,f,track) \
-  elog_data_inline (em, &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
+  elog_data_inline ((em), &__ELOG_TYPE_VAR(f), &__ELOG_TRACK_VAR(track))
 
 /* Shorthand with default track. */
-#define ELOG_DATA(em,f) elog_data (em, &__ELOG_TYPE_VAR (f), &em->default_track)
-#define ELOG_DATA_INLINE(em,f) elog_data_inline (em, &__ELOG_TYPE_VAR (f), &em->default_track)
+#define ELOG_DATA(em,f) elog_data ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
+#define ELOG_DATA_INLINE(em,f) elog_data_inline ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 
-/* Convert ievents to events and return them as a vector. */
+/* Convert ievents to events and return them as a vector.
+   Sets em->events to resulting vector. */
 elog_event_t * elog_get_events (elog_main_t * em);
+
+/* Convert ievents to events and return them as a vector with no side effects. */
+elog_event_t * elog_peek_events (elog_main_t * em);
 
 /* Merge two logs. */
 void elog_merge (elog_main_t * dst, elog_main_t * src);
@@ -409,30 +358,28 @@ void unserialize_elog_main (serialize_main_t * m, va_list * va);
 void elog_init (elog_main_t * em, u32 n_ievents);
 
 #ifdef CLIB_UNIX
-static always_inline clib_error_t *
+always_inline clib_error_t *
 elog_write_file (elog_main_t * em, char * unix_file)
 {
   serialize_main_t m;
   clib_error_t * error;
 
-  if ((error = serialize_open_unix_file (&m, unix_file)))
-    return error;
-  if ((error = serialize (&m, serialize_elog_main, em)))
-    return error;
-  return serialize_close (&m);
+  serialize_open_unix_file (&m, unix_file);
+  if (! (error = serialize (&m, serialize_elog_main, em)))
+    serialize_close (&m);
+  return error;
 }
 
-static always_inline clib_error_t *
+always_inline clib_error_t *
 elog_read_file (elog_main_t * em, char * unix_file)
 {
   serialize_main_t m;
   clib_error_t * error;
 
-  if ((error = unserialize_open_unix_file (&m, unix_file)))
-    return error;
-  if ((error = unserialize (&m, unserialize_elog_main, em)))
-    return error;
-  return unserialize_close (&m);
+  unserialize_open_unix_file (&m, unix_file);
+  if (! (error = unserialize (&m, unserialize_elog_main, em)))
+    unserialize_close (&m);
+  return error;
 }
 
 #endif /* CLIB_UNIX */

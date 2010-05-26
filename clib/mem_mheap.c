@@ -128,6 +128,9 @@ static uword my_is_heap_object (void * p)
     return 0;
 
   e = mheap_elt_at_offset (heap, offset);
+  if (mheap_is_last (e))
+    return 1;
+
   n = mheap_next_elt (heap, e);
   
   /* Check that heap forward and reverse pointers agree. */

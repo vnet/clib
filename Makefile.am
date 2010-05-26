@@ -24,10 +24,12 @@ TESTS	=  test_elog \
 	   test_phash \
 	   test_qhash \
 	   test_random_isaac \
+	   test_serialize \
 	   test_socket \
 	   test_time \
 	   test_timing_wheel \
 	   test_vec \
+	   test_vhash \
 	   test_zvec
 
 noinst_PROGRAMS = $(TESTS)
@@ -44,10 +46,12 @@ test_mheap_SOURCES = clib/test_mheap.c
 test_phash_SOURCES = clib/test_phash.c
 test_qhash_SOURCES = clib/test_qhash.c
 test_random_isaac_SOURCES = clib/test_random_isaac.c
+test_serialize_SOURCES = clib/test_serialize.c
 test_socket_SOURCES = clib/test_socket.c
 test_time_SOURCES = clib/test_time.c
 test_timing_wheel_SOURCES = clib/test_timing_wheel.c
 test_vec_SOURCES = clib/test_vec.c
+test_vhash_SOURCES = clib/test_vhash.c
 test_zvec_SOURCES = clib/test_zvec.c
 
 # All unit tests use ASSERT for failure
@@ -64,9 +68,11 @@ test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_vhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
 test_elog_LDADD =	libclib.la -lpthread
@@ -80,10 +86,12 @@ test_mheap_LDADD =	libclib.la -lpthread
 test_phash_LDADD =	libclib.la -lpthread
 test_qhash_LDADD =	libclib.la -lpthread
 test_random_isaac_LDADD =	libclib.la -lpthread
+test_serialize_LDADD =	libclib.la -lpthread
 test_socket_LDADD =	libclib.la -lpthread
 test_time_LDADD =	libclib.la -lm -lpthread
 test_timing_wheel_LDADD =	libclib.la -lm -lpthread
 test_vec_LDADD =	libclib.la -lpthread
+test_vhash_LDADD =	libclib.la -lpthread
 test_zvec_LDADD =	libclib.la -lpthread
 
 test_elog_LDFLAGS = -static
@@ -97,10 +105,12 @@ test_mheap_LDFLAGS = -static
 test_phash_LDFLAGS = -static
 test_qhash_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
+test_serialize_LDFLAGS = -static
 test_socket_LDFLAGS = -static
 test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
+test_vhash_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
@@ -115,8 +125,10 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_qhash.c \
   clib/test_random.c \
   clib/test_random_isaac.c \
+  clib/test_serialize.c \
   clib/test_timing_wheel.c \
   clib/test_vec.c \
+  clib/test_vhash.c \
   clib/test_zvec.c \
   clib/test_vec.h \
   clib/test_standalone_string.h
@@ -141,9 +153,11 @@ nobase_include_HEADERS = \
     clib/math.h \
     clib/md5.h \
     clib/mem.h \
+    clib/mhash.h \
     clib/mheap.h \
     clib/os.h \
     clib/phash.h \
+    clib/pipeline.h \
     clib/pool.h \
     clib/qhash.h \
     clib/random.h \
@@ -166,6 +180,7 @@ nobase_include_HEADERS = \
     clib/vector_funcs.h \
     clib/vector_iwmmxt.h \
     clib/vector_sse2.h \
+    clib/vhash.h \
     clib/vm_linux_kernel.h \
     clib/vm_standalone.h \
     clib/vm_unix.h \
@@ -183,6 +198,7 @@ CLIB_CORE = \
   clib/hash.c \
   clib/heap.c \
   clib/longjmp.S \
+  clib/mhash.c \
   clib/mheap.c \
   clib/md5.c \
   clib/mem_mheap.c \
@@ -198,6 +214,7 @@ CLIB_CORE = \
   clib/timing_wheel.c \
   clib/unformat.c \
   clib/vec.c \
+  clib/vhash.c \
   clib/zvec.c
 
 # Core plus Unix additions

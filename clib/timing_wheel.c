@@ -6,7 +6,6 @@
 void
 timing_wheel_init (timing_wheel_t * w, u64 current_cpu_time, f64 cpu_clocks_per_second)
 {
-  
   if (w->max_sched_time <= w->min_sched_time)
     {
       w->min_sched_time = 1e-6;
@@ -32,9 +31,7 @@ timing_wheel_init (timing_wheel_t * w, u64 current_cpu_time, f64 cpu_clocks_per_
     = w->current_time_index + ((u64) 1 << (w->n_wheel_elt_time_bits - w->log2_clocks_per_bin));
 }
 
-/* "rti" relative time index is in wheel ticks relative to
-   current_time_index. */
-static always_inline uword
+always_inline uword
 get_level_and_relative_time (timing_wheel_t * w, u64 cpu_time, uword * rtime_result)
 {
   u64 dt, rtime;
@@ -52,34 +49,27 @@ get_level_and_relative_time (timing_wheel_t * w, u64 cpu_time, uword * rtime_res
   for (level_index = 0; (rtime >> w->log2_bins_per_wheel) != 0; level_index++)
     rtime = (rtime >> w->log2_bins_per_wheel) - 1;
 
+  /* Return offset within level and level index. */
+  ASSERT (rtime < w->bins_per_wheel);
   *rtime_result = rtime;
-
   return level_index;
 }
 
-/* Find current time on this level. */
-static always_inline uword
-current_time_wheel_index (timing_wheel_t * w, uword level_index)
-{
-  uword t;
+always_inline uword
+time_index_to_wheel_index (timing_wheel_t * w, uword level_index, u64 ti)
+{ return (ti >> (level_index * w->log2_bins_per_wheel)) & w->bins_per_wheel_mask; }
 
-  /* Find current time on this level. */
-  t = w->current_time_index;
-  while (level_index > 0)
-    {
-      t >>= w->log2_bins_per_wheel;
-      level_index--;
-    }
-  t &= w->bins_per_wheel_mask;
-  return t;
-}
+/* Find current time on this level. */
+always_inline uword
+current_time_wheel_index (timing_wheel_t * w, uword level_index)
+{ return time_index_to_wheel_index (w, level_index, w->current_time_index); }
 
 /* Circular wheel indexing. */
-static always_inline uword
+always_inline uword
 wheel_add (timing_wheel_t * w, word x)
 { return x & w->bins_per_wheel_mask; }
 
-static always_inline uword
+always_inline uword
 rtime_to_wheel_index (timing_wheel_t * w, uword level_index, uword rtime)
 {
   uword t = current_time_wheel_index (w, level_index);
@@ -97,6 +87,7 @@ validate_level (timing_wheel_t * w, uword level_index, uword * n_elts)
 #define _(x)					\
   do {						\
     error = CLIB_ERROR_ASSERT (x);		\
+    ASSERT (! error);				\
     if (error) return error;			\
   } while (0)
 
@@ -157,7 +148,7 @@ void timing_wheel_validate (timing_wheel_t * w)
     }
 }
 
-static always_inline void
+always_inline void
 free_elt_vector (timing_wheel_t * w, timing_wheel_elt_t * ev)
 {
   /* Poison free elements so we never use them by mistake. */
@@ -227,7 +218,7 @@ static void timing_wheel_insert_helper (timing_wheel_t * w, u64 insert_cpu_time,
     }
 }
 
-static always_inline uword
+always_inline uword
 elt_is_deleted (timing_wheel_t * w, u32 user_data)
 {
   return (hash_elts (w->deleted_user_data_hash) > 0
@@ -271,7 +262,6 @@ void timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data
   if (elt_is_deleted (w, user_data))
     {
       timing_wheel_level_t * l;
-      timing_wheel_elt_t * e;
       uword wi;
 
       /* Delete elts with given user data so that stale events don't expire. */
@@ -306,52 +296,83 @@ void timing_wheel_delete (timing_wheel_t * w, u32 user_data)
   hash_set1 (w->deleted_user_data_hash, user_data);
 }
 
-/* Returns upper-bound for time offset in clock cycles of next expiring element. */
-u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w,
-					 u64 current_cpu_time,
-					 uword max_level)
+/* Returns time of next expiring element. */
+u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
 {
   timing_wheel_level_t * l;
-  uword li, wi, wi_non_empty, rtime, d;
-  u64 dt = 0ULL;
+  timing_wheel_elt_t * e;
+  uword li, wi, wi0, n_bins_searched;
+  u32 min_dt = ~0;
+  uword wrapped = 0;
 
-  if (max_level >= vec_len (w->levels))
-    max_level = vec_len (w->levels) - 1;
-
-  li = get_level_and_relative_time (w, current_cpu_time, &rtime);
-
-  for (; li <= max_level; li++)
+  n_bins_searched = 0;
+  vec_foreach (l, w->levels)
     {
-      l = vec_elt_at_index (w->levels, li);
-      if (! clib_bitmap_is_zero (l->occupancy_bitmap))
-	{
-	  wi_non_empty = clib_bitmap_first_set (l->occupancy_bitmap);
-	  wi = rtime_to_wheel_index (w, l - w->levels, rtime);
+      li = l - w->levels;
+      wi = current_time_wheel_index (w, li);
 
-	  /* Number of bins in the future. */
-	  d = (wi - wi_non_empty) & w->bins_per_wheel_mask;
-	  dt += d << li*w->log2_bins_per_wheel;
-	  return dt;
+      if (! l->occupancy_bitmap)
+	continue;
+
+      wrapped = 0;
+      wi0 = wi = current_time_wheel_index (w, li);
+      while (1)
+	{
+	  if (clib_bitmap_get_no_check (l->occupancy_bitmap, wi))
+	    {
+	      vec_foreach (e, l->elts[wi])
+		min_dt = clib_min (min_dt, e->cpu_time_relative_to_base);
+
+	      if (wrapped && li + 1 < vec_len (w->levels))
+		{
+		  uword wi1 = current_time_wheel_index (w, li + 1);
+		  if (l[1].occupancy_bitmap && clib_bitmap_get_no_check (l[1].occupancy_bitmap, wi1))
+		    {
+		      vec_foreach (e, l[1].elts[wi1]) {
+			min_dt = clib_min (min_dt, e->cpu_time_relative_to_base);
+		      }
+		    }
+		}
+
+	      return w->cpu_time_base + min_dt;
+	    }
+
+	  wi = wheel_add (w, wi + 1);
+	  if (wi == wi0)
+	    break;
+
+	  wrapped = wi != wi + 1;
 	}
-      dt += 1 << (li + 1)*w->log2_bins_per_wheel;
     }
 
-  return dt << (u64) w->log2_clocks_per_bin;
+  {
+    timing_wheel_overflow_elt_t * oe;
+    u64 min_t = ~0;
+
+    if (n_bins_searched > 0)
+      min_t = w->cpu_time_base + min_dt;
+
+    pool_foreach (oe, w->overflow_pool,
+		  ({ min_t = clib_min (min_t, oe->cpu_time); }));
+
+    return min_t;
+  }
 }
 
-static always_inline void
+static inline void
 insert_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
 {
   u64 t = w->cpu_time_base + e->cpu_time_relative_to_base;
   timing_wheel_insert_helper (w, t, e->user_data);
 }
 
-static always_inline u64
+always_inline u64
 elt_cpu_time (timing_wheel_t * w, timing_wheel_elt_t * e)
 { return w->cpu_time_base + e->cpu_time_relative_to_base; }
 
-static always_inline void
-validate_expired_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
+always_inline void
+validate_expired_elt (timing_wheel_t * w, timing_wheel_elt_t * e,
+		      u64 current_cpu_time)
 {
   if (DEBUG > 0)
     {
@@ -359,15 +380,16 @@ validate_expired_elt (timing_wheel_t * w, timing_wheel_elt_t * e)
 
       /* Verify that element is actually expired. */
       ASSERT ((e_time >> w->log2_clocks_per_bin)
-	      <= (w->advance_cpu_time >> w->log2_clocks_per_bin));
+	      <= (current_cpu_time >> w->log2_clocks_per_bin));
     }
 }
 
 static u32 *
-advance_level (timing_wheel_t * w,
-	       uword level_index,
-	       uword wheel_index,
-	       u32 * expired_user_data)
+expire_bin (timing_wheel_t * w,
+	    uword level_index,
+	    uword wheel_index,
+	    u64 advance_cpu_time,
+	    u32 * expired_user_data)
 {
   timing_wheel_level_t * level = vec_elt_at_index (w->levels, level_index);
   timing_wheel_elt_t * e;
@@ -380,7 +402,7 @@ advance_level (timing_wheel_t * w,
   vec_add2 (expired_user_data, x, e_len);
   for (i = j = 0; i < e_len; i++)
     {
-      validate_expired_elt (w, &e[i]);
+      validate_expired_elt (w, &e[i], advance_cpu_time);
       x[j] = e[i].user_data;
 
       /* Only advance if elt is not to be deleted. */
@@ -399,9 +421,9 @@ advance_level (timing_wheel_t * w,
   return expired_user_data;
 }
 
-/* Called rarely.  32 bit times should only over every 4k seconds or so. */
+/* Called rarely. 32 bit times should only overflow every 4 seconds or so on a fast machine. */
 static void
-advance_cpu_time_base (timing_wheel_t * w)
+advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 {
   timing_wheel_level_t * l;
   timing_wheel_elt_t * e;
@@ -418,6 +440,8 @@ advance_cpu_time_base (timing_wheel_t * w)
       clib_bitmap_foreach (wi, l->occupancy_bitmap, ({
 	vec_foreach (e, l->elts[wi])
 	  {
+	    /* This should always be true since otherwise we would have already expired
+	       this element. */
 	    ASSERT (e->cpu_time_relative_to_base >= delta);
 	    e->cpu_time_relative_to_base -= delta;
 	  }
@@ -431,7 +455,16 @@ advance_cpu_time_base (timing_wheel_t * w)
       /* It fits now into 32 bits. */
       if (0 == ((oe->cpu_time - w->cpu_time_base) >> BITS (e->cpu_time_relative_to_base)))
 	{
-	  timing_wheel_insert_helper (w, oe->cpu_time, oe->user_data);
+	  u64 ti = oe->cpu_time >> w->log2_clocks_per_bin;
+	  if (ti < w->current_time_index)
+	    {
+	      /* This can happen when timing wheel is not advanced for a long time
+		 (for example when at a gdb breakpoint for a while). */
+	      if (! elt_is_deleted (w, oe->user_data))
+		vec_add1 (expired_user_data, oe->user_data);
+	    }
+	  else
+	    timing_wheel_insert_helper (w, oe->cpu_time, oe->user_data);
 	  pool_put (w->overflow_pool, oe);
 	}
     }));
@@ -441,13 +474,14 @@ advance_cpu_time_base (timing_wheel_t * w)
 static u32 *
 refill_level (timing_wheel_t * w,
 	      uword level_index,
-	      u64 advance_time_index,
+	      u64 advance_cpu_time,
 	      uword from_wheel_index,
 	      uword to_wheel_index,
 	      u32 * expired_user_data)
 {
   timing_wheel_level_t * level;
   timing_wheel_elt_t * to_insert = w->unexpired_elts_pending_insert;
+  u64 advance_time_index = advance_cpu_time >> w->log2_clocks_per_bin;
 
   vec_validate (w->stats.refills, level_index);
   w->stats.refills[level_index] += 1;
@@ -475,7 +509,7 @@ refill_level (timing_wheel_t * w,
 	      u64 ti = e_time >> w->log2_clocks_per_bin;
 	      if (ti <= advance_time_index)
 		{
-		  validate_expired_elt (w, e);
+		  validate_expired_elt (w, e, advance_cpu_time);
 		  if (! elt_is_deleted (w, e->user_data))
 		    vec_add1 (expired_user_data, e->user_data);
 		}
@@ -499,7 +533,8 @@ refill_level (timing_wheel_t * w,
 
 /* Advance wheel and return any expired user data in vector. */
 u32 *
-timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_user_data)
+timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_user_data,
+		      u64 * next_expiring_element_cpu_time)
 {
   timing_wheel_level_t * level;
   uword level_index, advance_rtime, advance_level_index, advance_wheel_index;
@@ -508,10 +543,6 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
   /* Re-fill lower levels when time wraps. */
   current_time_index = w->current_time_index;
   advance_time_index = advance_cpu_time >> w->log2_clocks_per_bin;
-
-  if (DEBUG > 0)
-    /* Save advance time for debugging. */
-    w->advance_cpu_time = advance_cpu_time &~ (u64) pow2_mask (w->log2_clocks_per_bin);
 
   {
     u64 current_ti, advance_ti;
@@ -533,7 +564,7 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 	    if (c != a)
 	      expired_user_data = refill_level (w,
 						level_index,
-						advance_time_index,
+						advance_cpu_time,
 						c, a,
 						expired_user_data);
 	    current_ti >>= w->log2_bins_per_wheel;
@@ -556,8 +587,9 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 
       level = vec_elt_at_index (w->levels, level_index);
       clib_bitmap_foreach (wi, level->occupancy_bitmap, ({
-	    expired_user_data = advance_level (w, level_index, wi, expired_user_data);
-	  }));
+        expired_user_data = expire_bin (w, level_index, wi, advance_cpu_time,
+					expired_user_data);
+      }));
     }
 
   if (PREDICT_TRUE (level_index < vec_len (w->levels)))
@@ -569,7 +601,8 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 	while (1)
 	  {
 	    if (clib_bitmap_get_no_check (level->occupancy_bitmap, wi))
-	      expired_user_data = advance_level (w, advance_level_index, wi, expired_user_data);
+	      expired_user_data = expire_bin (w, advance_level_index, wi, advance_cpu_time,
+					      expired_user_data);
 
 	    if (wi == advance_wheel_index)
 	      break;
@@ -591,7 +624,10 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 
   /* Don't advance until necessary. */
   while (PREDICT_FALSE (advance_time_index >= w->time_index_next_cpu_time_base_update))
-    advance_cpu_time_base (w);
+    advance_cpu_time_base (w, expired_user_data);
+
+  if (next_expiring_element_cpu_time)
+    *next_expiring_element_cpu_time = timing_wheel_next_expiring_elt_time (w);
 
   return expired_user_data;
 }

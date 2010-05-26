@@ -41,7 +41,7 @@ typedef struct {
   u8 * range_flags;
 } sparse_vec_header_t;
 
-static always_inline sparse_vec_header_t *
+always_inline sparse_vec_header_t *
 sparse_vec_header (void * v)
 { return vec_header (v, sizeof (sparse_vec_header_t)); }
 
@@ -50,7 +50,7 @@ sparse_vec_header (void * v)
    known you'll get 0 back as an index. */
 #define SPARSE_VEC_INVALID_INDEX (0)
 
-static inline void *
+always_inline void *
 sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 {
   void * v;
@@ -80,7 +80,7 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
   return v;
 }
 
-static always_inline uword
+always_inline uword
 sparse_vec_index_internal (void * v,
 			   uword sparse_index,
 			   uword maybe_range,
@@ -132,7 +132,7 @@ sparse_vec_index_internal (void * v,
   return is_member + d;
 }
 
-static always_inline uword
+always_inline uword
 sparse_vec_index (void * v, uword sparse_index)
 {
   return sparse_vec_index_internal (v, sparse_index,
@@ -140,14 +140,17 @@ sparse_vec_index (void * v, uword sparse_index)
 				    /* insert? */ 0);
 }
 				    
-static always_inline void
-sparse_vec_index2 (sparse_vec_header_t * h,
+always_inline void
+sparse_vec_index2 (void * v,
 		   u32 si0, u32 si1,
 		   u32 * i0_return, u32 * i1_return)
 {
+  sparse_vec_header_t * h;
   uword b0, b1, w0, w1, v0, v1;
   u32 i0, i1, d0, d1;
   u8 is_member0, is_member1;
+
+  h = sparse_vec_header (v);
 
   i0 = si0 / BITS (h->is_member_bitmap[0]);
   i1 = si1 / BITS (h->is_member_bitmap[0]);

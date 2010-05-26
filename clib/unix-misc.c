@@ -91,8 +91,7 @@ clib_error_t * unix_file_read_contents (char * file, u8 * result, uword n_bytes)
 
 clib_error_t * unix_file_contents (char * file, u8 ** result)
 {
-  int fd = -1;
-  uword n_bytes, n_done, n_left;
+  uword n_bytes;
   clib_error_t * error = 0;
   u8 * v;
 
@@ -121,7 +120,7 @@ void os_exit (int code)
 void os_puts (u8 * string, uword string_length, uword is_error)
   __attribute__ ((weak));
 void os_puts (u8 * string, uword string_length, uword is_error)
-{ (void) write (is_error ? 2 : 1, string, string_length); }
+{ int UNUSED (v) = write (is_error ? 2 : 1, string, string_length); }
 
 int os_get_cpu_number () __attribute__ ((weak));
 int os_get_cpu_number (void)

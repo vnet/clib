@@ -61,7 +61,7 @@ word atoi (u8 * s);
 #endif
 
 /* True iff (dest[i] & mask[i]) == src[i] for each i. */
-static inline int
+always_inline int
 memmatch (void * dest, void * src, void * mask, uword n_bytes)
 {
     u8 * d = dest, * m = mask, * s = src;

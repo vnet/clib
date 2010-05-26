@@ -34,14 +34,14 @@ extern u32 random_u32 (u32 * seed);
 /* External test routine. */
 int test_random_main (unformat_input_t * input);
 
-static inline u32 random_u32_max (void)
+always_inline u32 random_u32_max (void)
 { return 0x7fffffff; }
 
 #ifdef CLIB_UNIX
 
 #include <unistd.h>		/* for getpid */
 
-static inline uword random_default_seed (void)
+always_inline uword random_default_seed (void)
 { return getpid (); }
 
 #endif
@@ -50,7 +50,7 @@ static inline uword random_default_seed (void)
 
 #include <linux/sched.h>	/* for jiffies */
 
-static inline uword random_default_seed (void)
+always_inline uword random_default_seed (void)
 { return jiffies; }
 
 #endif
@@ -58,11 +58,11 @@ static inline uword random_default_seed (void)
 #ifdef CLIB_STANDALONE
 extern u32 standalone_random_default_seed;
 
-static inline u32 random_default_seed (void)
+always_inline u32 random_default_seed (void)
 { return standalone_random_default_seed; }
 #endif
 
-static inline u64
+always_inline u64
 random_u64 (u32 * seed)
 {
   u64 result;
@@ -72,7 +72,7 @@ random_u64 (u32 * seed)
   return result;
 }
 
-static inline uword
+always_inline uword
 random_uword (u32 * seed)
 {
   if (sizeof (uword) == sizeof (u64))
@@ -82,10 +82,10 @@ random_uword (u32 * seed)
 }
 
 /* Return random float between 0 and 1. */
-static inline f64 random_f64 (u32 * seed)
+always_inline f64 random_f64 (u32 * seed)
 { return (f64) random_u32 (seed) / (f64) random_u32_max (); }
 
-static inline u8 *
+always_inline u8 *
 random_string (u32 * seed, uword len)
 {
   u8 * alphabet = (u8 *) "abcdefghijklmnopqrstuvwxyz";
