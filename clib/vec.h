@@ -457,5 +457,10 @@ do {									\
   qsort (vec, vec_len (vec), sizeof (vec[0]), _vec_sort_compare);	\
 } while (0)
 
+#define vec_sort_with_function(vec,f)				\
+do {								\
+  qsort (vec, vec_len (vec), sizeof (vec[0]), (void *) (f));	\
+} while (0)
+
 #endif /* included_vec_h */
 
