@@ -7,7 +7,7 @@
 #include <clib/timing_wheel.h>
 #include <clib/zvec.h>
 
-#include <math.h>
+#include <clib/math.h>
 
 typedef struct {
   uword n_iter;
