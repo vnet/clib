@@ -24,7 +24,6 @@
 #ifndef included_hash_h
 #define included_hash_h
 
-#include <clib/bitops.h>	/* for rotate_left */
 #include <clib/error.h>
 #include <clib/format.h>
 #include <clib/vec.h>
@@ -382,25 +381,29 @@ do {						\
 
 /* Finalize from Bob Jenkins lookup3.c */
 
-#define hash_v3_mix32(a,b,c)				\
-do {							\
-  (a) -= (c); (a) ^= rotate_left ((c), 4); (c) += (b);	\
-  (b) -= (a); (b) ^= rotate_left ((a), 6); (a) += (c);	\
-  (c) -= (b); (c) ^= rotate_left ((b), 8); (b) += (a);	\
-  (a) -= (c); (a) ^= rotate_left ((c),16); (c) += (b);	\
-  (b) -= (a); (b) ^= rotate_left ((a),19); (a) += (c);	\
-  (c) -= (b); (c) ^= rotate_left ((b), 4); (b) += (a);	\
+always_inline uword
+hash32_rotate_left (u32 x, u32 i)
+{ return (x << i) | (x >> (BITS (i) - i)); }
+
+#define hash_v3_mix32(a,b,c)					\
+do {								\
+  (a) -= (c); (a) ^= hash32_rotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= hash32_rotate_left ((a), 6); (a) += (c);	\
+  (c) -= (b); (c) ^= hash32_rotate_left ((b), 8); (b) += (a);	\
+  (a) -= (c); (a) ^= hash32_rotate_left ((c),16); (c) += (b);	\
+  (b) -= (a); (b) ^= hash32_rotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= hash32_rotate_left ((b), 4); (b) += (a);	\
 } while (0)
 
-#define hash_v3_finalize32(a,b,c)		\
-do {						\
-  (c) ^= (b); (c) -= rotate_left ((b), 14);	\
-  (a) ^= (c); (a) -= rotate_left ((c), 11);	\
-  (b) ^= (a); (b) -= rotate_left ((a), 25);	\
-  (c) ^= (b); (c) -= rotate_left ((b), 16);	\
-  (a) ^= (c); (a) -= rotate_left ((c),  4);	\
-  (b) ^= (a); (b) -= rotate_left ((a), 14);	\
-  (c) ^= (b); (c) -= rotate_left ((b), 24);	\
+#define hash_v3_finalize32(a,b,c)			\
+do {							\
+  (c) ^= (b); (c) -= hash32_rotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= hash32_rotate_left ((c), 11);	\
+  (b) ^= (a); (b) -= hash32_rotate_left ((a), 25);	\
+  (c) ^= (b); (c) -= hash32_rotate_left ((b), 16);	\
+  (a) ^= (c); (a) -= hash32_rotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= hash32_rotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= hash32_rotate_left ((b), 24);	\
 } while (0)
 
 /* Vector v3 mixing/finalize. */
