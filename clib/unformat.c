@@ -693,6 +693,11 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
 			    UNFORMAT_INTEGER_SIGNED, data_bytes);
       break;
 
+    case 'u':
+      n = unformat_integer (input, va, 10,
+			    UNFORMAT_INTEGER_UNSIGNED, data_bytes);
+      break;
+
     case 'b':
       n = unformat_integer (input, va, 2,
 			    UNFORMAT_INTEGER_UNSIGNED, data_bytes);
