@@ -32,7 +32,7 @@
 #define CLIB_HAVE_VEC64
 #endif
 
-#if defined (__SSE2__)
+#if defined (__SSE2__) && __GNUC__ >= 4
 #define CLIB_HAVE_VEC128
 #endif
 
@@ -177,7 +177,7 @@ _ (i64, 2);
 
 #endif
 
-#if defined (__SSE2__)
+#if defined (__SSE2__) && __GNUC__ >= 4
 #include <clib/vector_sse2.h>
 #endif
 
