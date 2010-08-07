@@ -228,31 +228,31 @@ elt_is_deleted (timing_wheel_t * w, u32 user_data)
 static timing_wheel_elt_t *
 delete_user_data (timing_wheel_elt_t * elts, u32 user_data)
 {
-  uword found_match = 0;
+  uword found_match;
   timing_wheel_elt_t * e, * new_elts;
 
+  /* Quickly scan to see if there are any elements to delete
+     in this bucket. */
+  found_match = 0;
+  vec_foreach (e, elts)
+    {
+      found_match = e->user_data == user_data;
+      if (found_match)
+	break;
+    }
+  if (! found_match)
+    return elts;
+
+  /* Re-scan to build vector of new elts with matching user_data deleted. */
   new_elts = 0;
   vec_foreach (e, elts)
     {
       if (e->user_data != user_data)
-	continue;
-
-      if (! found_match)
-	{
-	  if (e > elts)
-	    vec_add (new_elts, elts, e - elts - 1);
-	}
-      else
 	vec_add1 (new_elts, e[0]);
-      found_match = 1;
     }
 
-  if (found_match)
-    {
-      vec_free (elts);
-      elts = new_elts;
-    }
-  return elts;
+  vec_free (elts);
+  return new_elts;
 }
 
 /* Insert user data on wheel at given CPU time stamp. */
