@@ -579,7 +579,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   u8 * p, * d, * d_end;
 
   {
-    u32 tmp[2];
+    u16 tmp[2];
 
     unserialize_integer (m, &tmp[0], sizeof (e->type));
     unserialize_integer (m, &tmp[1], sizeof (e->track));
