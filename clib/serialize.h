@@ -57,9 +57,9 @@ typedef struct serialize_stream_t {
   u32 flags;
 #define SERIALIZE_END_OF_STREAM (1 << 0)
 
-  u32 data_function_opaque;
+  uword data_function_opaque;
 
-  u32 opaque[64 - 5 * sizeof (u32) - 2 * sizeof (void *)];
+  u32 opaque[64 - 4 * sizeof (u32) - 1 * sizeof (uword) - 2 * sizeof (void *)];
 } serialize_stream_t;
 
 always_inline void
