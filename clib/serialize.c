@@ -39,19 +39,19 @@ void serialize_32 (serialize_main_t * m, va_list * va)
 {
   u32 x = va_arg (*va, u32);
   serialize_integer (m, x, sizeof (x));
- }
+}
 
 void serialize_16 (serialize_main_t * m, va_list * va)
 {
   u32 x = va_arg (*va, u32);
   serialize_integer (m, x, sizeof (u16));
- }
+}
 
 void serialize_8 (serialize_main_t * m, va_list * va)
 {
   u32 x = va_arg (*va, u32);
   serialize_integer (m, x, sizeof (u8));
- }
+}
 
 void unserialize_64 (serialize_main_t * m, va_list * va)
 {
@@ -66,7 +66,7 @@ void unserialize_32 (serialize_main_t * m, va_list * va)
 {
   u32 * x = va_arg (*va, u32 *);
   unserialize_integer (m, x, sizeof (x[0]));
- }
+}
 
 void unserialize_16 (serialize_main_t * m, va_list * va)
 {
@@ -74,7 +74,7 @@ void unserialize_16 (serialize_main_t * m, va_list * va)
   u32 t;
   unserialize_integer (m, &t, sizeof (x[0]));
   x[0] = t;
- }
+}
 
 void unserialize_8 (serialize_main_t * m, va_list * va)
 {
@@ -82,7 +82,7 @@ void unserialize_8 (serialize_main_t * m, va_list * va)
   u32 t;
   unserialize_integer (m, &t, sizeof (x[0]));
   x[0] = t;
- }
+}
 
 void serialize_f64 (serialize_main_t * m, va_list * va)
 {
