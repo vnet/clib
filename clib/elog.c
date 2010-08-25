@@ -164,7 +164,8 @@ static uword parse_2digit_decimal (char * p, uword * number)
     {
       if (i >= 2)
 	break;
-      digits[i++] = p[0] - '0';
+      digits[i] = p[i] - '0';
+      i++;
     }
 
   if (i >= 1 && i <= 2)
@@ -636,11 +637,15 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	    ASSERT (0);
 	  break;
 
-	case 's':
-	  serialize_cstring (m, (char *) d);
+	case 's': {
+	  char * t;
+	  unserialize_cstring (m, &t);
 	  if (n_bytes == 0)
-	    n_bytes = strlen ((char *) d) + 1;
+	    n_bytes = strlen (t) + 1;
+	  memcpy (d, t, clib_min (n_bytes, vec_len (t)));
+	  vec_free (t);
 	  break;
+	}
 
 	case 'f':
 	  if (n_bytes == 4)
