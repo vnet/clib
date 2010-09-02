@@ -210,7 +210,7 @@ heap_create_from_memory (void * memory, uword max_len, uword elt_bytes)
 }
 
 /* Execute BODY for each allocated heap element. */
-#define heap_foreach(var,heap,body)			\
+#define heap_foreach(var,len,heap,body)			\
 do {							\
   if (vec_len (heap) > 0)				\
     {							\
@@ -222,6 +222,7 @@ do {							\
 	  if (! heap_is_free (_e))			\
 	    {						\
 	      (var) = (heap) + heap_offset (_e);	\
+	      (len) = heap_elt_size ((heap), _e);	\
 	      do { body; } while (0);			\
 	    }						\
 	  if (_e == _end)				\
