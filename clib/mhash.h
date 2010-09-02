@@ -58,4 +58,12 @@ mhash_get (mhash_t * h, void * key)
 void mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value);
 uword mhash_unset (mhash_t * h, void * key, uword * old_value);
 
+always_inline void
+mhash_free (mhash_t * h)
+{
+  vec_free (h->key_vector);
+  vec_free (h->key_vector_free_indices);
+  hash_free (h->hash);
+}
+
 #endif /* included_clib_mhash_h */
