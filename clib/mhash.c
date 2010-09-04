@@ -172,6 +172,18 @@ static uword mhash_vec_string_key_equal (hash_t * h, uword key1, uword key2)
 #define mhash_n_key_bytes_c_string 0
 #define mhash_n_key_bytes_vec_string 1
 
+/* The CLIB hash user pointer must always point to a valid mhash_t.
+   Now, the address of mhash_t can change (think vec_resize).
+   So we must always be careful that it points to the correct
+   address. */
+always_inline void
+mhash_sanitize_hash_user (mhash_t * mh)
+{
+  uword * hash = mh->hash;
+  hash_t * h = hash_header (hash);
+  h->user = pointer_to_uword (mh);
+}
+
 void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 {
   static struct {
@@ -222,10 +234,18 @@ void mhash_init_c_string (mhash_t * h, uword n_value_bytes)
 void mhash_init_vec_string (mhash_t * h, uword n_value_bytes)
 { mhash_init (h, n_value_bytes, mhash_n_key_bytes_vec_string); }
 
+uword * mhash_get (mhash_t * h, void * key)
+{
+  mhash_sanitize_hash_user (h);
+  return hash_get_mem (h->hash, key);
+}
+
 void mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value)
 {
   u8 * k;
   uword ikey, i, l, old_n_elts, key_alloc_from_free_list;
+
+  mhash_sanitize_hash_user (h);
 
   key_alloc_from_free_list = (l = vec_len (h->key_vector_free_indices)) > 0;
   if (key_alloc_from_free_list)
@@ -263,6 +283,7 @@ uword mhash_unset (mhash_t * h, void * key, uword * old_value)
 {
   hash_pair_t * p;
 
+  mhash_sanitize_hash_user (h);
   p = hash_get_pair_mem (h->hash, key);
   if (p)
     {
