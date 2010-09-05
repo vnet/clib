@@ -262,6 +262,7 @@ u8 * format_elog_event (u8 * s, va_list * va)
 	{
 	case 'i':
 	case 't':
+	case 'T':
 	  {
 	    u32 i = 0;
 	    u64 l = 0;
@@ -279,6 +280,11 @@ u8 * format_elog_event (u8 * s, va_list * va)
 	    if (a[0] == 't')
 	      {
 		char * e = vec_elt (t->enum_strings_vector, n_bytes == 8 ? l : i);
+		s = format (s, arg_format, e);
+	      }
+	    else if (a[0] == 'T')
+	      {
+		char * e = vec_elt_at_index (em->string_table, n_bytes == 8 ? l : i);
 		s = format (s, arg_format, e);
 	      }
 	    else if (n_bytes == 8)
@@ -439,6 +445,24 @@ elog_event_t * elog_peek_events (elog_main_t * em)
   return es;
 }
 
+/* Add a formatted string to the string table. */
+u32 elog_string (elog_main_t * em, char * fmt, ...)
+{
+  u32 offset;
+  va_list va;
+
+  va_start (va, fmt);
+  offset = vec_len (em->string_table);
+  em->string_table = (char *) va_format ((u8 *) em->string_table, fmt, &va);
+  va_end (va);
+
+  /* Null terminate string if it is not already. */
+  if (vec_end (em->string_table)[-1] != 0)
+    vec_add1 (em->string_table, 0);
+
+  return offset;
+}
+
 elog_event_t * elog_get_events (elog_main_t * em)
 {
   if (! em->events)
@@ -534,6 +558,7 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 	{
 	case 'i':
 	case 't':
+	case 'T':
 	  if (n_bytes == 1)
 	    serialize_integer (m, d[0], sizeof (u8));
 	  else if (n_bytes == 2)
@@ -612,6 +637,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	{
 	case 'i':
 	case 't':
+	case 'T':
 	  if (n_bytes == 1)
 	    {
 	      unserialize_integer (m, &tmp, sizeof (u8));
@@ -767,6 +793,7 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
 
   vec_serialize (m, em->event_types, serialize_elog_event_type);
   vec_serialize (m, em->tracks, serialize_elog_track);
+  serialize_vector_string (m, (u8 *) em->string_table);
 
   elog_get_events (em);
   serialize_integer (m, vec_len (em->events), sizeof (u32));
@@ -795,6 +822,7 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
     new_event_type (em, i);
 
   vec_unserialize (m, &em->tracks, unserialize_elog_track);
+  unserialize_vector_string (m, (u8 **) &em->string_table);
 
   {
     u32 ne;

@@ -290,6 +290,32 @@ void unserialize_cstring (serialize_main_t * m, char ** s)
   *s = r;
 }
 
+static void serialize_vec_string (serialize_main_t * m, va_list * va)
+{
+  u8 * s = va_arg (*va, u8 *);
+  u32 n = va_arg (*va, u32);
+  u8 * p = serialize_get (m, n);
+  memcpy (p, s, n);
+}
+
+static void unserialize_vec_string (serialize_main_t * m, va_list * va)
+{
+  u8 * s = va_arg (*va, u8 *);
+  u32 n = va_arg (*va, u32);
+  u8 * p = unserialize_get (m, n);
+  memcpy (s, p, n);
+}
+
+void serialize_vector_string (serialize_main_t * m, u8 * s)
+{ vec_serialize (m, s, serialize_vec_string); }
+
+void unserialize_vector_string (serialize_main_t * m, u8 ** s)
+{
+  u8 * v = 0;
+  vec_unserialize (m, &v, unserialize_vec_string);
+  *s = v;
+}
+
 void unserialize_check_magic (serialize_main_t * m, void * magic,
 			      u32 magic_bytes)
 {

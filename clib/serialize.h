@@ -353,6 +353,9 @@ uword * unserialize_bitmap (serialize_main_t * m);
 void serialize_cstring (serialize_main_t * m, char * string);
 void unserialize_cstring (serialize_main_t * m, char ** string);
 
+void serialize_vector_string (serialize_main_t * m, u8 * s);
+void unserialize_vector_string (serialize_main_t * m, u8 ** s);
+
 void serialize_close (serialize_main_t * m);
 void unserialize_close (serialize_main_t * m);
 

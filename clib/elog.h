@@ -127,6 +127,9 @@ typedef struct {
   /* Hash table mapping type format to type index. */
   uword * event_type_by_format;
 
+  /* Events may refer to strings in string table. */
+  char * string_table;
+
   /* Vector of tracks. */
   elog_track_t * tracks;
 
@@ -337,6 +340,8 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 /* Shorthand with default track. */
 #define ELOG_DATA(em,f) elog_data ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 #define ELOG_DATA_INLINE(em,f) elog_data_inline ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
+
+u32 elog_string (elog_main_t * em, char * format, ...);
 
 /* Convert ievents to events and return them as a vector.
    Sets em->events to resulting vector. */

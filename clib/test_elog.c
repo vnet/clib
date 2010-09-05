@@ -169,6 +169,17 @@ int test_elog_main (unformat_input_t * input)
 	    v = format (0, "foo %d%c", i, 0);
 	    memcpy (d->s, v, clib_min (vec_len (v), sizeof (d->s)));
 	  }
+
+	  {
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar `%s'",
+	      .format_args = "T4",
+	    };
+	    struct { u32 offset; } * d;
+
+	    d = ELOG_DATA (em, e);
+	    d->offset = elog_string (em, "string table %d", i);
+	  }
 	}
 
       do {
