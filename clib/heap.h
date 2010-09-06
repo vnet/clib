@@ -96,26 +96,33 @@ typedef struct {
   /* Vector of used and free elements. */
   heap_elt_t * elts;
 
+  /* For elt_bytes < sizeof (u32) we need some extra space
+     per elt to store free list index. */
+  u32 * small_free_elt_free_index;
+
   /* Vector of free indices of elts array. */
   u32 * free_elts;
 
   /* First and last element of doubly linked chain of elements. */
   uword head, tail;
 
+  /* Indices of free elts indexed by size bin. */
   u32 ** free_lists;
 
   u32 used_count, max_len;
 
+  /* Number of bytes in a help element. */
   u32 elt_bytes;
-
-  uword * used_elt_bitmap;
-
-  format_function_t * format_elt;
 
   u32 flags;
   /* Static heaps are made from external memory given to
-     us by user. */
+     us by user and are not re-sizeable vectors. */
 #define HEAP_IS_STATIC (1)
+
+  format_function_t * format_elt;
+
+  /* Used for validattion/debugging. */
+  uword * used_elt_bitmap;
 } heap_t;
 
 /* Start of heap elements is always cache aligned. */
@@ -138,6 +145,7 @@ always_inline void heap_dup_header (heap_t * old, heap_t * new)
   for (i = 0; i < vec_len (new->free_lists); i++)
     new->free_lists[i] = vec_dup (new->free_lists[i]);
   new->used_elt_bitmap = clib_bitmap_dup (new->used_elt_bitmap);
+  new->small_free_elt_free_index = vec_dup (new->small_free_elt_free_index);
 }
 
 /* Make a duplicate copy of a heap. */
@@ -154,7 +162,8 @@ always_inline void * _heap_dup (void * v_old, uword v_bytes)
     return v_old;
 
   v_new = 0;
-  v_new = _vec_resize (v_new, _vec_len (v_old), v_bytes, sizeof (heap_t), 0);
+  v_new = _vec_resize (v_new, _vec_len (v_old), v_bytes, sizeof (heap_t),
+		       HEAP_DATA_ALIGN);
   h_new = heap_header (v_new);
   heap_dup_header (h_old, h_new);
   memcpy (v_new, v_old, v_bytes);
@@ -169,18 +178,19 @@ always_inline uword heap_elts (void * v)
 
 uword heap_bytes (void * v);
 
+always_inline void * heap_new (void)
+{ return _vec_resize (0, 0, 0, sizeof (heap_t), HEAP_DATA_ALIGN); }
+
 always_inline void * heap_set_format (void * v, format_function_t * format_elt)
 {
-  if (! v)
-    v = _vec_resize (v, 0, 0, sizeof (heap_t), 0);
+  if (! v) v = heap_new ();
   heap_header (v)->format_elt = format_elt;
   return v;
 }
 
 always_inline void * heap_set_max_len (void * v, uword max_len)
 {
-  if (! v)
-    v = _vec_resize (v, 0, 0, sizeof (heap_t), 0);
+  if (! v) v = heap_new ();
   heap_header (v)->max_len = max_len;
   return v;
 }
@@ -193,7 +203,7 @@ always_inline void *
 heap_create_from_memory (void * memory, uword max_len, uword elt_bytes)
 {
   heap_t * h;
-  _VEC * vec_header;
+  void * v;
 
   if (max_len * elt_bytes < sizeof (h[0]))
     return 0;
@@ -204,9 +214,9 @@ heap_create_from_memory (void * memory, uword max_len, uword elt_bytes)
   h->elt_bytes = elt_bytes;
   h->flags = HEAP_IS_STATIC;
 
-  vec_header = (void *) (h + 1);
-  vec_header->len = 0;
-  return (void *) (vec_header + 1);
+  v = (void *) (memory + heap_header_bytes  ());
+  _vec_len (v) = 0;
+  return v;
 }
 
 /* Execute BODY for each allocated heap element. */

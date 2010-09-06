@@ -188,19 +188,48 @@ always_inline u32 * elt_data (void * v, heap_elt_t * e)
   return v + heap_offset (e) * h->elt_bytes;
 }
 
-always_inline void set_free_elt (void * v, heap_elt_t * e, uword fi)
+always_inline void
+set_free_elt (void * v, heap_elt_t * e, uword fi)
 {
-  *elt_data (v, e) = fi;
+  heap_t * h = heap_header (v);
+
   e->offset |= HEAP_ELT_FREE_BIT;
+  if (h->elt_bytes >= sizeof (u32))
+    {
+      *elt_data (v, e) = fi;
+    }
+  else
+    {
+      /* For elt_bytes < 4 we must store free index in separate
+	 vector. */
+      uword elt_index = e - h->elts;
+      vec_validate (h->small_free_elt_free_index, elt_index);
+      h->small_free_elt_free_index[elt_index] = fi;
+    }
 }
 
-#define get_free_elt(v,e,fb,fi)				\
-do {							\
-  heap_elt_t * _e = (e);				\
-  ASSERT (heap_is_free (_e));				\
-  fb = size_to_bin (heap_elt_size (v, _e));		\
-  fi = *elt_data (v, _e);				\
-} while (0)
+always_inline uword
+get_free_elt (void * v, heap_elt_t * e, uword * bin_result)
+{
+  heap_t * h = heap_header (v);
+  uword fb, fi;
+
+  ASSERT (heap_is_free (e));
+  fb = size_to_bin (heap_elt_size (v, e));
+
+  if (h->elt_bytes >= sizeof (u32))
+    {
+      fi = *elt_data (v, e);
+    }
+  else
+    {
+      uword elt_index = e - h->elts;
+      fi = vec_elt (h->small_free_elt_free_index, elt_index);
+    }
+
+  *bin_result = fb;
+  return fi;
+}
 
 always_inline void remove_free_block (void * v, uword b, uword i)
 {
@@ -475,7 +504,7 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
     {
       ASSERT (i < ARRAY_LEN (f));
 
-      get_free_elt (v, e, tb, ti);
+      ti = get_free_elt (v, e, &tb);
 
       ASSERT (tb < vec_len (h->free_lists));
       ASSERT (ti < vec_len (h->free_lists[tb]));
@@ -520,7 +549,7 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
   for (i = 0; i <= i_last; i++)
     if (g.index != f[i].index)
       {
-	get_free_elt (v, elt_at (h, f[i].index), tb, ti);
+	ti = get_free_elt (v, elt_at (h, f[i].index), &tb);
 	remove_free_block (v, tb, ti);
 	elt_delete (h, elt_at (h, f[i].index));
       }
@@ -553,6 +582,7 @@ void * _heap_free (void * v)
   vec_free (h->free_lists);
   vec_free (h->elts);
   vec_free (h->free_elts);
+  vec_free (h->small_free_elt_free_index);
   if (! (h->flags & HEAP_IS_STATIC))
     vec_free_ha (v, sizeof (h[0]), HEAP_DATA_ALIGN);
   return v;
@@ -722,7 +752,8 @@ void heap_validate (void * v)
       if (heap_is_free (e))
 	{
 	  uword fb, fi;
-	  get_free_elt (v, e, fb, fi);
+
+	  fi = get_free_elt (v, e, &fb);
 
 	  ASSERT (fb < vec_len (h->free_lists));
 	  ASSERT (fi < vec_len (h->free_lists[fb]));
