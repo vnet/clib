@@ -793,7 +793,7 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
 
   vec_serialize (m, em->event_types, serialize_elog_event_type);
   vec_serialize (m, em->tracks, serialize_elog_track);
-  serialize_vector_string (m, (u8 *) em->string_table);
+  vec_serialize (m, em->string_table, serialize_vec_8);
 
   elog_get_events (em);
   serialize_integer (m, vec_len (em->events), sizeof (u32));
@@ -822,7 +822,7 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
     new_event_type (em, i);
 
   vec_unserialize (m, &em->tracks, unserialize_elog_track);
-  unserialize_vector_string (m, (u8 **) &em->string_table);
+  vec_unserialize (m, &em->string_table, unserialize_vec_8);
 
   {
     u32 ne;

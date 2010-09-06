@@ -329,8 +329,14 @@ serialize_function_t serialize_8, unserialize_8;
 serialize_function_t serialize_f64, unserialize_f64;
 serialize_function_t serialize_f32, unserialize_f32;
 
+/* Basic vector types. */
+serialize_function_t serialize_vec_8, unserialize_vec_8;
+serialize_function_t serialize_vec_16, unserialize_vec_16;
+serialize_function_t serialize_vec_32, unserialize_vec_32;
+serialize_function_t serialize_vec_64, unserialize_vec_64;
+
 /* Serialize generic vectors. */
-serialize_function_t serialize_vector, unserialize_vector;
+serialize_function_t serialize_vector, unserialize_vector, unserialize_aligned_vector;
 
 #define vec_serialize(m,v,f) \
   serialize ((m), serialize_vector, (v), sizeof ((v)[0]), (f))
@@ -338,8 +344,11 @@ serialize_function_t serialize_vector, unserialize_vector;
 #define vec_unserialize(m,v,f) \
   unserialize ((m), unserialize_vector, (v), sizeof ((*(v))[0]), (f))
 
+#define vec_unserialize_aligned(m,v,f) \
+  unserialize ((m), unserialize_aligned_vector, (v), sizeof ((*(v))[0]), (f))
+
 /* Serialize pools. */
-serialize_function_t serialize_pool, unserialize_pool;
+serialize_function_t serialize_pool, unserialize_pool, unserialize_aligned_pool;
 
 #define pool_serialize(m,v,f) \
   serialize ((m), serialize_pool, (v), sizeof ((v)[0]), (f))
@@ -352,9 +361,6 @@ uword * unserialize_bitmap (serialize_main_t * m);
 
 void serialize_cstring (serialize_main_t * m, char * string);
 void unserialize_cstring (serialize_main_t * m, char ** string);
-
-void serialize_vector_string (serialize_main_t * m, u8 * s);
-void unserialize_vector_string (serialize_main_t * m, u8 ** s);
 
 void serialize_close (serialize_main_t * m);
 void unserialize_close (serialize_main_t * m);
