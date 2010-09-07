@@ -28,7 +28,6 @@
 #include <clib/byte_order.h>
 #include <clib/types.h>
 #include <clib/vec.h>
-#include <clib/pool.h>
 #include <clib/longjmp.h>
 
 struct serialize_main_header_t;
@@ -355,6 +354,12 @@ serialize_function_t serialize_pool, unserialize_pool, unserialize_aligned_pool;
 
 #define pool_unserialize(m,v,f) \
   unserialize ((m), unserialize_pool, (v), sizeof ((*(v))[0]), (f))
+
+#define pool_unserialize_aligned(m,v,a,f)				\
+  unserialize ((m), unserialize_aligned_pool, (v), sizeof ((*(v))[0]), (a), (f))
+
+/* Serialize heaps. */
+serialize_function_t serialize_heap, unserialize_heap;
 
 void serialize_bitmap (serialize_main_t * m, uword * b);
 uword * unserialize_bitmap (serialize_main_t * m);

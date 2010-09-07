@@ -23,6 +23,8 @@
 
 /* Turn data structures into byte streams for saving or transport. */
 
+#include <clib/heap.h>
+#include <clib/pool.h>
 #include <clib/serialize.h>
 
 void serialize_64 (serialize_main_t * m, va_list * va)
@@ -114,6 +116,33 @@ void unserialize_f32 (serialize_main_t * m, va_list * va)
   union { f32 f; u32 i; } y;
   unserialize_integer (m, &y.i, sizeof (y.i));
   *x = y.f;
+}
+
+void serialize_cstring (serialize_main_t * m, char * s)
+{
+  u32 len = strlen (s);
+  void * p;
+
+  serialize_integer (m, len, sizeof (len));
+  p = serialize_get (m, len);
+  memcpy (p, s, len);
+}
+
+void unserialize_cstring (serialize_main_t * m, char ** s)
+{
+  char * p, * r;
+  u32 len;
+
+  unserialize_integer (m, &len, sizeof (len));
+
+  r = vec_new (char, len + 1);
+  p = unserialize_get (m, len);
+  memcpy (r, p, len);
+
+  /* Null terminate. */
+  r[len] = 0;
+
+  *s = r;
 }
 
 /* vec_serialize/vec_unserialize helper functions for basic vector types. */
@@ -381,31 +410,131 @@ void unserialize_aligned_pool (serialize_main_t * m, va_list * va)
   *result = unserialize_pool_helper (m, elt_bytes, align, f);
 }
 
-void serialize_cstring (serialize_main_t * m, char * s)
+static void serialize_vec_heap_elt (serialize_main_t * m, va_list * va)
 {
-  u32 len = strlen (s);
-  void * p;
-
-  serialize_integer (m, len, sizeof (len));
-  p = serialize_get (m, len);
-  memcpy (p, s, len);
+  heap_elt_t * e = va_arg (*va, heap_elt_t *);
+  u32 i, n = va_arg (*va, u32);
+  for (i = 0; i < n; i++)
+    {
+      serialize_integer (m, e[i].offset, sizeof (e[i].offset));
+      serialize_integer (m, e[i].next, sizeof (e[i].next));
+      serialize_integer (m, e[i].prev, sizeof (e[i].prev));
+    }
 }
 
-void unserialize_cstring (serialize_main_t * m, char ** s)
+static void unserialize_vec_heap_elt (serialize_main_t * m, va_list * va)
 {
-  char * p, * r;
-  u32 len;
+  heap_elt_t * e = va_arg (*va, heap_elt_t *);
+  u32 i, n = va_arg (*va, u32);
+  for (i = 0; i < n; i++)
+    {
+      unserialize_integer (m, &e[i].offset, sizeof (e[i].offset));
+      unserialize_integer (m, &e[i].next, sizeof (e[i].next));
+      unserialize_integer (m, &e[i].prev, sizeof (e[i].prev));
+    }
+}
 
-  unserialize_integer (m, &len, sizeof (len));
+void serialize_heap (serialize_main_t * m, va_list * va)
+{
+  void * heap = va_arg (*va, void *);
+  u32 elt_bytes = va_arg (*va, u32);
+  serialize_function_t * f = va_arg (*va, serialize_function_t *);
+  u32 i, l, lo, hi;
+  heap_header_t * h;
 
-  r = vec_new (char, len + 1);
-  p = unserialize_get (m, len);
-  memcpy (r, p, len);
+  l = vec_len (heap);
+  serialize_integer (m, l, sizeof (u32));
+  if (l == 0)
+    return;
 
-  /* Null terminate. */
-  r[len] = 0;
+  h = heap_header (heap);
 
-  *s = r;
+#define foreach_serialize_heap_header_integer \
+  _ (head) _ (tail) _ (used_count) _ (max_len) _ (flags) _ (elt_bytes)
+
+#define _(f) serialize_integer (m, h->f, sizeof (h->f));
+  foreach_serialize_heap_header_integer;
+#undef _
+
+  serialize_integer (m, vec_len (h->free_lists), sizeof (u32));
+  for (i = 0; i < vec_len (h->free_lists); i++)
+    vec_serialize (m, h->free_lists[i], serialize_vec_32);
+
+  vec_serialize (m, h->elts, serialize_vec_heap_elt);
+  vec_serialize (m, h->small_free_elt_free_index, serialize_vec_32);
+  vec_serialize (m, h->free_elts, serialize_vec_32);
+
+  /* Serialize data in heap. */
+  {
+    heap_elt_t * e, * end;
+    e = h->elts + h->head;
+    end = h->elts + h->tail;
+    while (1)
+      {
+	if (! heap_is_free (e))
+	  {
+	    void * v = heap + heap_offset (e) * h->elt_bytes;
+	    u32 n = heap_elt_size (heap, e);
+	    serialize (m, f, v, n);
+	  }
+	if (e == end)
+	  break;
+	e = heap_next (e);
+      }
+  }
+}
+
+void unserialize_heap (serialize_main_t * m, va_list * va)
+{
+  void ** result = va_arg (*va, void **);
+  u32 elt_bytes = va_arg (*va, u32);
+  serialize_function_t * f = va_arg (*va, serialize_function_t *);
+  u32 i, vl, fl, lo, hi;
+  heap_header_t h;
+  void * heap;
+
+  unserialize_integer (m, &vl, sizeof (u32));
+  if (vl == 0)
+    {
+      *result = 0;
+      return;
+    }
+
+#define _(f) unserialize_integer (m, &h.f, sizeof (h.f));
+  foreach_serialize_heap_header_integer;
+#undef _
+
+  unserialize_integer (m, &fl, sizeof (u32));
+  vec_resize (h.free_lists, fl);
+
+  for (i = 0; i < vec_len (h.free_lists); i++)
+    vec_unserialize (m, &h.free_lists[i], unserialize_vec_32);
+
+  vec_unserialize (m, &h.elts, unserialize_vec_heap_elt);
+  vec_unserialize (m, &h.small_free_elt_free_index, unserialize_vec_32);
+  vec_unserialize (m, &h.free_elts, unserialize_vec_32);
+
+  heap = *result = _heap_new (vl, h.elt_bytes);
+  heap_header (heap)[0] = h;
+
+  /* Unserialize data in heap. */
+  {
+    heap_elt_t * e, * end;
+    e = h.elts + h.head;
+    end = h.elts + h.tail;
+    while (1)
+      {
+	if (! heap_is_free (e))
+	  {
+	    void * v = heap + heap_offset (e) * h.elt_bytes;
+	    u32 n = heap_elt_size (heap, e);
+	    unserialize (m, f, v, n);
+	  }
+	if (e == end)
+	  break;
+	e = heap_next (e);
+      }
+  }
 }
 
 void unserialize_check_magic (serialize_main_t * m, void * magic,
