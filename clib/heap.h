@@ -123,6 +123,8 @@ typedef struct {
   /* Static heaps are made from external memory given to
      us by user and are not re-sizeable vectors. */
 #define HEAP_IS_STATIC (1)
+
+  uword pad_kludge;
 } heap_header_t;
 
 /* Start of heap elements is always cache aligned. */
