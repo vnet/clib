@@ -362,12 +362,12 @@ void serialize_pool (serialize_main_t * m, va_list * va)
 		       serialize (m, f, pool + lo*elt_bytes, hi - lo));
 }
 
-static void **
+static void *
 unserialize_pool_helper (serialize_main_t * m,
 			 u32 elt_bytes, u32 align,
 			 serialize_function_t * f)
 {
-  void * v, ** result = 0;
+  void * v;
   u32 i, l, lo, hi;
   pool_header_t * p;
 
@@ -375,7 +375,6 @@ unserialize_pool_helper (serialize_main_t * m,
   if (l == 0)
     {
       return 0;
-      return;
     }
 
   v = _vec_resize (0, l, l*elt_bytes, sizeof (p[0]), align);
@@ -437,9 +436,8 @@ static void unserialize_vec_heap_elt (serialize_main_t * m, va_list * va)
 void serialize_heap (serialize_main_t * m, va_list * va)
 {
   void * heap = va_arg (*va, void *);
-  u32 elt_bytes = va_arg (*va, u32);
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
-  u32 i, l, lo, hi;
+  u32 i, l;
   heap_header_t * h;
 
   l = vec_len (heap);
@@ -487,9 +485,8 @@ void serialize_heap (serialize_main_t * m, va_list * va)
 void unserialize_heap (serialize_main_t * m, va_list * va)
 {
   void ** result = va_arg (*va, void **);
-  u32 elt_bytes = va_arg (*va, u32);
   serialize_function_t * f = va_arg (*va, serialize_function_t *);
-  u32 i, vl, fl, lo, hi;
+  u32 i, vl, fl;
   heap_header_t h;
   void * heap;
 
