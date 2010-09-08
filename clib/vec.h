@@ -71,10 +71,10 @@ always_inline uword
 vec_header_bytes_ha (uword header_bytes,
 		     uword align_bytes)
 {
-    header_bytes = _vec_round_size (header_bytes) + sizeof (_VEC);
-    if (align_bytes > 0 && header_bytes < 8)
-	header_bytes = 8;
-    return header_bytes;
+  /* Header must be 8 byte aligned because mheap align_at_offset
+     needs to be 8 byte aligned for aligned vectors. */
+  return round_pow2 (header_bytes + sizeof (_VEC),
+		     align_bytes ? 8 : sizeof (uword));
 }
 
 always_inline void *
