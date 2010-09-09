@@ -497,6 +497,7 @@ void unserialize_heap (serialize_main_t * m, va_list * va)
       return;
     }
 
+  memset (&h, 0, sizeof (h));
 #define _(f) unserialize_integer (m, &h.f, sizeof (h.f));
   foreach_serialize_heap_header_integer;
 #undef _
@@ -510,6 +511,17 @@ void unserialize_heap (serialize_main_t * m, va_list * va)
   vec_unserialize (m, &h.elts, unserialize_vec_heap_elt);
   vec_unserialize (m, &h.small_free_elt_free_index, unserialize_vec_32);
   vec_unserialize (m, &h.free_elts, unserialize_vec_32);
+
+  /* Re-construct used elt bitmap. */
+  if (DEBUG > 0)
+    {
+      heap_elt_t * e;
+      vec_foreach (e, h.elts)
+	{
+	  if (! heap_is_free (e))
+	    h.used_elt_bitmap = clib_bitmap_ori (h.used_elt_bitmap, e - h.elts);
+	}
+    }
 
   heap = *result = _heap_new (vl, h.elt_bytes);
   heap_header (heap)[0] = h;
