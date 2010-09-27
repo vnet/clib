@@ -37,13 +37,14 @@ build_triplet = @build@
 host_triplet = @host@
 @WITH_STANDALONE_TRUE@am__append_1 = libclibstandalone.a
 @WITH_LINUX_KERNEL_TRUE@am__append_2 = libclibkernel.a
-TESTS = test_elog$(EXEEXT) test_fifo$(EXEEXT) test_format$(EXEEXT) \
-	test_hash$(EXEEXT) test_heap$(EXEEXT) test_longjmp$(EXEEXT) \
-	test_md5$(EXEEXT) test_mheap$(EXEEXT) test_phash$(EXEEXT) \
-	test_qhash$(EXEEXT) test_random_isaac$(EXEEXT) \
-	test_serialize$(EXEEXT) test_socket$(EXEEXT) \
-	test_time$(EXEEXT) test_timing_wheel$(EXEEXT) \
-	test_vec$(EXEEXT) test_vhash$(EXEEXT) test_zvec$(EXEEXT)
+TESTS = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
+	test_format$(EXEEXT) test_hash$(EXEEXT) test_heap$(EXEEXT) \
+	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
+	test_phash$(EXEEXT) test_qhash$(EXEEXT) \
+	test_random_isaac$(EXEEXT) test_serialize$(EXEEXT) \
+	test_socket$(EXEEXT) test_time$(EXEEXT) \
+	test_timing_wheel$(EXEEXT) test_vec$(EXEEXT) \
+	test_vhash$(EXEEXT) test_zvec$(EXEEXT)
 noinst_PROGRAMS = $(am__EXEEXT_1)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = .
@@ -192,7 +193,7 @@ am_libclib_la_OBJECTS = $(am__objects_5) clib/mem_malloc.lo \
 	clib/unix-misc.lo
 libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
 @WITH_UNIX_TRUE@am_libclib_la_rpath = -rpath $(libdir)
-am__EXEEXT_1 = test_elog$(EXEEXT) test_fifo$(EXEEXT) \
+am__EXEEXT_1 = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
 	test_format$(EXEEXT) test_hash$(EXEEXT) test_heap$(EXEEXT) \
 	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
 	test_phash$(EXEEXT) test_qhash$(EXEEXT) \
@@ -201,6 +202,12 @@ am__EXEEXT_1 = test_elog$(EXEEXT) test_fifo$(EXEEXT) \
 	test_timing_wheel$(EXEEXT) test_vec$(EXEEXT) \
 	test_vhash$(EXEEXT) test_zvec$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
+am_test_elf_OBJECTS = clib/test_elf-test_elf.$(OBJEXT)
+test_elf_OBJECTS = $(am_test_elf_OBJECTS)
+test_elf_DEPENDENCIES = libclib.la
+test_elf_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(test_elf_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_test_elog_OBJECTS = clib/test_elog-test_elog.$(OBJEXT)
 test_elog_OBJECTS = $(am_test_elog_OBJECTS)
 test_elog_DEPENDENCIES = libclib.la
@@ -330,7 +337,7 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
-	$(libclib_la_SOURCES) $(test_elog_SOURCES) \
+	$(libclib_la_SOURCES) $(test_elf_SOURCES) $(test_elog_SOURCES) \
 	$(test_fifo_SOURCES) $(test_format_SOURCES) \
 	$(test_hash_SOURCES) $(test_heap_SOURCES) \
 	$(test_longjmp_SOURCES) $(test_md5_SOURCES) \
@@ -341,7 +348,7 @@ SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
 	$(test_vec_SOURCES) $(test_vhash_SOURCES) $(test_zvec_SOURCES)
 DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(libclibstandalone_a_SOURCES) $(libclib_la_SOURCES) \
-	$(test_elog_SOURCES) $(test_fifo_SOURCES) \
+	$(test_elf_SOURCES) $(test_elog_SOURCES) $(test_fifo_SOURCES) \
 	$(test_format_SOURCES) $(test_hash_SOURCES) \
 	$(test_heap_SOURCES) $(test_longjmp_SOURCES) \
 	$(test_md5_SOURCES) $(test_mheap_SOURCES) \
@@ -485,6 +492,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 @WITH_UNIX_TRUE@lib_LTLIBRARIES = libclib.la
 lib_LIBRARIES = $(am__append_1) $(am__append_2)
 test_elog_SOURCES = clib/test_elog.c
+test_elf_SOURCES = clib/test_elf.c
 test_fifo_SOURCES = clib/test_fifo.c
 test_format_SOURCES = clib/test_format.c
 test_hash_SOURCES = clib/test_hash.c
@@ -506,6 +514,7 @@ test_zvec_SOURCES = clib/test_zvec.c
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
 test_elog_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
+test_elf_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_fifo_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_format_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_hash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
@@ -524,6 +533,7 @@ test_vec_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_vhash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_elog_LDADD = libclib.la -lpthread
+test_elf_LDADD = libclib.la -lpthread
 test_fifo_LDADD = libclib.la -lpthread
 test_format_LDADD = libclib.la -lpthread
 test_hash_LDADD = libclib.la -lpthread
@@ -542,6 +552,7 @@ test_vec_LDADD = libclib.la -lpthread
 test_vhash_LDADD = libclib.la -lpthread
 test_zvec_LDADD = libclib.la -lpthread
 test_elog_LDFLAGS = -static
+test_elf_LDFLAGS = -static
 test_fifo_LDFLAGS = -static
 test_format_LDFLAGS = -static
 test_hash_LDFLAGS = -static
@@ -1067,6 +1078,11 @@ clean-noinstPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
+clib/test_elf-test_elf.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
+test_elf$(EXEEXT): $(test_elf_OBJECTS) $(test_elf_DEPENDENCIES) 
+	@rm -f test_elf$(EXEEXT)
+	$(test_elf_LINK) $(test_elf_OBJECTS) $(test_elf_LDADD) $(LIBS)
 clib/test_elog-test_elog.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 test_elog$(EXEEXT): $(test_elog_OBJECTS) $(test_elog_DEPENDENCIES) 
@@ -1300,6 +1316,7 @@ mostlyclean-compile:
 	-rm -f clib/std-formats.lo
 	-rm -f clib/string.$(OBJEXT)
 	-rm -f clib/string.lo
+	-rm -f clib/test_elf-test_elf.$(OBJEXT)
 	-rm -f clib/test_elog-test_elog.$(OBJEXT)
 	-rm -f clib/test_fifo-test_fifo.$(OBJEXT)
 	-rm -f clib/test_format-test_format.$(OBJEXT)
@@ -1456,6 +1473,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/socket.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/std-formats.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/string.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_elf-test_elf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_elog-test_elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_fifo-test_fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_format-test_format.Po@am__quote@
@@ -2819,6 +2837,20 @@ clib/libclibstandalone_a-standalone_string.obj: clib/standalone_string.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/standalone_string.c' object='clib/libclibstandalone_a-standalone_string.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-standalone_string.obj `if test -f 'clib/standalone_string.c'; then $(CYGPATH_W) 'clib/standalone_string.c'; else $(CYGPATH_W) '$(srcdir)/clib/standalone_string.c'; fi`
+
+clib/test_elf-test_elf.o: clib/test_elf.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_elf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_elf-test_elf.o -MD -MP -MF clib/$(DEPDIR)/test_elf-test_elf.Tpo -c -o clib/test_elf-test_elf.o `test -f 'clib/test_elf.c' || echo '$(srcdir)/'`clib/test_elf.c
+@am__fastdepCC_TRUE@	mv -f clib/$(DEPDIR)/test_elf-test_elf.Tpo clib/$(DEPDIR)/test_elf-test_elf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_elf.c' object='clib/test_elf-test_elf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_elf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_elf-test_elf.o `test -f 'clib/test_elf.c' || echo '$(srcdir)/'`clib/test_elf.c
+
+clib/test_elf-test_elf.obj: clib/test_elf.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_elf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_elf-test_elf.obj -MD -MP -MF clib/$(DEPDIR)/test_elf-test_elf.Tpo -c -o clib/test_elf-test_elf.obj `if test -f 'clib/test_elf.c'; then $(CYGPATH_W) 'clib/test_elf.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_elf.c'; fi`
+@am__fastdepCC_TRUE@	mv -f clib/$(DEPDIR)/test_elf-test_elf.Tpo clib/$(DEPDIR)/test_elf-test_elf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_elf.c' object='clib/test_elf-test_elf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_elf_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_elf-test_elf.obj `if test -f 'clib/test_elf.c'; then $(CYGPATH_W) 'clib/test_elf.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_elf.c'; fi`
 
 clib/test_elog-test_elog.o: clib/test_elog.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_elog_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_elog-test_elog.o -MD -MP -MF clib/$(DEPDIR)/test_elog-test_elog.Tpo -c -o clib/test_elog-test_elog.o `test -f 'clib/test_elog.c' || echo '$(srcdir)/'`clib/test_elog.c

@@ -14,6 +14,7 @@ if WITH_LINUX_KERNEL
 endif
 
 TESTS	=  test_elog \
+	   test_elf \
 	   test_fifo \
 	   test_format \
 	   test_hash \
@@ -36,6 +37,7 @@ noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
 test_elog_SOURCES = clib/test_elog.c
+test_elf_SOURCES = clib/test_elf.c
 test_fifo_SOURCES = clib/test_fifo.c
 test_format_SOURCES = clib/test_format.c
 test_hash_SOURCES = clib/test_hash.c
@@ -57,6 +59,7 @@ test_zvec_SOURCES = clib/test_zvec.c
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
 test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_format_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_hash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
@@ -76,6 +79,7 @@ test_vhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
 test_elog_LDADD =	libclib.la -lpthread
+test_elf_LDADD =	libclib.la -lpthread
 test_fifo_LDADD =	libclib.la -lpthread
 test_format_LDADD =	libclib.la -lpthread
 test_hash_LDADD =	libclib.la -lpthread
@@ -95,6 +99,7 @@ test_vhash_LDADD =	libclib.la -lpthread
 test_zvec_LDADD =	libclib.la -lpthread
 
 test_elog_LDFLAGS = -static
+test_elf_LDFLAGS = -static
 test_fifo_LDFLAGS = -static
 test_format_LDFLAGS = -static
 test_hash_LDFLAGS = -static
