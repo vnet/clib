@@ -26,17 +26,20 @@ elf_get_section_by_name (elf_main_t * em, char * section_name, elf_section_t ** 
   return 0;
 }
 
+elf_section_t *
+elf_get_section_by_start_address_no_check (elf_main_t * em, uword start_address)
+{
+  uword * p = hash_get (em->section_by_start_address, start_address);
+  return p ? vec_elt_at_index (em->sections, p[0]) : 0;
+}
+
 clib_error_t *
 elf_get_section_by_start_address (elf_main_t * em, uword start_address, elf_section_t ** result)
 {
-  elf_section_t * s;
-  uword * p;
-
-  p = hash_get (em->section_by_start_address, start_address);
-  if (! p)
+  elf_section_t * s = elf_get_section_by_start_address_no_check (em, start_address);
+  if (! s)
     return clib_error_return (0, "no section with address 0x%wx", start_address);
-
-  *result = vec_elt_at_index (em->sections, p[0]);
+  *result = s;
   return 0;
 }
 
@@ -139,6 +142,116 @@ format_elf_segment (u8 * s, va_list * args)
 }
 
 static u8 *
+format_elf_symbol_binding_and_type (u8 * s, va_list * args)
+{
+  int bt = va_arg (*args, int);
+  int b, t;
+  char * type_string = 0;
+  char * binding_string = 0;
+  
+  switch ((b = ((bt >> 4) & 0xf)))
+    {
+#define _(f,n) case n: binding_string = #f; break;
+      foreach_elf_symbol_binding;
+#undef _
+    default: break;
+    }
+
+  switch ((t = ((bt >> 0) & 0xf)))
+    {
+#define _(f,n) case n: type_string = #f; break;
+      foreach_elf_symbol_type;
+#undef _
+    default: break;
+    }
+
+  if (binding_string)
+    s = format (s, "%s", binding_string);
+  else
+    s = format (s, "binding 0x%x", b);
+
+  if (type_string)
+    s = format (s, " %s", type_string);
+  else
+    s = format (s, " type 0x%x", t);
+
+  return s;
+}
+
+static u8 *
+format_elf_symbol_visibility (u8 * s, va_list * args)
+{
+  int visibility = va_arg (*args, int);
+  char * t = 0;
+
+  switch (visibility)
+    {
+#define _(f,n) case n: t = #f; break;
+      foreach_elf_symbol_visibility
+#undef _
+    }
+
+  if (t)
+    return format (s, "%s", t);
+  else
+    return format (s, "unknown 0x%x", visibility);
+}
+
+static u8 *
+format_elf_symbol_section_name (u8 * s, va_list * args)
+{
+  elf_main_t * em = va_arg (*args, elf_main_t *);
+  int si = va_arg (*args, int);
+  char * t = 0;
+
+  if (si < vec_len (em->sections))
+    {
+      elf_section_t * es = vec_elt_at_index (em->sections, si);
+      return format (s, "%s", elf_section_name (em, es));
+    }
+
+  if (si >= ELF_SYMBOL_SECTION_RESERVED_LO
+      && si <= ELF_SYMBOL_SECTION_RESERVED_HI)
+    {
+      switch (si)
+	{
+#define _(f,n) case n: t = #f; break;
+	  foreach_elf_symbol_reserved_section_index
+#undef _
+	default:
+	  break;
+	}
+    }
+
+  if (t)
+    return format (s, "%s", t);
+  else
+    return format (s, "unknown 0x%x", si);
+}
+
+static u8 *
+format_elf_symbol (u8 * s, va_list * args)
+{
+  elf_main_t * em = va_arg (*args, elf_main_t *);
+  elf_symbol_table_t * t = va_arg (*args, elf_symbol_table_t *);
+  elf64_symbol_t * sym = va_arg (*args, elf64_symbol_t *);
+  elf_section_t * es;
+
+  if (! sym)
+    return format (s, "%=32s%=16s%=16s%=16s%=16s%=16s",
+		   "Symbol", "Size", "Value", "Type", "Visibility", "Section");
+
+  s = format (s, "%-32s%16Ld%16Lx%16U%16U%16U",
+	      elf_symbol_name (t, sym),
+	      sym->size, sym->value,
+	      format_elf_symbol_binding_and_type, sym->binding_and_type,
+	      format_elf_symbol_visibility, sym->visibility,
+	      format_elf_symbol_section_name, em, sym->section_index);
+
+  return s;
+}
+
+static u8 *
 format_elf_relocation_type (u8 * s, va_list * args)
 {
   elf_main_t * em = va_arg (*args, elf_main_t *);
@@ -177,27 +290,13 @@ static u8 *
 format_elf_relocation (u8 * s, va_list * args)
 {
   elf_main_t * em = va_arg (*args, elf_main_t *);
-  void * p = va_arg (*args, void *);
+  elf64_relocation_t * r64 = va_arg (*args, elf64_relocation_t *);
   elf_section_type_t type = va_arg (*args, elf_section_type_t);
   elf_symbol_table_t * t;
-  elf64_relocation_t * r64, r64_tmp[2];
   elf64_symbol_t * sym;
 
-  if (! p)
+  if (! r64)
     return format (s, "%=16s%=16s%=16s", "Address", "Type", "Symbol");
-
-  if (em->first_header.file_class == ELF_64BIT)
-    r64 = p;
-  else
-    {
-      elf32_relocation_t * r32 = p;
-      r64 = &r64_tmp[0];
-      r64->address = r32->address;
-      r64->symbol_and_type = (u64) (r32->symbol_and_type >> 8) << 32;
-      r64->symbol_and_type |= r32->symbol_and_type & 0xff;
-      if (type == ELF_SECTION_RELOCATION_ADD)
-	r64->addend[0] = r32->addend[0];
-    }
 
   t = vec_elt_at_index (em->symbol_tables, 0);
   sym = vec_elt_at_index (t->symbols, r64->symbol_and_type >> 32);
@@ -210,7 +309,7 @@ format_elf_relocation (u8 * s, va_list * args)
     {
       elf_section_t * es;
       es = vec_elt_at_index (em->sections, sym->section_index);
-      s = format (s, " {%s}", elf_section_name (em, es));
+      s = format (s, " (section %s)", elf_section_name (em, es));
     }
 
   if (sym->name != 0)
@@ -264,6 +363,26 @@ format_elf_dynamic_entry (u8 * s, va_list * args)
     case ELF_DYNAMIC_ENTRY_RUN_PATH:
       s = format (s, "%s", em->dynamic_string_table + e->data);
       break;
+
+    case ELF_DYNAMIC_ENTRY_INIT_FUNCTION:
+    case ELF_DYNAMIC_ENTRY_FINI_FUNCTION:
+    case ELF_DYNAMIC_ENTRY_SYMBOL_HASH:
+    case ELF_DYNAMIC_ENTRY_GNU_HASH:
+    case ELF_DYNAMIC_ENTRY_STRING_TABLE:
+    case ELF_DYNAMIC_ENTRY_SYMBOL_TABLE:
+    case ELF_DYNAMIC_ENTRY_PLT_GOT:
+    case ELF_DYNAMIC_ENTRY_PLT_RELOCATION_ADDRESS:
+    case ELF_DYNAMIC_ENTRY_RELA_ADDRESS:
+    case ELF_DYNAMIC_ENTRY_VERSION_NEED:
+    case ELF_DYNAMIC_ENTRY_VERSYM:
+      {
+	elf_section_t * es = elf_get_section_by_start_address_no_check (em, e->data);
+	if (es)
+	  s = format (s, "section %s", elf_section_name (em, es));
+	else
+	  s = format (s, "0xLx", e->data);
+	break;
+      }
 
     default:
       s = format (s, "0x%Lx", e->data);
@@ -435,6 +554,24 @@ format_elf_main (u8 * s, va_list * args)
     vec_free (copy);
   }
 
+  if (vec_len (em->symbol_tables) > 0)
+    {
+      elf_symbol_table_t * t;
+      elf64_symbol_t * sym;
+      elf_section_t * es;
+      uword i;
+
+      vec_foreach (t, em->symbol_tables)
+	{
+	  es = vec_elt_at_index (em->sections, t->section_index);
+	  s = format (s, "\nSymbols for section %s:\n", elf_section_name (em, es));
+
+	  s = format (s, "%U\n", format_elf_symbol, em, 0, 0);
+	  vec_foreach (sym, t->symbols)
+	    s = format (s, "%U\n", format_elf_symbol, em, t, sym);
+	}
+    }
+
   if (vec_len (em->relocation_tables) > 0)
     {
       elf_relocation_table_t * t;
@@ -568,6 +705,8 @@ add_symbol_table (elf_main_t * em, elf_section_t * s)
   uword i;
 
   vec_add2 (em->symbol_tables, tab, 1);
+
+  tab->section_index = s->index;
 
   if (em->first_header.file_class == ELF_64BIT)
     {

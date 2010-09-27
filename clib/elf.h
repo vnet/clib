@@ -296,17 +296,17 @@ typedef struct {
 #undef _
 
 /* Special section names.  */
-#define foreach_elf_special_section_name				\
-  _ (UNDEFINED, 0)		/* Undefined section */			\
-  _ (RESERVED_LO, 0xff00)	/* Start of reserved indices */		\
-  _ (ARCH_SPECIFIC_LO, 0xff00)						\
-  _ (ARCH_SPECIFIC_HI, 0xff1f)						\
-  _ (OS_SPECIFIC_LO, 0xff20)						\
-  _ (OS_SPECIFIC_HI, 0xff3f)						\
+#define foreach_elf_symbol_reserved_section_index			\
   _ (ABSOLUTE, 0xfff1)		/* Associated symbol is absolute */	\
   _ (COMMON, 0xfff2)		/* Associated symbol is common */	\
-  _ (XINDEX, 0xffff)		/* Index is in extra table.  */		\
-  _ (RESERVED_HI, 0xffff)	/* End of reserved indices */
+  _ (XINDEX, 0xffff)		/* Index is in extra table.  */
+
+#define ELF_SYMBOL_SECTION_RESERVED_LO 0xff00
+#define ELF_SYMBOL_SECTION_RESERVED_HI 0xffff
+#define ELF_SYMBOL_SECTION_ARCH_SPECIFIC_LO 0xff00
+#define ELF_SYMBOL_SECTION_ARCH_SPECIFIC_HI 0xff1f
+#define ELF_SYMBOL_SECTION_OS_SPECIFIC_LO 0xff20
+#define ELF_SYMBOL_SECTION_OS_SPECIFIC_HI 0xff3f
 
 /* Section types. */
 #define foreach_elf_section_type					\
@@ -516,7 +516,7 @@ typedef struct {
   _ (END, 0)			/* Marks end of dynamic section */	\
   _ (NEEDED_LIBRARY, 1)		/* Name of needed library */		\
   _ (PLT_RELOCATION_SIZE, 2)	/* Size in bytes of PLT relocs */	\
-  _ (PLTGOT, 3)			/* Processor defined value */		\
+  _ (PLT_GOT, 3)		/* Processor defined value */		\
   _ (SYMBOL_HASH, 4)		/* Address of symbol hash table */	\
   _ (STRING_TABLE, 5)		/* Address of string table */		\
   _ (SYMBOL_TABLE, 6)		/* Address of symbol table */		\
@@ -740,6 +740,8 @@ typedef struct
 
 typedef struct {
   elf64_symbol_t * symbols;
+
+  u32 section_index;
 
   u8 * string_table;
 
