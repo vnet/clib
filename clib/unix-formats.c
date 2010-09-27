@@ -28,12 +28,13 @@
 
 #else /* ! __KERNEL__ */
 
-# include <unistd.h>
-# include <signal.h>
-
-#define __USE_GNU		/* to get REG_* in ucontext.h */
-# include <ucontext.h>
+#define _GNU_SOURCE		/* to get REG_* in ucontext.h */
+#include <ucontext.h>
+#undef _GNU_SOURCE
 #undef __USE_GNU
+
+#include <unistd.h>
+#include <signal.h>
 
 #include <time.h>
 #include <sys/socket.h>
