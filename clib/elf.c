@@ -4,28 +4,40 @@
 #include <clib/vec.h>
 #include <clib/elf.h>
 
-always_inline u8
-elf_swap_u8 (elf_main_t * em, u8 x)
-{ return x; }
-
-always_inline u16
-elf_swap_u16 (elf_main_t * em, u16 x)
-{ return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
-
-always_inline u32
-elf_swap_u32 (elf_main_t * em, u32 x)
-{ return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
-
-always_inline u64
-elf_swap_u64 (elf_main_t * em, u64 x)
-{ return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
-
 always_inline void
 elf_swap_first_header (elf_main_t * em, elf_first_header_t * h)
 {
   h->architecture = elf_swap_u16 (em, h->architecture);
   h->file_type = elf_swap_u16 (em, h->file_type);
   h->file_version = elf_swap_u32 (em, h->file_version);
+}
+
+clib_error_t *
+elf_get_section_by_name (elf_main_t * em, char * section_name, elf_section_t ** result)
+{
+  elf_section_t * s;
+  uword * p;
+
+  p = hash_get_mem (em->section_by_name, section_name);
+  if (! p)
+    return clib_error_return (0, "no such section `%s'", section_name);
+
+  *result = vec_elt_at_index (em->sections, p[0]);
+  return 0;
+}
+
+clib_error_t *
+elf_get_section_by_start_address (elf_main_t * em, uword start_address, elf_section_t ** result)
+{
+  elf_section_t * s;
+  uword * p;
+
+  p = hash_get (em->section_by_start_address, start_address);
+  if (! p)
+    return clib_error_return (0, "no section with address 0x%wx", start_address);
+
+  *result = vec_elt_at_index (em->sections, p[0]);
+  return 0;
 }
 
 static u8 *
@@ -56,15 +68,16 @@ format_elf_section (u8 * s, va_list * args)
   elf64_section_header_t * h = &es->header;
 
   if (! h)
-    return format (s, "%=24s%=16s%=8s%=16s",
-		   "Name", "Type", "Size", "Address");
+    return format (s, "%=40s%=10s%=20s%=8s%=16s%=16s",
+		   "Name", "Index", "Type", "Size", "Address", "File offset");
 
-  s = format (s, "%-24s%=16U%8Lx%16Lx%16Lx",
+  s = format (s, "%-40s%10d%=20U%8Lx%16Lx %Lx-%Lx",
 	      elf_section_name (em, es),
+	      es->index,
 	      format_elf_section_type, h->type,
 	      h->file_size,
 	      h->exec_address,
-	      h->file_offset);
+	      h->file_offset, h->file_offset + h->file_size);
 
   if (h->flags != 0)
     {
@@ -215,6 +228,49 @@ format_elf_relocation (u8 * s, va_list * args)
   return s;
 }
 
+static u8 *
+format_elf_dynamic_entry_type (u8 * s, va_list * args)
+{
+  u32 type = va_arg (*args, u32);
+  char * t = 0;
+  switch (type)
+    {
+#define _(f,n) case n: t = #f; break;
+      foreach_elf_dynamic_entry_type;
+#undef _
+    default: break;
+    }
+  if (t)
+    return format (s, "%s", t);
+  else
+    return format (s, "unknown 0x%x", type);
+}
+
+static u8 *
+format_elf_dynamic_entry (u8 * s, va_list * args)
+{
+  elf_main_t * em = va_arg (*args, elf_main_t *);
+  elf64_dynamic_entry_t * e = va_arg (*args, elf64_dynamic_entry_t *);
+
+  if (! e)
+    return format (s, "%=40s%=16s", "Type", "Data");
+
+  s = format (s, "%=40U",
+	      format_elf_dynamic_entry_type, (u32) e->type);
+  switch (e->type)
+    {
+    case ELF_DYNAMIC_ENTRY_NEEDED_LIBRARY:
+    case ELF_DYNAMIC_ENTRY_RPATH:
+    case ELF_DYNAMIC_ENTRY_RUN_PATH:
+      s = format (s, "%s", em->dynamic_string_table + e->data);
+      break;
+
+    default:
+      s = format (s, "0x%Lx", e->data);
+      break;
+    }
+}
+
 static u8 * format_elf_architecture (u8 * s, va_list * args)
 {
   int a = va_arg (*args, int);
@@ -310,8 +366,9 @@ u8 *
 format_elf_main (u8 * s, va_list * args)
 {
   elf_main_t * em = va_arg (*args, elf_main_t *);
+  elf64_file_header_t * fh = &em->file_header;
 
-  s = format (s, "machine: %U, file type/class %U/%U, data-encoding: %U, abi: %U version %d\n",
+  s = format (s, "File header: machine: %U, file type/class %U/%U, data-encoding: %U, abi: %U version %d\n",
 	      format_elf_architecture, em->first_header.architecture,
 	      format_elf_file_type, em->first_header.file_type,
 	      format_elf_file_class, em->first_header.file_class,
@@ -321,12 +378,15 @@ format_elf_main (u8 * s, va_list * args)
   s = format (s, "  entry 0x%Lx, arch-flags 0x%x",
 	      em->file_header.entry_point, em->file_header.flags);
 
+  if (em->interpreter)
+    s = format (s, "\n  interpreter: %s", em->interpreter);
+
   {
     elf_section_t * h, * copy;
 
     copy = 0;
     vec_foreach (h, em->sections)
-      if (h->header.type != ELF_SECTION_UNUSED && h->header.type != ~0)
+      if (h->header.type != ~0)
 	vec_add1 (copy, h[0]);
 
     if (0)
@@ -363,8 +423,11 @@ format_elf_main (u8 * s, va_list * args)
     vec_sort (copy, s1, s2,
 	      (i64) s1->header.virtual_address - (i64) s2->header.virtual_address);
 
-    s = format (s, "\nSegments %d at file offset 0x%Lx:\n",
-		em->file_header.segment_header_count, em->file_header.segment_header_file_offset);
+    s = format (s, "\nSegments: %d at file offset 0x%Lx-0x%Lx:\n",
+		fh->segment_header_count,
+		fh->segment_header_file_offset,
+		fh->segment_header_file_offset + fh->segment_header_count * fh->segment_header_size);
+		
     s = format (s, "%U\n", format_elf_segment, 0);
     vec_foreach (h, copy)
       s = format (s, "%U\n", format_elf_segment, h);
@@ -398,12 +461,24 @@ format_elf_main (u8 * s, va_list * args)
 	}
     }
 
+  if (vec_len (em->dynamic_entries) > 0)
+    {
+      elf64_dynamic_entry_t * es, * e;
+      s = format (s, "\nDynamic linker information:\n");
+      es = vec_dup (em->dynamic_entries);
+      s = format (s, "%U\n", format_elf_dynamic_entry, em, 0);
+      vec_foreach (e, es)
+	s = format (s, "%U\n", format_elf_dynamic_entry, em, e);
+    }
+
   return s;
 }
 
 static void
-elf_parse_segment_header (elf_main_t * em, void * d, uword n)
+elf_parse_segments (elf_main_t * em, void * data)
 {
+  void * d = data + em->file_header.segment_header_file_offset;
+  uword n = em->file_header.segment_header_count;
   uword i;
 
   vec_resize (em->segments, n);
@@ -430,14 +505,22 @@ elf_parse_segment_header (elf_main_t * em, void * d, uword n)
 }
 
 static void
-elf_parse_section_header (elf_main_t * em, void * d, uword n)
+elf_parse_sections (elf_main_t * em, void * data)
 {
+  elf64_file_header_t * fh = &em->file_header;
+  elf_section_t * s;
+  void * d = data + fh->section_header_file_offset;
+  uword n = fh->section_header_count;
   uword i;
 
   vec_resize (em->sections, n);
 
   for (i = 0; i < n; i++)
     {
+      s = em->sections + i;
+
+      s->index = i;
+
       if (em->first_header.file_class == ELF_64BIT)
 	{
 	  elf64_section_header_t * h = d;
@@ -454,11 +537,30 @@ elf_parse_section_header (elf_main_t * em, void * d, uword n)
 #undef _
 	  d = (h + 1);
 	}
+
+      if (s->header.type != ELF_SECTION_NO_BITS)
+	vec_add (s->contents, data + s->header.file_offset, s->header.file_size);
+    }
+
+  s = vec_elt_at_index (em->sections, fh->section_header_string_table_index);
+
+  em->section_by_name
+    = hash_create_string (/* # elts */ vec_len (em->sections),
+			  /* sizeof of value */ sizeof (uword));
+
+  vec_foreach (s, em->sections)
+    {
+      hash_set_mem (em->section_by_name,
+		    elf_section_name (em, s),
+		    s - em->sections);
+      hash_set (em->section_by_start_address,
+		s->header.exec_address,
+		s - em->sections);
     }
 }
 
 static void
-add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
+add_symbol_table (elf_main_t * em, elf_section_t * s)
 {
   elf_symbol_table_t * tab;
   elf32_symbol_t * sym32;
@@ -469,9 +571,7 @@ add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
 
   if (em->first_header.file_class == ELF_64BIT)
     {
-      tab->symbols = elf_section_contents (em, data, s - em->sections,
-					   sizeof (tab->symbols[0]));
-      tab->symbols = vec_dup (tab->symbols);
+      tab->symbols = elf_section_contents (em, s - em->sections, sizeof (tab->symbols[0]));
       for (i = 0; i < vec_len (tab->symbols); i++)
 	{
 #define _(t,f) tab->symbols[i].f = elf_swap_##t (em, tab->symbols[i].f);
@@ -481,8 +581,7 @@ add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
     }
   else
     {
-      sym32 = elf_section_contents (em, data, s - em->sections,
-				    sizeof (sym32[0]));
+      sym32 = elf_section_contents (em, s - em->sections, sizeof (sym32[0]));
       vec_clone (tab->symbols, sym32);
       for (i = 0; i < vec_len (tab->symbols); i++)
 	{
@@ -496,8 +595,7 @@ add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
     return;
 
   tab->string_table =
-    elf_section_contents (em, data, s->header.link,
-			  sizeof (tab->string_table[0]));
+    elf_section_contents (em, s->header.link, sizeof (tab->string_table[0]));
   tab->symbol_by_name
     = hash_create_string (/* # elts */ vec_len (tab->symbols),
 			  /* sizeof of value */ sizeof (uword));
@@ -512,7 +610,7 @@ add_symbol_table (elf_main_t * em, void * data, elf_section_t * s)
 }
 
 static void
-add_relocation_table (elf_main_t * em, void * data, elf_section_t * s)
+add_relocation_table (elf_main_t * em, elf_section_t * s)
 {
   uword has_addend = s->header.type == ELF_SECTION_RELOCATION_ADD;
   elf_relocation_table_t * t;
@@ -523,43 +621,62 @@ add_relocation_table (elf_main_t * em, void * data, elf_section_t * s)
 
   if (em->first_header.file_class == ELF_64BIT)
     {
-      elf64_relocation_t * r;
+      elf64_relocation_t * r, * rs;
 
-      r = elf_section_contents (em, data, t->section_index, 
-				sizeof (r[0]) + has_addend * sizeof (r->addend[0]));
-      r = vec_dup (r);
+      rs = elf_section_contents (em, t->section_index, 
+				 sizeof (rs[0]) + has_addend * sizeof (rs->addend[0]));
 
       if (em->need_byte_swap)
-	for (i = 0; i < vec_len (r); i++)
-	  {
-	    r[i].address = elf_swap_u64 (em, r[i].address);
-	    r[i].symbol_and_type = elf_swap_u32 (em, r[i].symbol_and_type);
-	    if (has_addend)
-	      r[i].addend[0] = elf_swap_u64 (em, r[i].addend[0]);
-	  }
-      t->relocations = r;
+	{
+	  r = rs;
+	  for (i = 0; i < vec_len (r); i++)
+	    {
+	      r->address = elf_swap_u64 (em, r->address);
+	      r->symbol_and_type = elf_swap_u32 (em, r->symbol_and_type);
+	      if (has_addend)
+		r->addend[0] = elf_swap_u64 (em, r->addend[0]);
+	      r = elf_relocation_next (r, s->header.type);
+	    }
+	}
+
+      t->relocations = rs;
     }
   else
     {
-      elf32_relocation_t * r32;
+      elf64_relocation_t * r64;
+      elf32_relocation_t * r32, * r32s;
 
-      r32 = elf_section_contents (em, data, t->section_index, 
-				  sizeof (r32[0]) + has_addend * sizeof (r32->addend[0]));
-      vec_clone (t->relocations, r32);
+      r32s = elf_section_contents (em, t->section_index, 
+				   sizeof (r32s[0]) + has_addend * sizeof (r32s->addend[0]));
+      vec_clone (t->relocations, r32s);
+
       if (em->need_byte_swap)
-	for (i = 0; i < vec_len (r32); i++)
-	  {
-	    t->relocations[i].address = elf_swap_u32 (em, r32[i].address);
-	    t->relocations[i].symbol_and_type = elf_swap_u32 (em, r32[i].symbol_and_type);
-	    if (has_addend)
-	      t->relocations[i].addend[0] = elf_swap_u32 (em, r32[i].addend[0]);
-	  }
+	{
+	  r64 = t->relocations;
+	  r32 = r32s;
+	  for (i = 0; i < vec_len (r32s); i++)
+	    {
+	      r64->address = elf_swap_u32 (em, r32->address);
+	      r64->symbol_and_type = elf_swap_u32 (em, r32->symbol_and_type);
+	      if (has_addend)
+		r64->addend[0] = elf_swap_u32 (em, r32->addend[0]);
+	      r32 = elf_relocation_next (r32, s->header.type);
+	      r64 = elf_relocation_next (r64, s->header.type);
+	    }
+	}
+
+      vec_free (r32s);
     }
 }
 
-void elf_parse_symbols (elf_main_t * em, void * data)
+static void elf_parse_symbols (elf_main_t * em)
 {
   elf_section_t * s;
+
+  /* No need to parse symbols twice. */
+  if (em->parsed_symbols)
+    return;
+  em->parsed_symbols = 1;
 
   vec_foreach (s, em->sections)
     {
@@ -567,12 +684,12 @@ void elf_parse_symbols (elf_main_t * em, void * data)
 	{
 	case ELF_SECTION_SYMBOL_TABLE:
 	case ELF_SECTION_DYNAMIC_SYMBOL_TABLE:
-	  add_symbol_table (em, data, s);
+	  add_symbol_table (em, s);
 	  break;
 
 	case ELF_SECTION_RELOCATION_ADD:
 	case ELF_SECTION_RELOCATION:
-	  add_relocation_table (em, data, s);
+	  add_relocation_table (em, s);
 	  break;
 
 	default:
@@ -581,7 +698,111 @@ void elf_parse_symbols (elf_main_t * em, void * data)
     }
 }
 
-clib_error_t *
+static void
+add_dynamic_entries (elf_main_t * em, elf_section_t * s)
+{
+  uword i;
+
+  if (em->first_header.file_class == ELF_64BIT)
+    {
+      elf64_dynamic_entry_t * e;
+
+      e = elf_section_contents (em, s - em->sections, sizeof (e[0]));
+      if (em->need_byte_swap)
+	for (i = 0; i < vec_len (e); i++)
+	  {
+	    e[i].type = elf_swap_u64 (em, e[i].type);
+	    e[i].data = elf_swap_u64 (em, e[i].data);
+	  }
+
+      em->dynamic_entries = e;
+    }
+  else
+    {
+      elf32_dynamic_entry_t * e;
+
+      e = elf_section_contents (em, s - em->sections, sizeof (e[0]));
+      vec_clone (em->dynamic_entries, e);
+      if (em->need_byte_swap)
+	for (i = 0; i < vec_len (e); i++)
+	  {
+	    em->dynamic_entries[i].type = elf_swap_u32 (em, e[i].type);
+	    em->dynamic_entries[i].data = elf_swap_u32 (em, e[i].data);
+	  }
+
+      vec_free (e);
+    }
+}
+
+static void elf_parse_dynamic (elf_main_t * em)
+{
+  elf_section_t * s;
+  elf64_dynamic_entry_t * e;
+
+  vec_foreach (s, em->sections)
+    {
+      switch (s->header.type)
+	{
+	case ELF_SECTION_DYNAMIC:
+	  add_dynamic_entries (em, s);
+	  break;
+
+	default:
+	  break;
+	}
+    }
+
+  em->dynamic_string_table_section_index = ~0;
+  em->dynamic_string_table = 0;
+
+  vec_foreach (e, em->dynamic_entries)
+    {
+      if (e->type == ELF_DYNAMIC_ENTRY_STRING_TABLE)
+	{
+	  elf_section_t * s;
+	  clib_error_t * error;
+
+	  error = elf_get_section_by_start_address (em, e->data, &s);
+	  if (error)
+	    {
+	      clib_error_report (error);
+	      return;
+	    }
+
+	  ASSERT (vec_len (em->dynamic_string_table) == 0);
+	  em->dynamic_string_table_section_index = s - em->sections;
+	  em->dynamic_string_table
+	    = elf_section_contents (em, s - em->sections, sizeof (u8));
+	}
+    }
+}
+
+static char *
+elf_find_interpreter (elf_main_t * em, void * data)
+{
+  elf_segment_t * g;
+  elf_section_t * s;
+  clib_error_t * error;
+  uword * p;
+
+  vec_foreach (g, em->segments)
+    {
+      if (g->header.type == ELF_SEGMENT_INTERP)
+	break;
+    }
+
+  if (g >= vec_end (em->segments))
+    return 0;
+
+  p = hash_get (em->section_by_start_address, g->header.virtual_address);
+  if (! p)
+    return 0;
+
+  s = vec_elt_at_index (em->sections, p[0]);
+  return vec_dup (s->contents);
+}
+
+static clib_error_t *
 elf_parse (elf_main_t * em,
 	   void * data,
 	   uword data_bytes)
@@ -619,31 +840,8 @@ elf_parse (elf_main_t * em,
 #undef _
     }
 
-  elf_parse_segment_header (em,
-			    data + fh->segment_header_file_offset,
-			    fh->segment_header_count);
-  elf_parse_section_header (em,
-			    data + fh->section_header_file_offset,
-			    fh->section_header_count);
-
-  /* Read in section string table. */
-  elf_section_contents (em, data, fh->section_header_string_table_index,
-			sizeof (u8));
-
-  {
-    elf_section_t * s;
-
-    em->section_by_name
-      = hash_create_string (/* # elts */ vec_len (em->sections),
-			    /* sizeof of value */ sizeof (uword));
-
-    vec_foreach (s, em->sections)
-      {
-	hash_set_mem (em->section_by_name,
-		      elf_section_name (em, s),
-		      s - em->sections);
-      }
-  }
+  elf_parse_segments (em, data);
+  elf_parse_sections (em, data);
 
   return error;
 }
@@ -689,18 +887,10 @@ clib_error_t * elf_read_file (elf_main_t * em, char * file_name)
   if (error)
     goto done;
 
-  /* Read in all sections. */
-  {
-    elf_section_t * s;
+  elf_parse_symbols (em);
+  elf_parse_dynamic (em);
 
-    vec_foreach (s, em->sections)
-      {
-	if (s->header.type == ELF_SECTION_NO_BITS)
-	  continue;
-	elf_section_contents (em, data, s - em->sections,
-			      sizeof (u8));
-      }
-  }
+  em->interpreter = elf_find_interpreter (em, data);
 
   munmap (data, mmap_length);
   close (fd);
@@ -737,14 +927,20 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
 
     vec_foreach (s, em->sections)
       {
+	if (s->header.file_size == 0)
+	  continue;
+
 	switch (s->header.type)
 	  {
 	  case ~0:
-	  case ELF_SECTION_UNUSED:
 	  case ELF_SECTION_SYMBOL_TABLE:
+	    break;
+
 	  case ELF_SECTION_STRING_TABLE:
-	  case ELF_SECTION_NO_BITS:
-	    continue;
+	    if (s->index != em->dynamic_string_table_section_index)
+	      continue;
+	    else
+	      break;
 
 	  default:
 	    break;
@@ -756,7 +952,9 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
 	if (fseek (f, s->header.file_offset, SEEK_SET) < 0)
 	  return clib_error_return_unix (0, "fseek 0x%Lx", s->header.file_offset);
 
-	if (fwrite (s->contents, vec_len (s->contents), 1, f) != 1)
+	if (s->header.type == ELF_SECTION_NO_BITS)
+	  /* don't write for .bss sections */;
+	else if (fwrite (s->contents, vec_len (s->contents), 1, f) != 1)
 	  {
 	    error = clib_error_return_unix (0, "write %s section contents", elf_section_name (em, s));
 	    goto error;
@@ -764,7 +962,7 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
       }
   }
 
-  /* Re-build section string and write it out. */
+  /* Re-build section string table and write it out. */
   {
     elf_section_t * s;
     u8 * st = 0;
@@ -921,7 +1119,9 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
 	  }
 
 	/* We've already written the section header string table. */
-	if (em->file_header.section_header_string_table_index == s - em->sections)
+	if (em->file_header.section_header_string_table_index == s->index)
+	  continue;
+	if (em->dynamic_string_table_section_index == s->index)
 	  continue;
 
 	/* Correct file offsets/sizes in headers. */
@@ -984,14 +1184,13 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
 
 clib_error_t * elf_delete_named_section (elf_main_t * em, char * section_name)
 {
-  uword * p;
   elf_section_t * s;
+  clib_error_t * error;
 
-  p = hash_get_mem (em->section_by_name, section_name);
-  if (! p[0])
-    return clib_error_return (0, "no such section `%s'", section_name);
+  error = elf_get_section_by_name (em, section_name, &s);
+  if (error)
+    return error;
   
-  s = vec_elt_at_index (em->sections, p[0]);
   s->header.type = ~0;
 
   return 0;
