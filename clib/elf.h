@@ -585,11 +585,11 @@ typedef enum {
 } elf_dynamic_entry_type_t;
 
 /* Values of `d_un.d_val' in the DT_FLAGS entry.  */
-#define DF_ORIGIN	0x00000001	/* Object may use DF_ORIGIN */
-#define DF_SYMBOLIC	0x00000002	/* Symbol resolutions starts here */
-#define DF_TEXTREL	0x00000004	/* Object contains text relocations */
-#define DF_BIND_NOW	0x00000008	/* No lazy binding for this object */
-#define DF_STATIC_TLS	0x00000010	/* Module uses the static TLS model */
+#define ELF_DYNAMIC_FLAGS_ORIGIN	(1 << 0) /* Object may use DF_ORIGIN */
+#define ELF_DYNAMIC_FLAGS_SYMBOLIC	(1 << 1) /* Symbol resolutions starts here */
+#define ELF_DYNAMIC_FLAGS_TEXT_RELOCATIONS (1 << 2)	/* Object contains text relocations */
+#define ELF_DYNAMIC_FLAGS_BIND_NOW	(1 << 3)	/* No lazy binding for this object */
+#define ELF_DYNAMIC_FLAGS_STATIC_TLS	(1 << 4)	/* Module uses the static TLS model */
 
 /* State flags selectable in the `d_un.d_val' element of the DT_FLAGS_1
    entry in the dynamic section.  */
@@ -621,51 +621,66 @@ typedef enum {
 					   generally available.  */
 
 /* Version definition sections.  */
-
 typedef struct
 {
   u16 version;
   u16 flags;
-  u16 version_index;
+  u16 index;
   u16 aux_count;
   u32 name_hash;
-  u32 aux_offset;
-  u32 next_offset;
-} elf_version_t;
+  u32 aux_byte_offset;
+  u32 byte_offset_next_version_definition;
+} elf_dynamic_version_definition_t;
 
 typedef struct {
   u32 name;
-  u32 next_offset;
-} elf_version_aux_t;
+  u32 next_offset; /* byte offset of ver def aux next entry */
+} elf_dynamic_version_definition_aux_t;
 
 /* Version definition flags. */
-#define ELF_VERSION_FILE (1 << 0) /* Version definition of file itself */
-#define ELF_VERSION_WEAK (1 << 1) /* Weak version identifier */
+#define ELF_DYNAMIC_VERSION_FILE (1 << 0) /* Version definition of file itself */
+#define ELF_DYNAMIC_VERSION_WEAK (1 << 1) /* Weak version identifier */
 
 /* Version symbol index. */
-#define	ELF_VERSION_LOCAL 0	/* Symbol is local.  */
-#define	ELF_VERSION_GLOBAL 1	/* Symbol is global.  */
-#define	ELF_VERSION_RESERVED_LO	0xff00 /* Beginning of reserved entries.  */
-#define	ELF_VERSION_ELIMINATE	0xff01	/* Symbol is to be eliminated.  */
+#define	ELF_DYNAMIC_VERSYM_LOCAL 0	/* Symbol is local.  */
+#define	ELF_DYNAMIC_VERSYM_GLOBAL 1	/* Symbol is global.  */
+#define	ELF_DYNAMIC_VERSYM_RESERVED_LO	0xff00 /* Beginning of reserved entries.  */
+#define	ELF_DYNAMIC_VERSYM_ELIMINATE	0xff01	/* Symbol is to be eliminated.  */
 
 /* Version dependency section.  */
+#define foreach_elf_dynamic_version_need_field	\
+  _ (u16, version)				\
+  _ (u16, aux_count)				\
+  _ (u32, file_name_offset)			\
+  _ (u32, first_aux_offset)			\
+  _ (u32, next_offset)
+
+#define foreach_elf_dynamic_version_need_aux_field	\
+  _ (u32, hash)						\
+  _ (u16, flags)					\
+  _ (u16, versym_index)					\
+  _ (u32, name)						\
+  _ (u32, next_offset)
 
 typedef struct
 {
-  u16 version;
-  u16 dep_aux_count;
-  u32 file_name_offset;
-  u32 dep_aux_offset;
-  u32 next_offset;
-} elf_version_dependency_t;
+#define _(t,f) t f;
+  foreach_elf_dynamic_version_need_field
+#undef _
+} elf_dynamic_version_need_t;
 
-typedef struct {
-  u32 hash;
-  u16 flags;
-  u16 unused;
-  u32 name;
-  u32 next_offset;
-} elf_version_dependency_aux_t;
+typedef struct
+{
+#define _(t,f) t f;
+  foreach_elf_dynamic_version_need_aux_field
+#undef _
+} elf_dynamic_version_need_aux_t;
+
+typedef union
+{
+  elf_dynamic_version_need_t need;
+  elf_dynamic_version_need_aux_t aux;
+} elf_dynamic_version_need_union_t;
 
 /* Note section contents.  Each entry in the note section begins with
    a header of a fixed form.  */
@@ -776,11 +791,25 @@ typedef struct {
 
   u32 index;
 
+  /* Index of segments containing this section. */
+  uword * segment_index_bitmap;
+
+  /* Aligned size (included padding not included in
+     header.file_size). */
+  u64 align_size;
+
+  i64 exec_address_change;
+
   u8 * contents;
 } elf_section_t;
 
 typedef struct {
   elf64_segment_header_t header;
+
+  /* Sections contained in this segment. */
+  uword * section_index_bitmap;
+
+  u32 index;
 
   u8 * contents;
 } elf_segment_t;
@@ -809,6 +838,13 @@ typedef struct {
   elf64_dynamic_entry_t * dynamic_entries;
   u8 * dynamic_string_table;
   u32 dynamic_string_table_section_index;
+  u32 dynamic_symbol_table_section_index;
+  u32 dynamic_symbol_table_index;
+  u32 dynamic_section_index;
+  u16 * versym;
+  u32 versym_section_index;
+  elf_dynamic_version_need_union_t * verneed;
+  u32 verneed_section_index;
 } elf_main_t;
 
 always_inline void
@@ -841,9 +877,9 @@ elf_main_free (elf_main_t * em)
 }
 
 always_inline void *
-elf_section_contents (elf_main_t * em,
-		      uword section_index,
-		      uword elt_size)
+elf_get_section_contents (elf_main_t * em,
+			  uword section_index,
+			  uword elt_size)
 {
   elf_section_t * s;
   void * result;
@@ -863,6 +899,19 @@ elf_section_contents (elf_main_t * em,
     }
 
   return result;
+}
+
+always_inline void
+elf_set_section_contents (elf_main_t * em,
+			  uword section_index,
+			  void * new_contents,
+			  uword n_content_bytes)
+{
+  elf_section_t * s;
+
+  s = vec_elt_at_index (em->sections, section_index);
+  vec_free (s->contents);
+  vec_add (s->contents, new_contents, n_content_bytes);
 }
 
 always_inline u8 *
@@ -888,6 +937,10 @@ always_inline u64
 elf_swap_u64 (elf_main_t * em, u64 x)
 { return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
 
+#define FORMAT_ELF_MAIN_SYMBOLS (1 << 0)
+#define FORMAT_ELF_MAIN_RELOCATIONS (1 << 1)
+#define FORMAT_ELF_MAIN_DYNAMIC (1 << 2)
+
 format_function_t format_elf_main;
 
 clib_error_t * elf_read_file (elf_main_t * em, char * file_name);
@@ -906,5 +959,6 @@ elf_create_section_with_contents (elf_main_t * em,
 				  void * contents,
 				  uword n_content_bytes);
 uword elf_delete_segment_with_type (elf_main_t * em, elf_segment_type_t segment_type);
+void elf_set_dynamic_entries (elf_main_t * em);
 
 #endif /* included_clib_elf_h */

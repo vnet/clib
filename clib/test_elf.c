@@ -64,88 +64,33 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em, char * interp)
 static void
 delete_dynamic_rpath_entries_from_section (elf_main_t * em, elf_section_t * s)
 {
-  uword i;
+  elf64_dynamic_entry_t * e;
+  elf64_dynamic_entry_t * new_es = 0;
 
-  if (em->first_header.file_class == ELF_64BIT)
+  vec_foreach (e, em->dynamic_entries)
     {
-      elf64_dynamic_entry_t * e, * old_es, * new_es;
-      uword n_del = 0;
-
-      old_es = elf_section_contents (em, s - em->sections, sizeof (e[0]));
-      new_es = 0;
-
-      for (i = 0; i < vec_len (old_es); i++)
+      switch (e->type)
 	{
-	  u64 type = elf_swap_u64 (em, old_es[i].type);
-	  switch (type)
-	    {
-	    case ELF_DYNAMIC_ENTRY_RPATH:
-	    case ELF_DYNAMIC_ENTRY_RUN_PATH:
-	      n_del++;
-	      break;
+	case ELF_DYNAMIC_ENTRY_RPATH:
+	case ELF_DYNAMIC_ENTRY_RUN_PATH:
+	  break;
 
-	    default:
-	      vec_add1 (new_es, e[0]);
-	      break;
-	    }
+	default:
+	  vec_add1 (new_es, e[0]);
+	  break;
 	}
-
-      if (n_del > 0)
-	{
-	  vec_add2 (new_es, e, n_del);
-	  for (i = 0; i < n_del; i++)
-	    {
-	      e[i].type = elf_swap_u64 (em, ELF_DYNAMIC_ENTRY_END);
-	      e[i].data = 0;
-	    }
-
-	  /* Replace dynamic section with modified one. */
-	  memcpy (s->contents, new_es, vec_bytes (new_es));
-	}
-
-      vec_free (old_es);
-      vec_free (new_es);
     }
-  else
-    {
-      elf32_dynamic_entry_t * e, * old_es, * new_es;
-      uword n_del = 0;
 
-      old_es = elf_section_contents (em, s - em->sections, sizeof (e[0]));
-      new_es = 0;
+  /* Pad so as to keep section size constant. */
+  {
+    elf64_dynamic_entry_t e_end;
+    e_end.type = ELF_DYNAMIC_ENTRY_END;
+    e_end.data = 0;
+    while (vec_len (new_es) < vec_len (em->dynamic_entries))
+      vec_add1 (new_es, e_end);
+  }
 
-      for (i = 0; i < vec_len (old_es); i++)
-	{
-	  u32 type = elf_swap_u32 (em, old_es[i].type);
-	  switch (type)
-	    {
-	    case ELF_DYNAMIC_ENTRY_RPATH:
-	    case ELF_DYNAMIC_ENTRY_RUN_PATH:
-	      n_del++;
-	      break;
-
-	    default:
-	      vec_add1 (new_es, e[0]);
-	      break;
-	    }
-	}
-
-      if (n_del > 0)
-	{
-	  vec_add2 (new_es, e, n_del);
-	  for (i = 0; i < n_del; i++)
-	    {
-	      e[i].type = elf_swap_u32 (em, ELF_DYNAMIC_ENTRY_END);
-	      e[i].data = 0;
-	    }
-
-	  /* Replace dynamic section with modified one. */
-	  memcpy (s->contents, new_es, vec_bytes (new_es));
-	}
-
-      vec_free (old_es);
-      vec_free (new_es);
-    }
+  elf_set_dynamic_entries (em);
 }
 
 static void elf_delete_dynamic_rpath_entries (elf_main_t * em)
@@ -192,7 +137,13 @@ int main (int argc, char * argv[])
       else if (unformat (&i, "set-interpreter %s", &tm->set_interpreter))
 	;
       else if (unformat (&i, "verbose"))
-	tm->verbose = 1;
+	tm->verbose = ~0;
+      else if (unformat (&i, "verbose-symbols"))
+	tm->verbose |= FORMAT_ELF_MAIN_SYMBOLS;
+      else if (unformat (&i, "verbose-relocations"))
+	tm->verbose |= FORMAT_ELF_MAIN_RELOCATIONS;
+      else if (unformat (&i, "verbose-dynamic"))
+	tm->verbose |= FORMAT_ELF_MAIN_DYNAMIC;
       else
 	{
 	  error = unformat_parse_error (&i);
@@ -216,7 +167,7 @@ int main (int argc, char * argv[])
     }
 
   if (tm->verbose)
-    fformat (stdout, "%U", format_elf_main, em);
+    fformat (stdout, "%U", format_elf_main, em, tm->verbose);
 
   if (tm->output_file)
     error = elf_write_file (em, tm->output_file);
