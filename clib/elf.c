@@ -308,20 +308,19 @@ static u8 *
 format_elf_relocation (u8 * s, va_list * args)
 {
   elf_main_t * em = va_arg (*args, elf_main_t *);
-  elf64_relocation_t * r64 = va_arg (*args, elf64_relocation_t *);
-  elf_section_type_t type = va_arg (*args, elf_section_type_t);
+  elf_relocation_with_addend_t * r = va_arg (*args, elf_relocation_with_addend_t *);
   elf_symbol_table_t * t;
   elf64_symbol_t * sym;
 
-  if (! r64)
+  if (! r)
     return format (s, "%=16s%=16s%=16s", "Address", "Type", "Symbol");
 
   t = vec_elt_at_index (em->symbol_tables, 0);
-  sym = vec_elt_at_index (t->symbols, r64->symbol_and_type >> 32);
+  sym = vec_elt_at_index (t->symbols, r->symbol_and_type >> 32);
 
   s = format (s, "%16Lx%16U",
-	      r64->address,
-	      format_elf_relocation_type, em, r64->symbol_and_type & 0xff);
+	      r->address,
+	      format_elf_relocation_type, em, r->symbol_and_type & 0xff);
 
   if (sym->section_index != 0)
     {
@@ -333,14 +332,13 @@ format_elf_relocation (u8 * s, va_list * args)
   if (sym->name != 0)
     s = format (s, " %s", elf_symbol_name (t, sym));
 
-  if (type == ELF_SECTION_RELOCATION_ADD)
-    {
-      i64 a = r64->addend[0];
-      if (a != 0)
-	s = format (s, " %c 0x%Lx",
-		    a > 0 ? '+' : '-',
-		    a > 0 ? a : -a);
-    }
+  {
+    i64 a = r->addend;
+    if (a != 0)
+      s = format (s, " %c 0x%Lx",
+		  a > 0 ? '+' : '-',
+		  a > 0 ? a : -a);
+  }
 
   return s;
 }
@@ -398,7 +396,7 @@ format_elf_dynamic_entry (u8 * s, va_list * args)
 	if (es)
 	  s = format (s, "section %s", elf_section_name (em, es));
 	else
-	  s = format (s, "0xLx", e->data);
+	  s = format (s, "0x%Lx", e->data);
 	break;
       }
 
@@ -598,7 +596,7 @@ format_elf_main (u8 * s, va_list * args)
       && vec_len (em->relocation_tables) > 0)
     {
       elf_relocation_table_t * t;
-      elf64_relocation_t * r;
+      elf_relocation_with_addend_t * r;
       elf_section_t * es;
       elf64_section_header_t * h;
       uword i;
@@ -611,12 +609,11 @@ format_elf_main (u8 * s, va_list * args)
 	  s = format (s, "\nRelocations for section %s:\n",
 		      elf_section_name (em, es));
 
-	  s = format (s, "%U\n", format_elf_relocation, em, 0, 0);
-	  for (i = 0; i < vec_len (t->relocations); i++)
+	  s = format (s, "%U\n", format_elf_relocation, em, 0);
+	  vec_foreach (r, t->relocations)
 	    {
 	      s = format (s, "%U\n",
-			  format_elf_relocation, em, r, h->type);
-	      r = elf_relocation_next (r, h->type);
+			  format_elf_relocation, em, r);
 	    }
 	}
     }
@@ -829,7 +826,7 @@ add_relocation_table (elf_main_t * em, elf_section_t * s)
       elf64_relocation_t * r, * rs;
 
       rs = elf_get_section_contents (em, t->section_index, 
-				 sizeof (rs[0]) + has_addend * sizeof (rs->addend[0]));
+				     sizeof (rs[0]) + has_addend * sizeof (rs->addend[0]));
 
       if (em->need_byte_swap)
 	{
@@ -844,30 +841,26 @@ add_relocation_table (elf_main_t * em, elf_section_t * s)
 	    }
 	}
 
-      t->relocations = rs;
+      vec_resize (t->relocations, vec_len (rs));
+      memcpy (t->relocations, rs, vec_bytes (t->relocations));
+      vec_free (rs);
     }
   else
     {
-      elf64_relocation_t * r64;
+      elf_relocation_with_addend_t * r;
       elf32_relocation_t * r32, * r32s;
 
       r32s = elf_get_section_contents (em, t->section_index, 
-				   sizeof (r32s[0]) + has_addend * sizeof (r32s->addend[0]));
-      vec_clone (t->relocations, r32s);
+				       sizeof (r32s[0]) + has_addend * sizeof (r32s->addend[0]));
+      vec_resize (t->relocations, vec_len (r32s));
 
-      if (em->need_byte_swap)
+      r32 = r32s;
+      vec_foreach (r, t->relocations)
 	{
-	  r64 = t->relocations;
-	  r32 = r32s;
-	  for (i = 0; i < vec_len (r32s); i++)
-	    {
-	      r64->address = elf_swap_u32 (em, r32->address);
-	      r64->symbol_and_type = elf_swap_u32 (em, r32->symbol_and_type);
-	      if (has_addend)
-		r64->addend[0] = elf_swap_u32 (em, r32->addend[0]);
-	      r32 = elf_relocation_next (r32, s->header.type);
-	      r64 = elf_relocation_next (r64, s->header.type);
-	    }
+	  r->address = elf_swap_u32 (em, r32->address);
+	  r->symbol_and_type = elf_swap_u32 (em, r->symbol_and_type);
+	  r->addend = has_addend ? elf_swap_u32 (em, r32->addend[0]) : 0;
+	  r32 = elf_relocation_next (r32, s->header.type);
 	}
 
       vec_free (r32s);
@@ -1043,7 +1036,9 @@ void elf_set_dynamic_entries (elf_main_t * em)
 	  case ELF_DYNAMIC_ENTRY_VERSYM:
 	    {
 	      elf_section_t * es = elf_get_section_by_start_address_no_check (em, e->data);
-	      e->data = es->header.exec_address;
+	      /* If section is not found just leave e->data alone. */
+	      if (es)
+		e->data = es->header.exec_address;
 	      break;
 	    }
 
@@ -1074,15 +1069,15 @@ void elf_set_dynamic_entries (elf_main_t * em)
     }
   else
     {
-      elf32_dynamic_entry_t * e, * es;
+      elf32_dynamic_entry_t * es;
 
       vec_clone (es, em->dynamic_entries);
       if (em->need_byte_swap)
 	{
 	  for (i = 0; i < vec_len (es); i++)
 	    {
-	      e[i].type = elf_swap_u32 (em, e[i].type);
-	      e[i].data = elf_swap_u32 (em, e[i].data);
+	      es[i].type = elf_swap_u32 (em, em->dynamic_entries[i].type);
+	      es[i].data = elf_swap_u32 (em, em->dynamic_entries[i].data);
 	    }
 	}
 
@@ -1212,7 +1207,7 @@ elf_find_interpreter (elf_main_t * em, void * data)
   return vec_dup (s->contents);
 }
 
-static clib_error_t *
+clib_error_t *
 elf_parse (elf_main_t * em,
 	   void * data,
 	   uword data_bytes)
@@ -1221,7 +1216,11 @@ elf_parse (elf_main_t * em,
   elf64_file_header_t * fh = &em->file_header;
   clib_error_t * error = 0;
 
-  memset (em, 0, sizeof (em[0]));
+  {
+    char * save = em->file_name;
+    memset (em, 0, sizeof (em[0]));
+    em->file_name = save;
+  }
 
   em->first_header = h[0];
   em->need_byte_swap = 
@@ -1232,7 +1231,7 @@ elf_parse (elf_main_t * em,
 	 && h->magic[1] == 'E'
 	 && h->magic[2] == 'L'
 	 && h->magic[3] == 'F'))
-    return clib_error_return (0, "bad magic");
+    return clib_error_return (0, "`%s': bad magic", em->file_name);
 
   if (h->file_class == ELF_64BIT)
     {
@@ -1321,6 +1320,8 @@ clib_error_t * elf_read_file (elf_main_t * em, char * file_name)
       error = clib_error_return_unix (0, "mmap `%s'", file_name);
       goto done;
     }
+
+  em->file_name = file_name;
 
   error = elf_parse (em, data, mmap_length);
   if (error)

@@ -441,6 +441,12 @@ typedef struct {
   i64 addend[0];
 } elf64_relocation_t;
 
+typedef struct {
+  u64 address;
+  u64 symbol_and_type;
+  u64 addend;
+} elf_relocation_with_addend_t;
+
 #define elf_relocation_next(r,type)					\
   ((void *) ((r) + 1)							\
    + ((type) == ELF_SECTION_RELOCATION_ADD ? sizeof ((r)->addend[0]) : 0))
@@ -775,7 +781,7 @@ elf_symbol_name (elf_symbol_table_t * t, elf64_symbol_t * sym)
 { return vec_elt_at_index (t->string_table, sym->name); }
 
 typedef struct {
-  elf64_relocation_t * relocations;
+  elf_relocation_with_addend_t * relocations;
 
   u32 section_index;
 } elf_relocation_table_t;
@@ -818,6 +824,8 @@ typedef struct {
   u8 need_byte_swap;
 
   u8 parsed_symbols;
+
+  char * file_name;
 
   elf_first_header_t first_header;
 
@@ -874,6 +882,16 @@ elf_main_free (elf_main_t * em)
 
   vec_free (em->dynamic_entries);
   vec_free (em->interpreter);
+}
+
+always_inline void
+elf_get_segment_contents (elf_main_t * em,
+			  void * data,
+			  uword segment_index)
+{
+  elf_segment_t * g = vec_elt_at_index (em->segments, segment_index);
+  if (! g->contents)
+    vec_add (g->contents, data + g->header.file_offset, g->header.memory_size);
 }
 
 always_inline void *
@@ -946,6 +964,7 @@ format_function_t format_elf_main;
 clib_error_t * elf_read_file (elf_main_t * em, char * file_name);
 clib_error_t * elf_write_file (elf_main_t * em, char * file_name);
 clib_error_t * elf_delete_named_section (elf_main_t * em, char * section_name);
+clib_error_t * elf_parse (elf_main_t * em, void * data, uword data_bytes);
 
 clib_error_t *
 elf_get_section_by_name (elf_main_t * em, char * section_name, elf_section_t ** result);
