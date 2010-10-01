@@ -1538,6 +1538,10 @@ static void layout_sections (elf_main_t * em)
 
 	exec_address = round_pow2_u64 (exec_address, s->header.align);
 
+        /* Put sections we added at end of file. */
+        if (s->header.file_offset == ~0)
+          s->header.file_offset = file_offset;
+
 	/* Follow gaps in original file. */
 	if (s->header.exec_address > exec_address)
 	  {
