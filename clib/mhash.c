@@ -23,14 +23,6 @@
 
 #include <clib/mhash.h>
 
-always_inline void *
-mhash_key_to_mem (mhash_t * h, uword key)
-{
-  return ((key & 1)
-	  ? h->key_vector + (key / 2)
-	  : uword_to_pointer (key, void *));
-}
-
 always_inline u32
 load_partial_u32 (void * d, uword n)
 {
@@ -240,7 +232,7 @@ uword * mhash_get (mhash_t * h, void * key)
   return hash_get_mem (h->hash, key);
 }
 
-void mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value)
+void mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value)
 {
   u8 * k;
   uword ikey, i, l, old_n_elts, key_alloc_from_free_list;
@@ -263,7 +255,7 @@ void mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value)
   ikey = 1 + 2*i;
 
   old_n_elts = hash_elts (h->hash);
-  hash_set3 (h->hash, ikey, new_value, old_value);
+  h->hash = _hash_set3 (h->hash, ikey, new_value, old_value);
 
   /* If element already existed remove duplicate key. */
   if (hash_elts (h->hash) == old_n_elts)
