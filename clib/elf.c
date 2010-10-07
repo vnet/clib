@@ -1908,6 +1908,7 @@ elf_create_section_with_contents (elf_main_t * em,
 
   s->header.file_offset = ~0;
   s->header.file_size = n_content_bytes;
+  s->index = s - em->sections;
 
   /* Add name to string table. */
   s->header.name = vec_len (st);
