@@ -226,13 +226,13 @@ void mhash_init_c_string (mhash_t * h, uword n_value_bytes)
 void mhash_init_vec_string (mhash_t * h, uword n_value_bytes)
 { mhash_init (h, n_value_bytes, mhash_n_key_bytes_vec_string); }
 
-uword * mhash_get (mhash_t * h, void * key)
+hash_pair_t * mhash_get_pair (mhash_t * h, void * key)
 {
   mhash_sanitize_hash_user (h);
-  return hash_get_mem (h->hash, key);
+  return hash_get_pair_mem (h->hash, key);
 }
 
-void mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value)
+uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value)
 {
   u8 * k;
   uword ikey, i, l, old_n_elts, key_alloc_from_free_list;
@@ -260,6 +260,12 @@ void mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_valu
   /* If element already existed remove duplicate key. */
   if (hash_elts (h->hash) == old_n_elts)
     {
+      hash_pair_t * p;
+
+      /* Fetch old key for return value. */
+      p = hash_get_pair (h->hash, ikey);
+      ikey = p->key;
+
       /* Remove duplicate key. */
       if (key_alloc_from_free_list)
 	{
@@ -269,6 +275,8 @@ void mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_valu
       else
 	_vec_len (h->key_vector) -= h->n_key_bytes;
     }
+
+  return ikey;
 }
 
 uword mhash_unset (mhash_t * h, void * key, uword * old_value)

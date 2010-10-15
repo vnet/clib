@@ -51,13 +51,20 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes);
 void mhash_init_c_string (mhash_t * h, uword n_value_bytes);
 void mhash_init_vec_string (mhash_t * h, uword n_value_bytes);
 
-uword * mhash_get (mhash_t * h, void * key);
-void mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value);
+hash_pair_t * mhash_get_pair (mhash_t * h, void * key);
+uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value);
 uword mhash_unset (mhash_t * h, void * key, uword * old_value);
 
-always_inline void
+always_inline uword *
+mhash_get (mhash_t * h, void * key)
+{
+  hash_pair_t * p = mhash_get_pair (h, key);
+  return p ? &p->value[0] : 0;
+}
+
+always_inline uword
 mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value)
-{ mhash_set_mem (h, key, &new_value, old_value); }
+{ return mhash_set_mem (h, key, &new_value, old_value); }
 
 always_inline uword
 mhash_value_bytes (mhash_t * m)
