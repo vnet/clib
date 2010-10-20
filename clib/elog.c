@@ -128,8 +128,15 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
     uword i;
     t->n_enum_strings = static_type->n_enum_strings;
     for (i = 0; i < t->n_enum_strings; i++)
-      vec_add1 (t->enum_strings_vector,
-		(char *) format (0, "%s%c", static_type->enum_strings[i], 0));
+      {
+        /* 
+         * If this assert goes off, look for a missing comma in the
+         * .enum_strings initializer...
+         */
+        ASSERT (static_type->enum_strings[i]);
+        vec_add1 (t->enum_strings_vector,
+                  (char *) format (0, "%s%c", static_type->enum_strings[i], 0));
+      }
   }
 
   new_event_type (em, l);
