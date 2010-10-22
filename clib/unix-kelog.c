@@ -1,0 +1,446 @@
+/*
+  Copyright (c) 2010 by cisco systems, inc.
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+#include <clib/error.h>
+#include <clib/unix.h>
+#include <clib/elog.h>
+#include <clib/format.h>
+#include <clib/os.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+
+typedef enum
+  {
+    RUNNING = 0,
+    WAKEUP,
+  } sched_event_type_t;
+
+typedef struct 
+{
+  u32 cpu;
+  u8 *task;
+  u32 pid;
+  f64 timestamp;
+  sched_event_type_t type;
+} sched_event_t;
+
+void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
+{
+  int enable_fd, current_tracer_fd, data_fd;
+  int len;
+  struct timespec ts, ts2;
+  char *trace_enable = "/debug/tracing/tracing_enabled";
+  char *current_tracer = "/debug/tracing/current_tracer";
+  char *trace_data = "/debug/tracing/trace";
+  f64 before, after;
+
+  ASSERT (kernel_tracer);
+
+  n_events = 1<<18;
+
+  /* init first so we won't hurt ourselves if we bail */
+  elog_init (em, n_events);
+
+  enable_fd = open (trace_enable, O_RDWR);
+  if (enable_fd < 0)
+    {
+      clib_warning ("Couldn't open %s", trace_enable);
+      return;
+    }
+  /* disable kernel tracing */
+  if (write (enable_fd, "0\n", 2) != 2) 
+    {
+      clib_unix_warning ("disable tracing");
+      close(enable_fd);
+      return;
+    }
+    
+  /* 
+   * open + clear the data buffer.
+   * see .../linux/kernel/trace/trace.c:tracing_open()
+   */
+  data_fd = open (trace_data, O_RDWR | O_TRUNC);
+  if (data_fd < 0) 
+    {
+      clib_warning ("Couldn't open+clear %s", trace_data);
+      return;
+    }
+  close(data_fd);
+
+  /* configure tracing */
+  current_tracer_fd = open (current_tracer, O_RDWR);
+
+  if (current_tracer_fd < 0)
+    {
+      clib_warning ("Couldn't open %s", current_tracer);
+      close(enable_fd);
+      return;
+    }
+
+  len = strlen(kernel_tracer);
+
+  if (write (current_tracer_fd, kernel_tracer, len) != len) 
+    {
+      clib_unix_warning ("configure trace");
+      close(current_tracer_fd);
+      close(enable_fd);
+      return;
+    }
+  
+  close(current_tracer_fd);
+
+  {
+    f64 delta_in_ns, delta_in_clocks;
+
+    before = clib_cpu_time_now();
+    syscall (SYS_clock_gettime, CLOCK_MONOTONIC, &ts2);
+    after = clib_cpu_time_now();
+
+    delta_in_ns = 1e9*(f64)ts2.tv_sec + (f64)ts2.tv_nsec;
+    delta_in_ns -= 1e9*(f64)ts.tv_sec + (f64)ts.tv_nsec;
+    delta_in_clocks = after - before;
+    
+    }
+
+  /* 
+   * Ugh. The kernel event log uses CLOCK_MONOTONIC timestamps,
+   * not CLOCK_REALTIME timestamps. Squirrel away both so we can
+   * generate plausible timestamps later. 
+   */
+  { 
+    f64 freq, secs_per_clock;
+    freq = os_cpu_clock_frequency();
+    secs_per_clock = 1.0 / freq;
+    em->nsec_per_cpu_clock = secs_per_clock*1e9;
+    clib_warning ("freq %f, nsec_per_cpu_clock %6.2f", 
+                  freq, em->nsec_per_cpu_clock);
+  }
+
+  elog_time_now (&em->init_time);
+  syscall (SYS_clock_gettime, CLOCK_MONOTONIC, &ts);
+  /* $$$ apply a fudge factor for the second syscall */
+  em->kelog_init_time.os_nsec = 1000000000ULL * ts.tv_sec + ts.tv_nsec;
+  clib_warning ("tv_sec %u tv_nsec %u init_time.os_nsec %llu, %.4f", 
+                ts.tv_sec, ts.tv_nsec,
+                em->kelog_init_time.os_nsec, 
+                (f64)em->kelog_init_time.os_nsec * 1e-9); 
+  em->kelog_init_time.cpu = clib_cpu_time_now();
+  clib_warning ("init_time.cpu = %llu", em->kelog_init_time.cpu);
+
+  /* enable kernel tracing */
+  if (write (enable_fd, "1\n", 2) != 2) 
+    {
+      clib_unix_warning ("enable tracing");
+      close(enable_fd);
+      return;
+    }
+
+  close(enable_fd);
+}
+
+
+u8 *format_sched_event (u8 * s, va_list * va)
+{
+  sched_event_t *e = va_arg (*va, sched_event_t *);
+
+  s = format (s, "cpu %d task %10s type %s timestamp %12.6f\n",
+              e->cpu, e->task, e->type ? "WAKEUP " : "RUNNING", e->timestamp);
+
+  return s;
+}
+
+sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
+{
+  u8 *cp = tdata + *index;
+  u8 *limit = tdata + vec_len(tdata);
+  int colons;
+  static sched_event_t event;
+  sched_event_t *e = &event;
+  static u8 *task_name;
+  u32 secs, usecs;
+  int i;
+
+ again:
+  /* eat leading w/s */
+  while (cp < limit && (*cp == ' ' && *cp == '\t'))
+    cp++;
+  if (cp == limit)
+    return 0;
+      
+  /* header line */
+  if (*cp == '#')
+    {
+      while (cp < limit && (*cp != '\n'))
+        cp++;
+      if (*cp == '\n')
+        {
+          cp++;
+          goto again;
+        }
+      clib_warning ("bugger 0");
+      return 0;
+    }
+
+  while (cp < limit && *cp != ']')
+    cp++;
+
+  if (*cp == 0)
+    return 0;
+
+  if (*cp != ']')
+    {
+      clib_warning ("bugger 0.1");
+      return 0;
+    }
+        
+  cp++;
+  while (cp < limit && (*cp == ' ' && *cp == '\t'))
+    cp++;
+  if (cp == limit)
+    {
+      clib_warning ("bugger 0.2");
+      return 0;
+    }
+      
+  secs = atoi(cp);
+
+  while (cp < limit && (*cp != '.'))
+    cp++;
+
+  if (cp == limit)
+    {
+      clib_warning ("bugger 0.3");
+      return 0;
+    }
+      
+  cp++;
+
+  usecs = atoi (cp);
+
+  e->timestamp = ((f64)secs) + ((f64)usecs)*1e-6;
+      
+  /* eat up to third colon */
+  for (i = 0; i < 3; i++)
+    {
+      while (cp < limit && *cp != ':')
+        cp++;
+      cp++;
+    }
+  --cp;
+  if (*cp != ':')
+    {
+      clib_warning ("bugger 1");
+      return 0;
+    }
+  /* aim at '>' (switch-to) / '+' (wakeup) */
+  cp += 5;
+  if (cp >= limit)
+    {
+      clib_warning ("bugger 2");
+      return 0;
+    }
+  if (*cp == '>')
+    e->type = RUNNING;
+  else if (*cp == '+')
+    e->type = WAKEUP;
+  else
+    {
+      clib_warning ("bugger 3");
+      return 0;
+    }
+
+  cp += 3;
+  if (cp >= limit) 
+    {
+      clib_warning ("bugger 4");
+      return 0;
+    }
+            
+  e->cpu = atoi (cp);
+  cp += 4;
+          
+  if (cp >= limit) 
+    {
+      clib_warning ("bugger 4");
+      return 0;
+    }
+  while (cp < limit && (*cp == ' ' || *cp == '\t'))
+    cp++;
+
+  e->pid = atoi (cp);
+          
+  for (i = 0; i < 2; i++)
+    {
+      while (cp < limit && *cp != ':')
+        cp++;
+      cp++;
+    }
+  --cp;
+  if (*cp != ':')
+    {
+      clib_warning ("bugger 5");
+      return 0;
+    }
+
+  cp += 3;
+  if (cp >= limit) 
+    {
+      clib_warning ("bugger 6");
+      return 0;
+    }
+  while (cp < limit && *cp != '\n')
+    {
+      vec_add1(task_name, *cp);
+      cp++;
+    }
+  vec_add1(task_name, 0);
+  /* _vec_len() = 0 in caller */
+  e->task = task_name;
+
+  *index = cp - tdata;
+  return e;
+}
+
+void kelog_collect_sched_switch_trace (elog_main_t *em)
+{
+  int enable_fd, data_fd;
+  char *trace_enable = "/debug/tracing/tracing_enabled";
+  char *trace_data = "/debug/tracing/trace";
+  u8 *data = 0;
+  u8 *dp;
+  int bytes, total_bytes;
+  u32 pos;
+  sched_event_t *evt;
+  u64 nsec_to_add;
+  u32 index;
+  f64 clocks_per_sec;
+  int events_parsed = 0;
+  
+  enable_fd = open (trace_enable, O_RDWR);
+  if (enable_fd < 0)
+    {
+      clib_warning ("Couldn't open %s", trace_enable);
+      return;
+    }
+  /* disable kernel tracing */
+  if (write (enable_fd, "0\n", 2) != 2) 
+    {
+      clib_unix_warning ("disable tracing");
+      close(enable_fd);
+      return;
+    }
+  close(enable_fd);
+
+  /* Make sure there's a chance the log is sane */
+  if (em->kelog_init_time.os_nsec == 0)
+    {
+      clib_warning ("WARNING: kelog_init() call missing");
+      return;
+    }
+
+  /* Read the trace data */
+  data_fd = open (trace_data, O_RDWR);
+  if (data_fd < 0)
+    {
+      clib_warning ("Couldn't open %s", trace_data);
+      return;
+    }
+
+  /* 
+   * Extract trace into a vector. Note that seq_printf() [kernel]
+   * is not guaranteed to produce 4096 bytes at a time.
+   */
+  vec_validate (data, 4095);
+  total_bytes = 0;
+  pos = 0;
+  while (1)
+    {
+      bytes = read(data_fd, data+pos, 4096);
+      if (bytes <= 0) 
+          break;
+
+      total_bytes += bytes;
+      _vec_len(data) = total_bytes;
+
+      pos = vec_len(data);
+      vec_validate(data, vec_len(data)+4095);
+    }
+  vec_add1(data, 0);
+
+  /* Synthesize events */
+  em->is_enabled = 1;
+
+  clocks_per_sec = 1.0 / (1e-9*em->nsec_per_cpu_clock);
+
+  index = 0;
+  while ((evt = parse_sched_switch_trace (data, &index)))
+    {
+      f64 timestamp;
+      u64 fake_os_nsec, fake_cpu_clocks;
+
+      events_parsed++;
+
+      /* t/s in seconds since kelog_init */
+      timestamp = evt->timestamp - ((f64)em->kelog_init_time.os_nsec*1e-9);
+
+      /* fake cpu clock = cpu clock at start + elapsed time * clocks_per_sec */
+      fake_cpu_clocks = em->kelog_init_time.cpu + timestamp * clocks_per_sec;
+
+      if (evt->type == RUNNING)
+        {
+          ELOG_TYPE_DECLARE (e) = 
+            {
+              .format = "%d: pid %d running",
+              .format_args = "i4i4",
+            };
+          struct { u32 cpu; u32 pid; } * ed;
+          
+          ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
+                                           &em->default_track, 
+                                           fake_cpu_clocks);
+          ed->cpu = evt->cpu;
+          ed->pid = evt->pid;
+        }
+      else if (evt->type == WAKEUP)
+        {
+          ELOG_TYPE_DECLARE (e) = 
+            {
+              .format = "%d: pid %d wakeup",
+              .format_args = "i4i4",
+            };
+          struct { u32 cpu; u32 pid; } * ed;
+          
+          ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
+                                           &em->default_track, 
+                                           fake_cpu_clocks);
+          ed->cpu = evt->cpu;
+          ed->pid = evt->pid;
+        }
+    }
+  clib_warning ("parsed %d events", events_parsed);
+  em->is_enabled = 0;
+}
+
