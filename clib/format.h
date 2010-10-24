@@ -279,6 +279,9 @@ uword unformat_memory_size (unformat_input_t * input, va_list * va);
 /* Unparse memory size e.g. 100, 100k, 100m, 100g. */
 u8 * format_memory_size (u8 * s, va_list * va);
 
+/* Format c identifier: e.g. a_name -> "a name". */
+u8 * format_c_identifier (u8 * s, va_list * va);
+
 /* Unix specific formats. */
 #ifdef CLIB_UNIX
 /* Setup input from Unix file. */

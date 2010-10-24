@@ -206,3 +206,21 @@ uword unformat_memory_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+/* Format c identifier: e.g. a_name -> "a name". */
+u8 * format_c_identifier (u8 * s, va_list * va)
+{
+  u8 * id = va_arg (*va, u8 *);
+  uword i;
+
+  if (id)
+    for (i = 0; id[i] != 0; i++)
+      {
+	u8 c = id[i];
+
+	if (c == '_')
+	  c = ' ';
+	vec_add1 (s, c);
+      }
+
+  return s;
+}
