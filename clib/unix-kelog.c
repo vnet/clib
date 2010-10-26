@@ -55,10 +55,12 @@ void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
   char *trace_enable = "/debug/tracing/tracing_enabled";
   char *current_tracer = "/debug/tracing/current_tracer";
   char *trace_data = "/debug/tracing/trace";
-  f64 before, after;
+  f64 realtime, monotonic;
+  f64 freq, secs_per_clock;
 
   ASSERT (kernel_tracer);
 
+  /*$$$$ fixme */
   n_events = 1<<18;
 
   /* init first so we won't hurt ourselves if we bail */
@@ -112,44 +114,16 @@ void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
   
   close(current_tracer_fd);
 
-  {
-    f64 delta_in_ns, delta_in_clocks;
-
-    before = clib_cpu_time_now();
-    syscall (SYS_clock_gettime, CLOCK_MONOTONIC, &ts2);
-    after = clib_cpu_time_now();
-
-    delta_in_ns = 1e9*(f64)ts2.tv_sec + (f64)ts2.tv_nsec;
-    delta_in_ns -= 1e9*(f64)ts.tv_sec + (f64)ts.tv_nsec;
-    delta_in_clocks = after - before;
-    
-    }
-
   /* 
-   * Ugh. The kernel event log uses CLOCK_MONOTONIC timestamps,
-   * not CLOCK_REALTIME timestamps. Squirrel away both so we can
-   * generate plausible timestamps later. 
+   * The kernel event log uses CLOCK_MONOTONIC timestamps,
+   * not CLOCK_REALTIME timestamps. These differ by a constant
+   * but the constant is not available in user mode.
+   * This estimate will be off by one syscall round-trip.
    */
-  { 
-    f64 freq, secs_per_clock;
-    freq = os_cpu_clock_frequency();
-    secs_per_clock = 1.0 / freq;
-    em->nsec_per_cpu_clock = secs_per_clock*1e9;
-    clib_warning ("freq %f, nsec_per_cpu_clock %6.2f", 
-                  freq, em->nsec_per_cpu_clock);
-  }
-
-  elog_time_now (&em->init_time);
+  clib_time_init (&em->cpu_timer);
+  em->init_time.cpu = em->cpu_timer.init_cpu_time;
   syscall (SYS_clock_gettime, CLOCK_MONOTONIC, &ts);
-  /* $$$ apply a fudge factor for the second syscall */
-  em->kelog_init_time.os_nsec = 1000000000ULL * ts.tv_sec + ts.tv_nsec;
-  clib_warning ("tv_sec %u tv_nsec %u init_time.os_nsec %llu, %.4f", 
-                ts.tv_sec, ts.tv_nsec,
-                em->kelog_init_time.os_nsec, 
-                (f64)em->kelog_init_time.os_nsec * 1e-9); 
-  em->kelog_init_time.cpu = clib_cpu_time_now();
-  clib_warning ("init_time.cpu = %llu", em->kelog_init_time.cpu);
-
+  
   /* enable kernel tracing */
   if (write (enable_fd, "1\n", 2) != 2) 
     {
@@ -311,7 +285,7 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
       clib_warning ("bugger 6");
       return 0;
     }
-  while (cp < limit && *cp != '\n')
+  while (cp < limit && (*cp != ' ' && *cp != '\n'))
     {
       vec_add1(task_name, *cp);
       cp++;
@@ -319,6 +293,9 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
   vec_add1(task_name, 0);
   /* _vec_len() = 0 in caller */
   e->task = task_name;
+
+  if (cp < limit)
+      cp++;
 
   *index = cp - tdata;
   return e;
@@ -337,7 +314,6 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
   u64 nsec_to_add;
   u32 index;
   f64 clocks_per_sec;
-  int events_parsed = 0;
   
   enable_fd = open (trace_enable, O_RDWR);
   if (enable_fd < 0)
@@ -353,13 +329,6 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
       return;
     }
   close(enable_fd);
-
-  /* Make sure there's a chance the log is sane */
-  if (em->kelog_init_time.os_nsec == 0)
-    {
-      clib_warning ("WARNING: kelog_init() call missing");
-      return;
-    }
 
   /* Read the trace data */
   data_fd = open (trace_data, O_RDWR);
@@ -393,21 +362,13 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
   /* Synthesize events */
   em->is_enabled = 1;
 
-  clocks_per_sec = 1.0 / (1e-9*em->nsec_per_cpu_clock);
-
   index = 0;
   while ((evt = parse_sched_switch_trace (data, &index)))
     {
-      f64 timestamp;
-      u64 fake_os_nsec, fake_cpu_clocks;
+      f64 timestamp_in_seconds_since_elog_start;
+      u64 fake_cpu_clock;
 
-      events_parsed++;
-
-      /* t/s in seconds since kelog_init */
-      timestamp = evt->timestamp - ((f64)em->kelog_init_time.os_nsec*1e-9);
-
-      /* fake cpu clock = cpu clock at start + elapsed time * clocks_per_sec */
-      fake_cpu_clocks = em->kelog_init_time.cpu + timestamp * clocks_per_sec;
+      fake_cpu_clock = evt->timestamp * em->cpu_timer.clocks_per_second;
 
       if (evt->type == RUNNING)
         {
@@ -420,7 +381,7 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
           
           ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
                                            &em->default_track, 
-                                           fake_cpu_clocks);
+                                           fake_cpu_clock);
           ed->cpu = evt->cpu;
           ed->pid = evt->pid;
         }
@@ -435,12 +396,11 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
           
           ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
                                            &em->default_track, 
-                                           fake_cpu_clocks);
+                                           fake_cpu_clock);
           ed->cpu = evt->cpu;
           ed->pid = evt->pid;
         }
     }
-  clib_warning ("parsed %d events", events_parsed);
   em->is_enabled = 0;
 }
 

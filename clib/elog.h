@@ -342,6 +342,7 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 #define ELOG_DATA_INLINE(em,f) elog_data_inline ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 
 u32 elog_string (elog_main_t * em, char * format, ...);
+void elog_time_now (elog_time_stamp_t * et);
 
 /* Convert ievents to events and return them as a vector.
    Sets em->events to resulting vector. */
