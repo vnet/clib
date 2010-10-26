@@ -301,6 +301,22 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
   return e;
 }
 
+static u32 elog_id_for_pid (elog_main_t *em, u8 *name, u32 pid)
+{
+  uword * p, r;
+  mhash_t * h = &em->string_table_hash;
+
+  if (! em->string_table_hash.hash)
+    mhash_init (h, sizeof (uword), sizeof (pid));
+  
+  p = mhash_get (h, &pid);
+  if (p)
+    return p[0];
+  r = elog_string (em, "%s(%d)", name, pid);
+  mhash_set (h, &pid, r, /* old_value */ 0);
+  return r;
+}
+
 void kelog_collect_sched_switch_trace (elog_main_t *em)
 {
   int enable_fd, data_fd;
@@ -365,42 +381,27 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
   index = 0;
   while ((evt = parse_sched_switch_trace (data, &index)))
     {
-      f64 timestamp_in_seconds_since_elog_start;
       u64 fake_cpu_clock;
 
       fake_cpu_clock = evt->timestamp * em->cpu_timer.clocks_per_second;
-
-      if (evt->type == RUNNING)
-        {
-          ELOG_TYPE_DECLARE (e) = 
-            {
-              .format = "%d: pid %d running",
-              .format_args = "i4i4",
-            };
-          struct { u32 cpu; u32 pid; } * ed;
-          
-          ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
-                                           &em->default_track, 
-                                           fake_cpu_clock);
-          ed->cpu = evt->cpu;
-          ed->pid = evt->pid;
-        }
-      else if (evt->type == WAKEUP)
-        {
-          ELOG_TYPE_DECLARE (e) = 
-            {
-              .format = "%d: pid %d wakeup",
-              .format_args = "i4i4",
-            };
-          struct { u32 cpu; u32 pid; } * ed;
-          
-          ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
-                                           &em->default_track, 
-                                           fake_cpu_clock);
-          ed->cpu = evt->cpu;
-          ed->pid = evt->pid;
-        }
+      {
+        ELOG_TYPE_DECLARE (e) = 
+          {
+            .format = "%d: %s %s",
+            .format_args = "i4T4t4",
+            .n_enum_strings = 2,
+            .enum_strings = { "running", "wakeup", },
+          };
+        struct { u32 cpu, string_table_offset, which; } * ed;
+        
+        ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
+                                         &em->default_track, 
+                                         fake_cpu_clock);
+        ed->cpu = evt->cpu;
+        ed->string_table_offset = elog_id_for_pid (em, evt->task, evt->pid);
+        ed->which = evt->type;
+      }
+      _vec_len(evt->task) = 0;
     }
   em->is_enabled = 0;
 }
-
