@@ -499,6 +499,15 @@ void elog_merge_from_same_timebase (elog_main_t * dst, elog_main_t * src)
   else
     dst->init_time.cpu = src->init_time.cpu;
     
+  /* $$$ temporarily... need to merge string tables */
+  ASSERT ( !src->string_table || !dst->string_table);
+
+  if (src->string_table)
+    {
+      dst->string_table = src->string_table;
+      src->string_table = 0;
+    }
+
   elog_get_events (src);
   elog_get_events (dst);
 
