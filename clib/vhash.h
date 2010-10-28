@@ -24,12 +24,13 @@
 #ifndef included_clib_vhash_h
 #define included_clib_vhash_h
 
+#include <clib/vector.h>
+
 #ifdef CLIB_HAVE_VEC128
 
 #include <clib/cache.h>
 #include <clib/hash.h>
 #include <clib/pipeline.h>
-#include <clib/vector.h>
 
 /* Gathers 32 bits worth of key with given index. */
 typedef u32 (vhash_key_function_t) (void * state, u32 vector_index, u32 key_word_index);
@@ -475,20 +476,7 @@ vhash_get_4_stage (vhash_t * h,
       r3 &= c3;
     }
 
-  /* 4x4 transpose so that 4 results are aligned. */
-#define _(x,y)					\
-do {						\
-  u32x4 _tmp = (x);				\
-  (x) = u32x4_interleave_lo (_tmp, (y));	\
-  (y) = u32x4_interleave_hi (_tmp, (y));	\
- } while (0)
-    
-  _ (r0, r2);
-  _ (r1, r3);
-  _ (r0, r1);
-  _ (r2, r3);
-
-#undef _
+  u32x4_transpose (r0, r1, r2, r3);
 
   /* Gather together 4 results. */
   {

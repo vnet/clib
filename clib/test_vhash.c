@@ -702,7 +702,10 @@ int test_vhash_main (unformat_input_t * input)
 
 #ifndef CLIB_HAVE_VEC128
 int test_vhash_main (unformat_input_t * input)
-{ return 0; }
+{
+  clib_error ("compiled without vector support");
+  return 0;
+}
 #endif
 
 #ifdef CLIB_UNIX

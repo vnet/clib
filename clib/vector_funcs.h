@@ -266,4 +266,23 @@ do {						\
 #define i32x_splat i32x2_splat
 #endif
 
+#define u32x4_transpose_step(x,y)		\
+do {						\
+  u32x4 _x = (x);				\
+  u32x4 _y = (y);				\
+  (x) = u32x4_interleave_lo (_x, _y);		\
+  (y) = u32x4_interleave_hi (_x, _y);		\
+} while (0)
+
+/* 4x4 transpose: x_ij -> x_ji */
+#define u32x4_transpose(x0,x1,x2,x3)		\
+do {						\
+  u32x4_transpose_step (x0, x2);		\
+  u32x4_transpose_step (x1, x3);		\
+  u32x4_transpose_step (x0, x1);		\
+  u32x4_transpose_step (x2, x3);		\
+} while (0)
+
+#undef _
+
 #endif /* included_vector_funcs_h */
