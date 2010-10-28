@@ -30,6 +30,7 @@
 #include <clib/error.h>		/* for ASSERT */
 #include <clib/serialize.h>
 #include <clib/time.h>		/* for clib_cpu_time_now */
+#include <clib/mhash.h>
 
 typedef struct{
   union {
@@ -129,6 +130,9 @@ typedef struct {
 
   /* Events may refer to strings in string table. */
   char * string_table;
+
+  /* Hash table to optimize string table */
+  mhash_t string_table_hash;
 
   /* Vector of tracks. */
   elog_track_t * tracks;
@@ -342,6 +346,7 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 #define ELOG_DATA_INLINE(em,f) elog_data_inline ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 
 u32 elog_string (elog_main_t * em, char * format, ...);
+void elog_time_now (elog_time_stamp_t * et);
 
 /* Convert ievents to events and return them as a vector.
    Sets em->events to resulting vector. */

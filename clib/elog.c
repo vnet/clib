@@ -128,8 +128,15 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
     uword i;
     t->n_enum_strings = static_type->n_enum_strings;
     for (i = 0; i < t->n_enum_strings; i++)
-      vec_add1 (t->enum_strings_vector,
-		(char *) format (0, "%s%c", static_type->enum_strings[i], 0));
+      {
+        /* 
+         * If this assert goes off, look for a missing comma in the
+         * .enum_strings initializer...
+         */
+        ASSERT (static_type->enum_strings[i]);
+        vec_add1 (t->enum_strings_vector,
+                  (char *) format (0, "%s%c", static_type->enum_strings[i], 0));
+      }
   }
 
   new_event_type (em, l);
@@ -334,7 +341,7 @@ u8 * format_elog_track (u8 * s, va_list * va)
   return format (s, "%s", t->name);
 }
 
-static void elog_time_now (elog_time_stamp_t * et)
+void elog_time_now (elog_time_stamp_t * et)
 {
   u64 cpu_time_now, os_time_now_nsec;
 
@@ -389,7 +396,12 @@ static void elog_alloc (elog_main_t * em, u32 n_events)
 
 void elog_init (elog_main_t * em, u32 n_events)
 {
+  u8 *old_string_table;
+
+  /* Save / restore string table, otherwise enumerated events break */
+  old_string_table = em->string_table;
   memset (em, 0, sizeof (em[0]));
+  em->string_table = old_string_table;
 
   if (n_events > 0)
     elog_alloc (em, n_events);
@@ -468,6 +480,50 @@ elog_event_t * elog_get_events (elog_main_t * em)
   if (! em->events)
     em->events = elog_peek_events (em);
   return em->events;
+}
+
+void elog_merge_from_same_timebase (elog_main_t * dst, elog_main_t * src)
+{
+  elog_event_t * e;
+  uword l;
+  f64 dt_event, dt_os_nsec, dt_clock_nsec;
+  u64 dt_clock_cycles;
+
+  /* 
+   * Src and dst were initialized at different times, but
+   * we know by construction that these logs are from the same timebase.
+   * Use the earlier init time for both trips through elog_get_events.
+   */
+  if (src->init_time.cpu > dst->init_time.cpu)
+    src->init_time.cpu = dst->init_time.cpu;
+  else
+    dst->init_time.cpu = src->init_time.cpu;
+    
+  /* $$$ temporarily... need to merge string tables */
+  ASSERT ( !src->string_table || !dst->string_table);
+
+  if (src->string_table)
+    {
+      dst->string_table = src->string_table;
+      src->string_table = 0;
+    }
+
+  elog_get_events (src);
+  elog_get_events (dst);
+
+  l = vec_len (dst->events);
+  vec_add (dst->events, src->events, vec_len (src->events));
+  for (e = dst->events + l; e < vec_end (dst->events); e++)
+    {
+      elog_event_type_t * t = vec_elt_at_index (src->event_types, e->type);
+
+      /* Re-map type from src -> dst. */
+      e->type = find_or_create_type (dst, t);
+    }
+
+  /* Sort events by increasing time. */
+  vec_sort (dst->events, e1, e2, 
+	    e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
 }
 
 void elog_merge (elog_main_t * dst, elog_main_t * src)
