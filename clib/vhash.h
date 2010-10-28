@@ -455,10 +455,7 @@ vhash_get_4_stage (vhash_t * h,
   u32x4 r0, r1, r2, r3, r0_before, r1_before, r2_before, r3_before;
   u32x4_union_t kh;
 
-  if (0)
-    kh.as_u32x4 = vhash_get_4_search_bucket_byte_offsets (h, hk->hashed_key[2].as_u32x4, n_key_u32s);
-  else
-    kh.as_u32x4 = hk->hashed_key[1].as_u32x4;
+  kh.as_u32x4 = hk->hashed_key[1].as_u32x4;
 
   b0 = (void *) h->search_buckets + kh.as_u32[0];
   b1 = (void *) h->search_buckets + kh.as_u32[1];
