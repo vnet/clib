@@ -120,8 +120,8 @@ typedef u64 u64x _vector_size (8);
 
 #define _(t)					\
   typedef union {				\
-    t##x data_##t##x;				\
-    t data_##t[VECTOR_WORD_TYPE_LEN (t)];	\
+    t##x as_##t##x;				\
+    t as_##t[VECTOR_WORD_TYPE_LEN (t)];	\
   } t##x##_union_t;
 
 _ (u8);
@@ -141,8 +141,8 @@ _ (i64);
 
 #define _(t,n)					\
   typedef union {				\
-    t##x##n data_##t##x##n;			\
-    t data_##t[n];				\
+    t##x##n as_##t##x##n;			\
+    t as_##t[n];				\
   } t##x##n##_union_t;				\
 
 _ (u8, 8);
@@ -160,8 +160,8 @@ _ (i32, 2);
 
 #define _(t,n)					\
   typedef union {				\
-    t##x##n data_##t##x##n;			\
-    t data_##t[n];				\
+    t##x##n as_##t##x##n;			\
+    t as_##t[n];				\
   } t##x##n##_union_t;				\
 
 _ (u8, 16);
