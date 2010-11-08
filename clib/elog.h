@@ -131,9 +131,6 @@ typedef struct {
   /* Events may refer to strings in string table. */
   char * string_table;
 
-  /* Hash table to optimize string table */
-  mhash_t string_table_hash;
-
   /* Vector of tracks. */
   elog_track_t * tracks;
 
