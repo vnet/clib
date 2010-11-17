@@ -195,9 +195,7 @@ unformat_string (unformat_input_t * input,
 	  case '\t':
 	  case '\n':
 	  case '\r':
-	    if (! is_paren_delimited
-		&& (delimiter_character == 0
-		    || c == delimiter_character))
+	    if (! is_paren_delimited)
 	      {
 		unformat_put_input (input);
 		goto done;
