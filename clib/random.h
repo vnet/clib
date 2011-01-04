@@ -28,14 +28,18 @@
 #include <clib/vec.h>		/* for vec_resize */
 #include <clib/format.h>	/* for unformat_input_t */
 
-/* External random number generator. */
-extern u32 random_u32 (u32 * seed);
-
+/* This specific random number generator is described in
+   "Numerical Recipes in C", 2nd edition, page 284. */
+always_inline u32 random_u32 (u32 * seed)
+{
+  *seed = (1664525 * *seed) + 1013904223;
+  return *seed;
+}
 /* External test routine. */
 int test_random_main (unformat_input_t * input);
 
 always_inline u32 random_u32_max (void)
-{ return 0x7fffffff; }
+{ return 0xffffffff; }
 
 #ifdef CLIB_UNIX
 

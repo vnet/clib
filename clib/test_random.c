@@ -24,6 +24,14 @@
 #include <clib/format.h>
 #include <clib/bitmap.h>
 
+static u32 known_random_sequence[] =
+{
+    0x00000000, 0x3c6ef35f, 0x47502932, 0xd1ccf6e9,
+    0xaaf95334, 0x6252e503, 0x9f2ec686, 0x57fe6c2d,
+    0xa3d95fa8, 0x81fdbee7, 0x94f0af1a, 0xcbf633b1,
+};
+
+
 int test_random_main (unformat_input_t * input)
 {
   uword n_iterations;
@@ -31,7 +39,24 @@ int test_random_main (unformat_input_t * input)
   uword * bitmap = 0;
   uword print;
   u32 seed;
+  u32 *seedp = &seed;
   
+  /* first, check known sequence from Numerical Recipes in C, 2nd ed.
+     page 284 */
+  seed = known_random_sequence[0];
+  for (i = 0; i < ARRAY_LEN(known_random_sequence)-1; i++) 
+    {
+      u32 rv;
+      rv = random_u32 (seedp);
+      if (rv != known_random_sequence[i+1])
+        {
+          fformat(stderr, "known sequence check FAILS at index %d", i+1);
+          break;
+        }
+    }
+
+  clib_warning ("known sequence check passes");
+
   n_iterations = 1000;
   seed = 0;
   print = 1 << 24;

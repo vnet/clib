@@ -27,32 +27,3 @@
    Value can be overridden by platform code from e.g.
    machine's clock count register. */
 u32 standalone_random_default_seed = 1;
-
-/* Simple random number generator with period 2^31 - 1. */
-u32 random_u32 (u32 * seed_return)
-{
-  /* Unlikely mask value to XOR into seed.
-     Otherwise small seed values would give
-     non-random seeming smallish numbers. */
-  const u32 mask = 0x12345678;
-  u32 seed, a, b, result;
-
-  seed = *seed_return;
-  seed ^= mask;
-
-  a = seed / 127773;
-  b = seed % 127773;
-  seed = 16807 * b - 2836 * a;
-
-  if ((i32) seed < 0)
-    seed += ((u32) 1 << 31) - 1;
-
-  result = seed;
-
-  /* Random number is only 31 bits. */
-  ASSERT ((result >> 31) == 0);
-
-  *seed_return = seed ^ mask;
-
-  return result;
-}
