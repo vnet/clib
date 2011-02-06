@@ -33,7 +33,7 @@
 struct serialize_main_header_t;
 struct serialize_stream_t;
 
-typedef void (serialize_data_function_t) (struct serialize_main_header_t *h,
+typedef void (serialize_data_function_t) (struct serialize_main_header_t * h,
 					  struct serialize_stream_t * s);
 
 typedef struct serialize_stream_t {
