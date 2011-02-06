@@ -696,7 +696,7 @@ static void * serialize_read_not_inline (serialize_main_header_t * m,
 
       /* If we don't have enough data between overflow and normal buffer
 	 call read function. */
-      if (n_left_o + n_left_b < n_left_to_read)
+      if (n_left_o + n_left_b < n_bytes_to_read)
 	{
 	  /* Save any left over buffer in overflow vector. */
 	  if (n_left_b > 0)
