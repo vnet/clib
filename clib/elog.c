@@ -851,7 +851,10 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   vec_serialize (m, em->tracks, serialize_elog_track);
   vec_serialize (m, em->string_table, serialize_vec_8);
 
+  /* Free old events (cached) in case they have changed. */
+  vec_free (em->events);
   elog_get_events (em);
+
   serialize_integer (m, vec_len (em->events), sizeof (u32));
   vec_foreach (e, em->events)
     serialize (m, serialize_elog_event, em, e);
