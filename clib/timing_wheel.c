@@ -301,21 +301,18 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
 {
   timing_wheel_level_t * l;
   timing_wheel_elt_t * e;
-  uword li, wi, wi0, n_bins_searched;
+  uword li, wi, wi0;
   u32 min_dt = ~0;
   uword wrapped = 0;
 
-  n_bins_searched = 0;
   vec_foreach (l, w->levels)
     {
-      li = l - w->levels;
-      wi = current_time_wheel_index (w, li);
-
       if (! l->occupancy_bitmap)
 	continue;
 
-      wrapped = 0;
+      li = l - w->levels;
       wi0 = wi = current_time_wheel_index (w, li);
+      wrapped = 0;
       while (1)
 	{
 	  if (clib_bitmap_get_no_check (l->occupancy_bitmap, wi))
@@ -349,7 +346,7 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
     timing_wheel_overflow_elt_t * oe;
     u64 min_t = ~0;
 
-    if (n_bins_searched > 0)
+    if (min_dt != ~0)
       min_t = w->cpu_time_base + min_dt;
 
     pool_foreach (oe, w->overflow_pool,
