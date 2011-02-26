@@ -90,6 +90,9 @@ typedef struct {
      in timing_wheel_elt_t. */
   u64 time_index_next_cpu_time_base_update;
 
+  /* Cached earliest element on wheel; 0 if not valid. */
+  u64 cached_min_cpu_time_on_wheel;
+
   f64 min_sched_time, max_sched_time, cpu_clocks_per_second;
 
   timing_wheel_stats_t stats;

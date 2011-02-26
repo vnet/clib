@@ -302,9 +302,12 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
   timing_wheel_level_t * l;
   timing_wheel_elt_t * e;
   uword li, wi, wi0;
-  u32 min_dt = ~0;
+  u32 min_dt;
+  u64 min_t;
   uword wrapped = 0;
 
+  min_dt = ~0;
+  min_t = ~0ULL;
   vec_foreach (l, w->levels)
     {
       if (! l->occupancy_bitmap)
@@ -331,7 +334,8 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
 		    }
 		}
 
-	      return w->cpu_time_base + min_dt;
+	      min_t = w->cpu_time_base + min_dt;
+	      goto done;
 	    }
 
 	  wi = wheel_add (w, wi + 1);
@@ -344,7 +348,6 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
 
   {
     timing_wheel_overflow_elt_t * oe;
-    u64 min_t = ~0;
 
     if (min_dt != ~0)
       min_t = w->cpu_time_base + min_dt;
@@ -352,6 +355,7 @@ u64 timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
     pool_foreach (oe, w->overflow_pool,
 		  ({ min_t = clib_min (min_t, oe->cpu_time); }));
 
+  done:
     return min_t;
   }
 }
@@ -535,7 +539,10 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 {
   timing_wheel_level_t * level;
   uword level_index, advance_rtime, advance_level_index, advance_wheel_index;
+  uword n_expired_user_data_before;
   u64 current_time_index, advance_time_index;
+
+  n_expired_user_data_before = vec_len (expired_user_data);
 
   /* Re-fill lower levels when time wraps. */
   current_time_index = w->current_time_index;
@@ -624,7 +631,21 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
     advance_cpu_time_base (w, expired_user_data);
 
   if (next_expiring_element_cpu_time)
-    *next_expiring_element_cpu_time = timing_wheel_next_expiring_elt_time (w);
+    {
+      u64 min_t;
+
+      /* Anything expired?  If so we need to recompute next expiring elt time. */
+      if (vec_len (expired_user_data) == n_expired_user_data_before
+	  && w->cached_min_cpu_time_on_wheel != 0ULL)
+	min_t = w->cached_min_cpu_time_on_wheel;
+      else
+	{
+	  min_t = timing_wheel_next_expiring_elt_time (w);
+	  w->cached_min_cpu_time_on_wheel = min_t;
+	}
+
+      *next_expiring_element_cpu_time = min_t;
+    }
 
   return expired_user_data;
 }
