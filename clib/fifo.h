@@ -70,7 +70,10 @@ clib_fifo_reset (void * v)
 {
   clib_fifo_header_t * f = clib_fifo_header (v);
   if (v)
-    f->head_index = f->tail_index = 0;
+    {
+      f->head_index = f->tail_index = 0;
+      _vec_len (v) = 0;
+    }
 }
 
 /* External resize function. */
