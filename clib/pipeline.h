@@ -32,6 +32,12 @@
   never_inline  void F##_no_inline (TYPE ARG, u32 I)	\
   { F##_inline (ARG, I); }
 
+#define clib_pipeline_stage_static(F,TYPE,ARG,I,BODY)		\
+  static_always_inline void F##_inline (void * _, u32 I)	\
+  { TYPE ARG = _; { BODY; } }					\
+  never_inline  void F##_no_inline (TYPE ARG, u32 I)		\
+  { F##_inline (ARG, I); }
+
 #define clib_pipeline_stage_no_inline(F,TYPE,ARG,I,BODY)	\
   never_inline void F##_no_inline (void * _, u32 I)		\
   { TYPE ARG = _; { BODY; } }					\
