@@ -48,8 +48,6 @@ typedef struct {
 } mhash_t;
 
 void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes);
-void mhash_init_c_string (mhash_t * h, uword n_value_bytes);
-void mhash_init_vec_string (mhash_t * h, uword n_value_bytes);
 
 hash_pair_t * mhash_get_pair (mhash_t * h, void * key);
 uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value);
