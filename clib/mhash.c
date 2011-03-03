@@ -135,35 +135,6 @@ foreach_mhash_key_size
 
 #undef _
 
-static uword mhash_c_string_key_sum (hash_t * h, uword key)
-{
-  char * v = uword_to_pointer (key, char *);
-  return hash_memory (v, strlen (v), 0);
-}
-
-static uword mhash_c_string_key_equal (hash_t * h, uword key1, uword key2)
-{
-  void * v1 = uword_to_pointer (key1, void *);
-  void * v2 = uword_to_pointer (key2, void *);
-  return v1 && v2 && 0 == strcmp (v1, v2);
-}
-
-static uword mhash_vec_string_key_sum (hash_t * h, uword key)
-{
-  char * v = uword_to_pointer (key, char *);
-  return hash_memory (v, vec_len (v), 0);
-}
-
-static uword mhash_vec_string_key_equal (hash_t * h, uword key1, uword key2)
-{
-  void * v1 = uword_to_pointer (key1, void *);
-  void * v2 = uword_to_pointer (key2, void *);
-  return v1 && v2 && 0 == memcmp (v1, v2, vec_len (v1));
-}
-
-#define mhash_n_key_bytes_c_string 0
-#define mhash_n_key_bytes_vec_string 1
-
 /* The CLIB hash user pointer must always point to a valid mhash_t.
    Now, the address of mhash_t can change (think vec_resize).
    So we must always be careful that it points to the correct
@@ -182,16 +153,6 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
     hash_key_sum_function_t * key_sum;
     hash_key_equal_function_t * key_equal;
   } t[] = {
-    [mhash_n_key_bytes_c_string] = {
-      .key_sum = mhash_c_string_key_sum,
-      .key_equal = mhash_c_string_key_equal,
-    },
-
-    [mhash_n_key_bytes_vec_string] = {
-      .key_sum = mhash_vec_string_key_sum,
-      .key_equal = mhash_vec_string_key_equal,
-    },
-
 #define _(N_KEY_BYTES)					\
     [N_KEY_BYTES] = {					\
       .key_sum = mhash_key_sum_##N_KEY_BYTES,		\
@@ -219,12 +180,6 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 			  /* format pair/arg */
 			  0, 0);
 }
-
-void mhash_init_c_string (mhash_t * h, uword n_value_bytes)
-{ mhash_init (h, n_value_bytes, mhash_n_key_bytes_c_string); }
-
-void mhash_init_vec_string (mhash_t * h, uword n_value_bytes)
-{ mhash_init (h, n_value_bytes, mhash_n_key_bytes_vec_string); }
 
 hash_pair_t * mhash_get_pair (mhash_t * h, void * key)
 {
