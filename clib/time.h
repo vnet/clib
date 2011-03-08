@@ -43,6 +43,13 @@ typedef struct {
 
   /* Time stamp of call to clib_time_init call. */
   u64 init_cpu_time;
+
+  u64 last_verify_cpu_time;
+
+  /* Same but for reference time (if present). */
+  f64 last_verify_reference_time;
+
+  u32 log2_clocks_per_second, log2_clocks_per_frequency_verify;
 } clib_time_t;
 
 /* Return CPU time stamp as 64bit number. */
@@ -113,6 +120,8 @@ always_inline u64 clib_cpu_time_now (void)
 
 #endif
 
+void clib_time_verify_frequency (clib_time_t * c);
+
 always_inline f64
 clib_time_now (clib_time_t * c)
 {
@@ -122,6 +131,8 @@ clib_time_now (clib_time_t * c)
   t += n - l;
   c->total_cpu_time = t;
   c->last_cpu_time = n;
+  if (PREDICT_FALSE ((c->last_cpu_time - c->last_verify_cpu_time) >> c->log2_clocks_per_frequency_verify))
+    clib_time_verify_frequency (c);
   return t * c->seconds_per_clock;
 }
 

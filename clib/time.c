@@ -33,25 +33,22 @@
 
 /* Not very accurate way of determining cpu clock frequency 
    for unix.  Better to use /proc/cpuinfo on linux. */
-static f64 estimate_clock_frequency (void)
+static f64 estimate_clock_frequency (f64 sample_time)
 {
-  /* Sample via gettimeofday for 1msec. */
-  const f64 sample_time = 1e-3;
+  /* Round to nearest 100KHz. */
+  const f64 round_to_units = 100e5;
 
-  /* Round to nearest 10MHz. */
-  const f64 round_to_units = 10e6;
-
-  f64 time_now, time_limit, freq;
+  f64 time_now, time_start, time_limit, freq;
   u64 ifreq, t[2];
 
-  t[0] = clib_cpu_time_now ();
-  time_now = unix_time_now ();
+  time_start = time_now = unix_time_now ();
   time_limit = time_now + sample_time;
+  t[0] = clib_cpu_time_now ();
   while (time_now < time_limit)
     time_now = unix_time_now ();
   t[1] = clib_cpu_time_now ();
 
-  freq = (t[1] - t[0]) / sample_time;
+  freq = (t[1] - t[0]) / (time_now - time_start);
   ifreq = flt_round_nearest (freq / round_to_units);
   freq = ifreq * round_to_units;
 
@@ -135,7 +132,7 @@ f64 os_cpu_clock_frequency (void)
 
   /* If /proc/cpuinfo fails (e.g. not running on Linux) fall back to
      gettimeofday based estimated clock frequency. */
-  return estimate_clock_frequency ();
+  return estimate_clock_frequency (1e-3);
 }
 
 #endif /* CLIB_UNIX */
@@ -146,5 +143,29 @@ void clib_time_init (clib_time_t * c)
   memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
   c->seconds_per_clock = 1 / c->clocks_per_second;
-  c->last_cpu_time = c->init_cpu_time = clib_cpu_time_now ();
+  c->log2_clocks_per_second = min_log2_u64 ((u64) c->clocks_per_second);
+
+  /* Initially verify frequency every 1/2 sec */
+  c->log2_clocks_per_frequency_verify = c->log2_clocks_per_second - 1;
+
+  c->last_verify_reference_time = unix_time_now ();
+  c->last_cpu_time = clib_cpu_time_now ();
+  c->init_cpu_time = c->last_verify_cpu_time = c->last_cpu_time;
+}
+
+void clib_time_verify_frequency (clib_time_t * c)
+{
+  f64 now_reference = unix_time_now ();
+  f64 dtr = now_reference - c->last_verify_reference_time;
+  u64 dtc = c->last_cpu_time - c->last_verify_cpu_time;
+  f64 round_units = 100e5;
+
+  c->last_verify_cpu_time = c->last_cpu_time;
+  c->last_verify_reference_time = now_reference;
+  c->clocks_per_second = flt_round_nearest ((f64) dtc / (dtr * round_units)) * round_units;
+  c->seconds_per_clock = 1 / c->clocks_per_second;
+
+  /* Double time between verifies; max at 64 secs ~ 1 minute. */
+  if (c->log2_clocks_per_frequency_verify < c->log2_clocks_per_second + 8)
+    c->log2_clocks_per_frequency_verify += 1;
 }
