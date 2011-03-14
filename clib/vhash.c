@@ -262,14 +262,14 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
       h->hash_seeds[i].as_u32[j] = hash_seeds[i];
 }
 
-always_inline u32
+static_always_inline u32
 vhash_main_key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
   return vec_elt (vm->keys, vi * n_key_u32 + wi);
 }
 
-always_inline u32x4
+static_always_inline u32x4
 vhash_main_4key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32s)
 {
   vhash_main_t * vm = _vm;
@@ -285,7 +285,7 @@ vhash_main_4key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32s)
   return x.as_u32x4;
 }
 
-always_inline u32
+static_always_inline u32
 vhash_main_set_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
@@ -295,7 +295,7 @@ vhash_main_set_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
   return new_result;
 }
 
-always_inline u32
+static_always_inline u32
 vhash_main_get_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
@@ -303,7 +303,7 @@ vhash_main_get_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
   return old_result;
 }
 
-always_inline u32x4
+static_always_inline u32x4
 vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
@@ -313,15 +313,15 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 }
 
 #define _(N_KEY_U32)							\
-  always_inline u32							\
+  static_always_inline u32						\
   vhash_main_key_gather_##N_KEY_U32 (void * _vm, u32 vi, u32 i)		\
   { return vhash_main_key_gather (_vm, vi, i, N_KEY_U32); }		\
 									\
-  always_inline u32x4							\
+  static_always_inline u32x4						\
   vhash_main_4key_gather_##N_KEY_U32 (void * _vm, u32 vi, u32 i)	\
   { return vhash_main_4key_gather (_vm, vi, i, N_KEY_U32); }		\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_gather_keys_stage_##N_KEY_U32,				\
    vhash_main_t *, vm, i,						\
    {									\
@@ -360,7 +360,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
      vhash_finalize_stage (vm->vhash, vm->n_vectors_div_4, N_KEY_U32);	\
    })									\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_get_stage_##N_KEY_U32,					\
    vhash_main_t *, vm, i,						\
    {									\
@@ -381,7 +381,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 		      vm, N_KEY_U32);					\
    })									\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_set_stage_##N_KEY_U32,					\
    vhash_main_t *, vm, i,						\
    {									\
@@ -403,7 +403,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 		      vm, N_KEY_U32);					\
    })									\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_unset_stage_##N_KEY_U32,					\
    vhash_main_t *, vm, i,						\
    {									\

@@ -314,30 +314,28 @@ do {									\
     Return infinity (~0) if bitmap is zero. */
 always_inline uword clib_bitmap_first_set (uword * ai)
 {
-  uword i = ~0;
-  if (! clib_bitmap_is_zero (ai))
+  uword i;
+  for (i = 0; i < vec_len (ai); i++)
     {
-      clib_bitmap_foreach (i, ai, { break; });
+      uword x = ai[i];
+      if (x != 0)
+	return i * BITS (ai[0]) + log2_first_set (x);
     }
-  return i;
+  return ~0;
 }
 
 /** \brief Return lowest numbered clear bit in bitmap. */
 always_inline uword
 clib_bitmap_first_clear (uword * ai)
 {
-    uword i, x, result = 0;
-    for (i = 0; i < vec_len (ai); i++)
-      {
-	x = ~ai[i];
-	if (x != 0)
-	  {
-	    result += log2_first_set (x);
-	    break;
-	  }
-	result += BITS (x);
-      }
-    return result;
+  uword i;
+  for (i = 0; i < vec_len (ai); i++)
+    {
+      uword x = ~ai[i];
+      if (x != 0)
+	return i * BITS (ai[0]) + log2_first_set (x);
+    }
+  return i * BITS (ai[0]);
 }
 
 /** \brief Count number of set bits in bitmap. */

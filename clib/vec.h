@@ -157,7 +157,7 @@ vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
 
 /** \brief Get vector element at index i
 
-    Will ASSERT() if i > vec_len(v)
+    Will ASSERT() if i >= vec_len(v)
 */
 #define vec_elt_at_index(v,i)			\
 ({						\
@@ -174,6 +174,9 @@ vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
 /** \brief Vector iterator (reverse) */
 #define vec_foreach_backwards(var,vec) \
 for (var = vec_end (vec) - 1; var >= (vec); var--)
+
+/** \brief Iterate over vector indices. */
+#define vec_foreach_index(var,v) for ((var) = 0; (var) < vec_len (v); (var)++)
 
 /** \brief Low-level resize function. */
 extern void *
