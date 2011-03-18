@@ -23,6 +23,7 @@ TESTS	=  test_elog \
 	   test_md5 \
 	   test_mheap \
 	   test_phash \
+	   test_pool_iterate \
 	   test_qhash \
 	   test_random \
 	   test_random_isaac \
@@ -47,6 +48,7 @@ test_longjmp_SOURCES = clib/test_longjmp.c
 test_md5_SOURCES = clib/test_md5.c
 test_mheap_SOURCES = clib/test_mheap.c
 test_phash_SOURCES = clib/test_phash.c
+test_pool_iterate_SOURCES = clib/test_pool_iterate.c
 test_qhash_SOURCES = clib/test_qhash.c
 test_random_SOURCES = clib/test_random.c
 test_random_isaac_SOURCES = clib/test_random_isaac.c
@@ -70,6 +72,7 @@ test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
@@ -91,6 +94,7 @@ test_longjmp_LDADD =	libclib.la -lpthread
 test_md5_LDADD =	libclib.la -lpthread
 test_mheap_LDADD =	libclib.la -lpthread
 test_phash_LDADD =	libclib.la -lpthread
+test_pool_iterate_LDADD =	libclib.la -lpthread
 test_qhash_LDADD =	libclib.la -lpthread
 test_random_LDADD =	libclib.la -lpthread
 test_random_isaac_LDADD =	libclib.la -lpthread
@@ -112,6 +116,7 @@ test_longjmp_LDFLAGS = -static
 test_md5_LDFLAGS = -static
 test_mheap_LDFLAGS = -static
 test_phash_LDFLAGS = -static
+test_pool_iterate_LDFLAGS = -static
 test_qhash_LDFLAGS = -static
 test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
@@ -132,6 +137,7 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_longjmp.c \
   clib/test_mheap.c \
   clib/test_phash.c \
+  clib/test_pool_iterate.c \
   clib/test_qhash.c \
   clib/test_random.c \
   clib/test_random_isaac.c \

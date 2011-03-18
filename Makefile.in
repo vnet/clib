@@ -42,7 +42,8 @@ host_triplet = @host@
 TESTS = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
 	test_format$(EXEEXT) test_hash$(EXEEXT) test_heap$(EXEEXT) \
 	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
-	test_phash$(EXEEXT) test_qhash$(EXEEXT) test_random$(EXEEXT) \
+	test_phash$(EXEEXT) test_pool_iterate$(EXEEXT) \
+	test_qhash$(EXEEXT) test_random$(EXEEXT) \
 	test_random_isaac$(EXEEXT) test_serialize$(EXEEXT) \
 	test_socket$(EXEEXT) test_time$(EXEEXT) \
 	test_timing_wheel$(EXEEXT) test_vec$(EXEEXT) \
@@ -130,6 +131,7 @@ am__objects_2 = clib/libclibkernel_a-test_elog.$(OBJEXT) \
 	clib/libclibkernel_a-test_longjmp.$(OBJEXT) \
 	clib/libclibkernel_a-test_mheap.$(OBJEXT) \
 	clib/libclibkernel_a-test_phash.$(OBJEXT) \
+	clib/libclibkernel_a-test_pool_iterate.$(OBJEXT) \
 	clib/libclibkernel_a-test_qhash.$(OBJEXT) \
 	clib/libclibkernel_a-test_random.$(OBJEXT) \
 	clib/libclibkernel_a-test_random_isaac.$(OBJEXT) \
@@ -181,6 +183,7 @@ am__objects_4 = clib/libclibstandalone_a-test_elog.$(OBJEXT) \
 	clib/libclibstandalone_a-test_longjmp.$(OBJEXT) \
 	clib/libclibstandalone_a-test_mheap.$(OBJEXT) \
 	clib/libclibstandalone_a-test_phash.$(OBJEXT) \
+	clib/libclibstandalone_a-test_pool_iterate.$(OBJEXT) \
 	clib/libclibstandalone_a-test_qhash.$(OBJEXT) \
 	clib/libclibstandalone_a-test_random.$(OBJEXT) \
 	clib/libclibstandalone_a-test_random_isaac.$(OBJEXT) \
@@ -212,7 +215,8 @@ libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
 am__EXEEXT_1 = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
 	test_format$(EXEEXT) test_hash$(EXEEXT) test_heap$(EXEEXT) \
 	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
-	test_phash$(EXEEXT) test_qhash$(EXEEXT) test_random$(EXEEXT) \
+	test_phash$(EXEEXT) test_pool_iterate$(EXEEXT) \
+	test_qhash$(EXEEXT) test_random$(EXEEXT) \
 	test_random_isaac$(EXEEXT) test_serialize$(EXEEXT) \
 	test_socket$(EXEEXT) test_time$(EXEEXT) \
 	test_timing_wheel$(EXEEXT) test_vec$(EXEEXT) \
@@ -278,6 +282,13 @@ test_phash_DEPENDENCIES = libclib.la
 test_phash_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(test_phash_LDFLAGS) $(LDFLAGS) -o $@
+am_test_pool_iterate_OBJECTS =  \
+	clib/test_pool_iterate-test_pool_iterate.$(OBJEXT)
+test_pool_iterate_OBJECTS = $(am_test_pool_iterate_OBJECTS)
+test_pool_iterate_DEPENDENCIES = libclib.la
+test_pool_iterate_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(test_pool_iterate_LDFLAGS) $(LDFLAGS) -o $@
 am_test_qhash_OBJECTS = clib/test_qhash-test_qhash.$(OBJEXT)
 test_qhash_OBJECTS = $(am_test_qhash_OBJECTS)
 test_qhash_DEPENDENCIES = libclib.la
@@ -365,22 +376,23 @@ SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
 	$(test_hash_SOURCES) $(test_heap_SOURCES) \
 	$(test_longjmp_SOURCES) $(test_md5_SOURCES) \
 	$(test_mheap_SOURCES) $(test_phash_SOURCES) \
-	$(test_qhash_SOURCES) $(test_random_SOURCES) \
-	$(test_random_isaac_SOURCES) $(test_serialize_SOURCES) \
-	$(test_socket_SOURCES) $(test_time_SOURCES) \
-	$(test_timing_wheel_SOURCES) $(test_vec_SOURCES) \
-	$(test_vhash_SOURCES) $(test_zvec_SOURCES)
+	$(test_pool_iterate_SOURCES) $(test_qhash_SOURCES) \
+	$(test_random_SOURCES) $(test_random_isaac_SOURCES) \
+	$(test_serialize_SOURCES) $(test_socket_SOURCES) \
+	$(test_time_SOURCES) $(test_timing_wheel_SOURCES) \
+	$(test_vec_SOURCES) $(test_vhash_SOURCES) $(test_zvec_SOURCES)
 DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(libclibstandalone_a_SOURCES) $(libclib_la_SOURCES) \
 	$(test_elf_SOURCES) $(test_elog_SOURCES) $(test_fifo_SOURCES) \
 	$(test_format_SOURCES) $(test_hash_SOURCES) \
 	$(test_heap_SOURCES) $(test_longjmp_SOURCES) \
 	$(test_md5_SOURCES) $(test_mheap_SOURCES) \
-	$(test_phash_SOURCES) $(test_qhash_SOURCES) \
-	$(test_random_SOURCES) $(test_random_isaac_SOURCES) \
-	$(test_serialize_SOURCES) $(test_socket_SOURCES) \
-	$(test_time_SOURCES) $(test_timing_wheel_SOURCES) \
-	$(test_vec_SOURCES) $(test_vhash_SOURCES) $(test_zvec_SOURCES)
+	$(test_phash_SOURCES) $(test_pool_iterate_SOURCES) \
+	$(test_qhash_SOURCES) $(test_random_SOURCES) \
+	$(test_random_isaac_SOURCES) $(test_serialize_SOURCES) \
+	$(test_socket_SOURCES) $(test_time_SOURCES) \
+	$(test_timing_wheel_SOURCES) $(test_vec_SOURCES) \
+	$(test_vhash_SOURCES) $(test_zvec_SOURCES)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -527,6 +539,7 @@ test_longjmp_SOURCES = clib/test_longjmp.c
 test_md5_SOURCES = clib/test_md5.c
 test_mheap_SOURCES = clib/test_mheap.c
 test_phash_SOURCES = clib/test_phash.c
+test_pool_iterate_SOURCES = clib/test_pool_iterate.c
 test_qhash_SOURCES = clib/test_qhash.c
 test_random_SOURCES = clib/test_random.c
 test_random_isaac_SOURCES = clib/test_random_isaac.c
@@ -550,6 +563,7 @@ test_longjmp_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_md5_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_mheap_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_phash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
+test_pool_iterate_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_qhash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
@@ -570,6 +584,7 @@ test_longjmp_LDADD = libclib.la -lpthread
 test_md5_LDADD = libclib.la -lpthread
 test_mheap_LDADD = libclib.la -lpthread
 test_phash_LDADD = libclib.la -lpthread
+test_pool_iterate_LDADD = libclib.la -lpthread
 test_qhash_LDADD = libclib.la -lpthread
 test_random_LDADD = libclib.la -lpthread
 test_random_isaac_LDADD = libclib.la -lpthread
@@ -590,6 +605,7 @@ test_longjmp_LDFLAGS = -static
 test_md5_LDFLAGS = -static
 test_mheap_LDFLAGS = -static
 test_phash_LDFLAGS = -static
+test_pool_iterate_LDFLAGS = -static
 test_qhash_LDFLAGS = -static
 test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
@@ -610,6 +626,7 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_longjmp.c \
   clib/test_mheap.c \
   clib/test_phash.c \
+  clib/test_pool_iterate.c \
   clib/test_qhash.c \
   clib/test_random.c \
   clib/test_random_isaac.c \
@@ -908,6 +925,8 @@ clib/libclibkernel_a-test_mheap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-test_phash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibkernel_a-test_pool_iterate.$(OBJEXT):  \
+	clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-test_qhash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-test_random.$(OBJEXT): clib/$(am__dirstamp) \
@@ -1004,6 +1023,8 @@ clib/libclibstandalone_a-test_mheap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-test_phash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibstandalone_a-test_pool_iterate.$(OBJEXT):  \
+	clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-test_qhash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-test_random.$(OBJEXT): clib/$(am__dirstamp) \
@@ -1170,6 +1191,11 @@ clib/test_phash-test_phash.$(OBJEXT): clib/$(am__dirstamp) \
 test_phash$(EXEEXT): $(test_phash_OBJECTS) $(test_phash_DEPENDENCIES) 
 	@rm -f test_phash$(EXEEXT)
 	$(test_phash_LINK) $(test_phash_OBJECTS) $(test_phash_LDADD) $(LIBS)
+clib/test_pool_iterate-test_pool_iterate.$(OBJEXT):  \
+	clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+test_pool_iterate$(EXEEXT): $(test_pool_iterate_OBJECTS) $(test_pool_iterate_DEPENDENCIES) 
+	@rm -f test_pool_iterate$(EXEEXT)
+	$(test_pool_iterate_LINK) $(test_pool_iterate_OBJECTS) $(test_pool_iterate_LDADD) $(LIBS)
 clib/test_qhash-test_qhash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 test_qhash$(EXEEXT): $(test_qhash_OBJECTS) $(test_qhash_DEPENDENCIES) 
@@ -1273,6 +1299,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibkernel_a-test_longjmp.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_mheap.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_phash.$(OBJEXT)
+	-rm -f clib/libclibkernel_a-test_pool_iterate.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_qhash.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_random.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_random_isaac.$(OBJEXT)
@@ -1319,6 +1346,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-test_longjmp.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_mheap.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_phash.$(OBJEXT)
+	-rm -f clib/libclibstandalone_a-test_pool_iterate.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_qhash.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_random.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_random_isaac.$(OBJEXT)
@@ -1373,6 +1401,7 @@ mostlyclean-compile:
 	-rm -f clib/test_md5-test_md5.$(OBJEXT)
 	-rm -f clib/test_mheap-test_mheap.$(OBJEXT)
 	-rm -f clib/test_phash-test_phash.$(OBJEXT)
+	-rm -f clib/test_pool_iterate-test_pool_iterate.$(OBJEXT)
 	-rm -f clib/test_qhash-test_qhash.$(OBJEXT)
 	-rm -f clib/test_random-test_random.$(OBJEXT)
 	-rm -f clib/test_random_isaac-test_random_isaac.$(OBJEXT)
@@ -1446,6 +1475,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_longjmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_random_isaac.Po@am__quote@
@@ -1492,6 +1522,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_longjmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_random_isaac.Po@am__quote@
@@ -1531,6 +1562,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_md5-test_md5.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_mheap-test_mheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_phash-test_phash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_qhash-test_qhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_random-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_random_isaac-test_random_isaac.Po@am__quote@
@@ -2102,6 +2134,20 @@ clib/libclibkernel_a-test_phash.obj: clib/test_phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_phash.c' object='clib/libclibkernel_a-test_phash.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-test_phash.obj `if test -f 'clib/test_phash.c'; then $(CYGPATH_W) 'clib/test_phash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_phash.c'; fi`
+
+clib/libclibkernel_a-test_pool_iterate.o: clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-test_pool_iterate.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Tpo -c -o clib/libclibkernel_a-test_pool_iterate.o `test -f 'clib/test_pool_iterate.c' || echo '$(srcdir)/'`clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Tpo clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_pool_iterate.c' object='clib/libclibkernel_a-test_pool_iterate.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-test_pool_iterate.o `test -f 'clib/test_pool_iterate.c' || echo '$(srcdir)/'`clib/test_pool_iterate.c
+
+clib/libclibkernel_a-test_pool_iterate.obj: clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-test_pool_iterate.obj -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Tpo -c -o clib/libclibkernel_a-test_pool_iterate.obj `if test -f 'clib/test_pool_iterate.c'; then $(CYGPATH_W) 'clib/test_pool_iterate.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_pool_iterate.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Tpo clib/$(DEPDIR)/libclibkernel_a-test_pool_iterate.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_pool_iterate.c' object='clib/libclibkernel_a-test_pool_iterate.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-test_pool_iterate.obj `if test -f 'clib/test_pool_iterate.c'; then $(CYGPATH_W) 'clib/test_pool_iterate.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_pool_iterate.c'; fi`
 
 clib/libclibkernel_a-test_qhash.o: clib/test_qhash.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-test_qhash.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-test_qhash.Tpo -c -o clib/libclibkernel_a-test_qhash.o `test -f 'clib/test_qhash.c' || echo '$(srcdir)/'`clib/test_qhash.c
@@ -2733,6 +2779,20 @@ clib/libclibstandalone_a-test_phash.obj: clib/test_phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-test_phash.obj `if test -f 'clib/test_phash.c'; then $(CYGPATH_W) 'clib/test_phash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_phash.c'; fi`
 
+clib/libclibstandalone_a-test_pool_iterate.o: clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-test_pool_iterate.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Tpo -c -o clib/libclibstandalone_a-test_pool_iterate.o `test -f 'clib/test_pool_iterate.c' || echo '$(srcdir)/'`clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Tpo clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_pool_iterate.c' object='clib/libclibstandalone_a-test_pool_iterate.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-test_pool_iterate.o `test -f 'clib/test_pool_iterate.c' || echo '$(srcdir)/'`clib/test_pool_iterate.c
+
+clib/libclibstandalone_a-test_pool_iterate.obj: clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-test_pool_iterate.obj -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Tpo -c -o clib/libclibstandalone_a-test_pool_iterate.obj `if test -f 'clib/test_pool_iterate.c'; then $(CYGPATH_W) 'clib/test_pool_iterate.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_pool_iterate.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Tpo clib/$(DEPDIR)/libclibstandalone_a-test_pool_iterate.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_pool_iterate.c' object='clib/libclibstandalone_a-test_pool_iterate.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-test_pool_iterate.obj `if test -f 'clib/test_pool_iterate.c'; then $(CYGPATH_W) 'clib/test_pool_iterate.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_pool_iterate.c'; fi`
+
 clib/libclibstandalone_a-test_qhash.o: clib/test_qhash.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-test_qhash.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo -c -o clib/libclibstandalone_a-test_qhash.o `test -f 'clib/test_qhash.c' || echo '$(srcdir)/'`clib/test_qhash.c
 @am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-test_qhash.Tpo clib/$(DEPDIR)/libclibstandalone_a-test_qhash.Po
@@ -3026,6 +3086,20 @@ clib/test_phash-test_phash.obj: clib/test_phash.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_phash.c' object='clib/test_phash-test_phash.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_phash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_phash-test_phash.obj `if test -f 'clib/test_phash.c'; then $(CYGPATH_W) 'clib/test_phash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_phash.c'; fi`
+
+clib/test_pool_iterate-test_pool_iterate.o: clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_pool_iterate_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_pool_iterate-test_pool_iterate.o -MD -MP -MF clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Tpo -c -o clib/test_pool_iterate-test_pool_iterate.o `test -f 'clib/test_pool_iterate.c' || echo '$(srcdir)/'`clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Tpo clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_pool_iterate.c' object='clib/test_pool_iterate-test_pool_iterate.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_pool_iterate_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_pool_iterate-test_pool_iterate.o `test -f 'clib/test_pool_iterate.c' || echo '$(srcdir)/'`clib/test_pool_iterate.c
+
+clib/test_pool_iterate-test_pool_iterate.obj: clib/test_pool_iterate.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_pool_iterate_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_pool_iterate-test_pool_iterate.obj -MD -MP -MF clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Tpo -c -o clib/test_pool_iterate-test_pool_iterate.obj `if test -f 'clib/test_pool_iterate.c'; then $(CYGPATH_W) 'clib/test_pool_iterate.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_pool_iterate.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Tpo clib/$(DEPDIR)/test_pool_iterate-test_pool_iterate.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_pool_iterate.c' object='clib/test_pool_iterate-test_pool_iterate.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_pool_iterate_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_pool_iterate-test_pool_iterate.obj `if test -f 'clib/test_pool_iterate.c'; then $(CYGPATH_W) 'clib/test_pool_iterate.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_pool_iterate.c'; fi`
 
 clib/test_qhash-test_qhash.o: clib/test_qhash.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_qhash_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_qhash-test_qhash.o -MD -MP -MF clib/$(DEPDIR)/test_qhash-test_qhash.Tpo -c -o clib/test_qhash-test_qhash.o `test -f 'clib/test_qhash.c' || echo '$(srcdir)/'`clib/test_qhash.c

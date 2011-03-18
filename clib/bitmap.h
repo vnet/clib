@@ -479,4 +479,28 @@ clib_bitmap_next_set (uword * ai, uword i)
   return ~0;
 }
 
+/** \brief Returns next clear bit at position >= i */
+always_inline uword
+clib_bitmap_next_clear (uword * ai, uword i)
+{
+  uword i0 = i / BITS (ai[0]);
+  uword i1 = i % BITS (ai[0]);
+  uword t;
+  
+  if (i0 < vec_len (ai))
+    {
+      t = (~ai[i0] >> i1) << i1;
+      if (t)
+	return log2_first_set (t) + i0 * BITS (ai[0]);
+
+      for (i0++; i0 < vec_len (ai); i0++)
+	{
+          t = ~ai[i0];
+	  if (t)
+	    return log2_first_set (t) + i0 * BITS (ai[0]);
+	}
+    }
+  return i;
+}
+
 #endif /* included_clib_bitmap_h */
