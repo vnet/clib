@@ -154,6 +154,8 @@ serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
     clib_mem_unaligned (p, u16) = clib_host_to_net_u16 (x);
   else if (n_bytes == 4)
     clib_mem_unaligned (p, u32) = clib_host_to_net_u32 (x);
+  else if (n_bytes == 8)
+    clib_mem_unaligned (p, u64) = clib_host_to_net_u64 (x);
   else
     ASSERT (0);
 }
@@ -168,6 +170,8 @@ unserialize_integer (serialize_main_t * m, void * x, u32 n_bytes)
     *(u16 *) x = clib_net_to_host_unaligned_mem_u16 ((u16 *) p);
   else if (n_bytes == 4)
     *(u32 *) x = clib_net_to_host_unaligned_mem_u32 ((u32 *) p);
+  else if (n_bytes == 8)
+    *(u64 *) x = clib_net_to_host_unaligned_mem_u64 ((u64 *) p);
   else
     ASSERT (0);
 }
