@@ -36,6 +36,7 @@ int test_elog_main (unformat_input_t * input)
   u32 verbose;
   f64 min_sample_time;
   char * dump_file, * load_file, * merge_file, ** merge_files;
+  char * tag, ** tags;
 
   n_iter = 100;
   max_events = 100000;
@@ -44,6 +45,7 @@ int test_elog_main (unformat_input_t * input)
   dump_file = 0;
   load_file = 0;
   merge_files = 0;
+  tags = 0;
   min_sample_time = 2;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -55,6 +57,8 @@ int test_elog_main (unformat_input_t * input)
 	;
       else if (unformat (input, "load %s", &load_file))
 	;
+      else if (unformat (input, "tag %s", &tag))
+        vec_add1 (tags, tag);
       else if (unformat (input, "merge %s", &merge_file))
 	vec_add1 (merge_files, merge_file);
 
@@ -92,7 +96,10 @@ int test_elog_main (unformat_input_t * input)
 	  if ((error = elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
 	    goto done;
 	  if (i > 0)
-	    elog_merge (em, &ems[i]);
+            {
+              elog_merge (em, tags[0], &ems[i], tags[i]);
+              tags[0] = 0;
+            }
 	}
     }
 

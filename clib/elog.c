@@ -479,66 +479,113 @@ elog_event_t * elog_get_events (elog_main_t * em)
   return em->events;
 }
 
-void elog_merge_from_same_timebase (elog_main_t * dst, elog_main_t * src)
+static void maybe_fix_string_table_offset (elog_event_t * e, 
+                                           elog_event_type_t * t,
+                                           u32 offset)
 {
-  elog_event_t * e;
-  uword l;
-  f64 dt_event, dt_os_nsec, dt_clock_nsec;
-  u64 dt_clock_cycles;
+  void * d = (u8 *) e->data;
+  char * a;
 
-  /* 
-   * Src and dst were initialized at different times, but
-   * we know by construction that these logs are from the same timebase.
-   * Use the earlier init time for both trips through elog_get_events.
-   */
-  if (src->init_time.cpu > dst->init_time.cpu)
-    src->init_time.cpu = dst->init_time.cpu;
-  else
-    dst->init_time.cpu = src->init_time.cpu;
-    
-  /* $$$ temporarily... need to merge string tables */
-  ASSERT ( !src->string_table || !dst->string_table);
+  if (offset == 0)
+    return;
 
-  if (src->string_table)
+  a = t->format_args;
+
+  while (1)
     {
-      dst->string_table = src->string_table;
-      src->string_table = 0;
+      uword n_bytes = 0, n_digits;
+
+      if (a[0] == 0)
+	  break;
+
+      /* Don't go past end of event data. */
+      ASSERT (d < (void *) (e->data + sizeof (e->data)));
+
+      n_digits = parse_2digit_decimal (a + 1, &n_bytes);
+      switch (a[0])
+	{
+	case 'T':
+            ASSERT (n_bytes == 4);
+            clib_mem_unaligned (d, u32) += offset;
+            break;
+
+	case 'i':
+	case 't':
+	case 'f':
+	case 's':
+	  break;
+
+	default:
+	  ASSERT (0);
+	  break;
+	}
+
+      ASSERT (n_digits > 0 && n_digits <= 2);
+      a += 1 + n_digits;
+      d += n_bytes;
     }
-
-  elog_get_events (src);
-  elog_get_events (dst);
-
-  l = vec_len (dst->events);
-  vec_add (dst->events, src->events, vec_len (src->events));
-  for (e = dst->events + l; e < vec_end (dst->events); e++)
-    {
-      elog_event_type_t * t = vec_elt_at_index (src->event_types, e->type);
-
-      /* Re-map type from src -> dst. */
-      e->type = find_or_create_type (dst, t);
-    }
-
-  /* Sort events by increasing time. */
-  vec_sort (dst->events, e1, e2, 
-	    e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
 }
 
-void elog_merge (elog_main_t * dst, elog_main_t * src)
+void elog_merge (elog_main_t * dst, u8 * dst_tag, 
+                 elog_main_t * src, u8 * src_tag)
 {
   elog_event_t * e;
   uword l;
+  u32 string_table_offset_for_src_events;
+  u32 track_offset_for_src_tracks;
+  elog_track_t newt;
+  int i;
 
   elog_get_events (src);
   elog_get_events (dst);
 
+  string_table_offset_for_src_events = vec_len (dst->string_table);
+  vec_append (dst->string_table, src->string_table);
+
   l = vec_len (dst->events);
   vec_add (dst->events, src->events, vec_len (src->events));
+
+  /* Prepend the supplied tag (if any) to all dst track names */
+  if (dst_tag)
+    {
+      for (i = 0; i < vec_len(dst->tracks); i++)
+        {
+          elog_track_t * t = vec_elt_at_index (dst->tracks, i);
+          u8 *new_name;
+
+          new_name = format (0, "%s:%s%c", dst_tag, t->name, 0);
+          vec_free (t->name);
+          t->name = new_name;
+        }
+    }
+  
+  track_offset_for_src_tracks = vec_len (dst->tracks);
+  
+  /* Copy / tag source tracks */
+  for (i = 0; i < vec_len (src->tracks); i++)
+    {
+      elog_track_t * t = vec_elt_at_index (src->tracks, i);
+      if (src_tag)
+        newt.name = format (0, "%s:%s%c", src_tag, t->name, 0);
+      else
+        newt.name = format (0, "%s%c", t->name, 0);
+      (void) elog_track_register (dst, &newt);
+      vec_free (newt.name);
+    }
+  
+  /* Across all (copied) src events... */
   for (e = dst->events + l; e < vec_end (dst->events); e++)
     {
       elog_event_type_t * t = vec_elt_at_index (src->event_types, e->type);
-
-      /* Re-map type from src -> dst. */
+      
+      /* Remap type from src -> dst. */
       e->type = find_or_create_type (dst, t);
+
+      /* Remap string table offsets for 'T' format args */
+      maybe_fix_string_table_offset (e, t, string_table_offset_for_src_events);
+      
+      /* Remap track */
+      e->track += track_offset_for_src_tracks;
     }
 
   /* Adjust event times for relative starting times of event streams. */
@@ -586,6 +633,29 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
 
   /* Sort events by increasing time. */
   vec_sort (dst->events, e1, e2, e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
+
+  /* Recreate the event ring or the results won't serialize */
+  {
+    int i;
+
+    ASSERT (dst->cpu_timer.seconds_per_clock);
+
+    elog_alloc (dst, vec_len (dst->events));
+    for (i = 0; i < vec_len(dst->events); i++)
+      {
+        elog_event_t *es, *ed;
+        
+        es = dst->events + i;
+        ed = dst->event_ring + i;
+        
+        ed[0] = es[0];
+        
+        /* Invert elog_peek_events calculation */
+        ed->time_cycles = 
+          (es->time/dst->cpu_timer.seconds_per_clock) + dst->init_time.cpu;
+      }
+    dst->n_total_events = vec_len (dst->events);
+  }
 }
 
 static void

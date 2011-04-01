@@ -352,8 +352,9 @@ elog_event_t * elog_get_events (elog_main_t * em);
 /* Convert ievents to events and return them as a vector with no side effects. */
 elog_event_t * elog_peek_events (elog_main_t * em);
 
-/* Merge two logs. */
-void elog_merge (elog_main_t * dst, elog_main_t * src);
+/* Merge two logs, add suplied track tags. */
+void elog_merge (elog_main_t * dst, u8 * dst_tag, 
+                 elog_main_t * src, u8 * src_tag);
 
 /* 2 arguments elog_main_t and elog_event_t to format event or track name. */
 u8 * format_elog_event (u8 * s, va_list * va);
