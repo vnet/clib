@@ -298,42 +298,48 @@ void unserialize_vector (serialize_main_t * m, va_list * va)
 
 void serialize_bitmap (serialize_main_t * m, uword * b)
 {
-  u32 l, i;
+  u32 l, i, n_u32s;
 
   l = vec_len (b);
-  serialize_integer (m, l * sizeof (b[0]) / sizeof (l), sizeof (l));
+  n_u32s = l * sizeof (b[0]) / sizeof (u32);
+  serialize_integer (m, n_u32s, sizeof (n_u32s));
+
+  /* Send 32 bit words, low-order word first on 64 bit. */
   for (i = 0; i < l; i++)
     {
+      serialize_integer (m, b[i], sizeof (u32));
       if (BITS (uword) == 64)
 	serialize_integer (m, (u64) b[i] >> (u64) 32, sizeof (u32));
-      serialize_integer (m, b[i], sizeof (u32));
     }
 }
 
 uword * unserialize_bitmap (serialize_main_t * m)
 {
   uword * b = 0;
-  u32 l, i;
+  u32 l, i, n_u32s;
 
-  unserialize_integer (m, &l, sizeof (l));
-  if (l == 0)
+  unserialize_integer (m, &n_u32s, sizeof (n_u32s));
+  if (n_u32s == 0)
     return b;
 
-  vec_resize (b, l * sizeof (l) / sizeof (b[0]));
-  for (i = 0; i < vec_len (b); i++)
+  i = (n_u32s * sizeof (u32) + sizeof (b[0]) - 1) / sizeof (b[0]);
+  vec_resize (b, i);
+  for (i = 0; i < n_u32s; i++)
     {
+      u32 data;
+      unserialize_integer (m, &data, sizeof (u32));
+
+      /* Low-word is first on 64 bit. */
       if (BITS (uword) == 64)
 	{
-	  u32 hi, lo;
-	  unserialize_integer (m, &hi, sizeof (u32));
-	  unserialize_integer (m, &lo, sizeof (u32));
-	  b[i] = ((u64) hi << (u64) 32) | lo;
+	  if ((i % 2) == 0)
+	    b[i/2] |= (u64) data << (u64) 0;
+	  else
+	    b[i/2] |= (u64) data << (u64) 32;
 	}
       else
 	{
-	  u32 lo;
-	  unserialize_integer (m, &lo, sizeof (u32));
-	  b[i] = lo;
+	  b[i] = data;
 	}
     }
 
