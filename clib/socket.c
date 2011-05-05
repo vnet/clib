@@ -37,11 +37,11 @@
 #include <clib/format.h>
 #include <clib/error.h>
 
-void socket_tx_add_formatted (socket_t * s, char * fmt, ...)
+void clib_socket_tx_add_formatted (clib_socket_t * s, char * fmt, ...)
 {
   va_list va;
   va_start (va, fmt);
-  socket_tx_add_va_formatted (s, fmt, &va);
+  clib_socket_tx_add_va_formatted (s, fmt, &va);
   va_end (va);
 }
 
@@ -153,7 +153,7 @@ socket_config (char * config,
 }
 
 static clib_error_t *
-default_socket_write (socket_t * s)
+default_socket_write (clib_socket_t * s)
 {
   clib_error_t	* err = 0;
   word written = 0;
@@ -203,7 +203,7 @@ default_socket_write (socket_t * s)
 }
 
 static clib_error_t *
-default_socket_read (socket_t * sock, int n_bytes)
+default_socket_read (clib_socket_t * sock, int n_bytes)
 {
   word fd, n_read;
   u8 * buf;
@@ -238,14 +238,14 @@ default_socket_read (socket_t * sock, int n_bytes)
   return 0;
 }
 
-clib_error_t * default_socket_close (socket_t * s)
+static clib_error_t * default_socket_close (clib_socket_t * s)
 {
   if (close (s->fd) < 0)
     return clib_error_return_unix (0, "close");
   return 0;
 }
 
-static void socket_init_funcs (socket_t * s)
+static void socket_init_funcs (clib_socket_t * s)
 {
   if (! s->write_func)
     s->write_func = default_socket_write;
@@ -256,7 +256,7 @@ static void socket_init_funcs (socket_t * s)
 }
 
 clib_error_t *
-socket_init (socket_t * s)
+clib_socket_init (clib_socket_t * s)
 {
   union {
     struct sockaddr sa;
@@ -352,7 +352,7 @@ socket_init (socket_t * s)
   return error;
 }
 
-clib_error_t * socket_accept (socket_t * server, socket_t * client)
+clib_error_t * clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
 {
   clib_error_t	* err = 0;
   socklen_t	len = 0;

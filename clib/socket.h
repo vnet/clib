@@ -60,27 +60,27 @@ typedef struct _socket_t {
   clib_error_t * (* read_func) (struct _socket_t * sock, int min_bytes);
   clib_error_t * (* close_func) (struct _socket_t * sock);
   void * private_data;
-} socket_t;
+} clib_socket_t;
 
 /* socket config format is host:port.
    Unspecified port causes a free one to be chosen starting
    from IPPORT_USERRESERVED (5000). */
 clib_error_t *
-socket_init (socket_t * socket);
+clib_socket_init (clib_socket_t * socket);
 
-clib_error_t * socket_accept (socket_t * server, socket_t * client);
+clib_error_t * clib_socket_accept (clib_socket_t * server, clib_socket_t * client);
 
-always_inline uword socket_is_server (socket_t * sock)
+always_inline uword clib_socket_is_server (clib_socket_t * sock)
 { return (sock->flags & SOCKET_IS_SERVER) != 0; }
 
-always_inline uword socket_is_client (socket_t * s)
-{ return ! socket_is_server (s); }
+always_inline uword clib_socket_is_client (clib_socket_t * s)
+{ return ! clib_socket_is_server (s); }
 
-always_inline int socket_rx_end_of_file (socket_t * s)
+always_inline int clib_socket_rx_end_of_file (clib_socket_t * s)
 { return s->flags & SOCKET_RX_END_OF_FILE; }
 
 always_inline void *
-socket_tx_add (socket_t * s, int n_bytes)
+clib_socket_tx_add (clib_socket_t * s, int n_bytes)
 {
   u8 * result;
   vec_add2 (s->tx_buffer, result, n_bytes);
@@ -88,19 +88,19 @@ socket_tx_add (socket_t * s, int n_bytes)
 }
 
 always_inline void
-socket_tx_add_va_formatted (socket_t * s, char * fmt, va_list * va)
+clib_socket_tx_add_va_formatted (clib_socket_t * s, char * fmt, va_list * va)
 { s->tx_buffer = va_format (s->tx_buffer, fmt, va); }
 
 always_inline clib_error_t *
-socket_tx (socket_t * s)
+clib_socket_tx (clib_socket_t * s)
 { return s->write_func (s); }
 
 always_inline clib_error_t *
-socket_rx (socket_t * s, int n_bytes)
+clib_socket_rx (clib_socket_t * s, int n_bytes)
 { return s->read_func (s, n_bytes); }
 
 always_inline void
-socket_free (socket_t *s)
+clib_socket_free (clib_socket_t *s)
 {
   vec_free (s->tx_buffer);
   vec_free (s->rx_buffer);
@@ -110,7 +110,7 @@ socket_free (socket_t *s)
 }
 
 always_inline clib_error_t *
-socket_close (socket_t *sock)
+clib_socket_close (clib_socket_t *sock)
 {
   clib_error_t * err;
   err = (* sock->close_func) (sock);
@@ -118,7 +118,6 @@ socket_close (socket_t *sock)
 }
 
 void
-socket_tx_add_formatted (socket_t * s, char * fmt, ...);
-
+clib_socket_tx_add_formatted (clib_socket_t * s, char * fmt, ...);
 
 #endif /* _clib_included_socket_h */
