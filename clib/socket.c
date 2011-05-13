@@ -87,20 +87,22 @@ socket_config (char * config,
 	      clib_min (sizeof (su->sun_path), 1 + strlen (config)));
       *addr_len = sizeof (su[0]);
     }
+
   /* Hostname or hostname:port or port. */
   else
     {
       char * host_name;
-      struct hostent * host = 0;
       int port = -1;
       int got_port = 0;
-      unformat_input_t i;
+      struct sockaddr_in * sa = addr;
 
       host_name = 0;
       port = -1;
       got_port = 0;
       if (config[0] != 0)
 	{
+	  unformat_input_t i;
+
 	  unformat_init_string (&i, config, strlen (config));
 	  if (unformat (&i, "%s:%d", &host_name, &port)
 	      || unformat (&i, "%s:0x%x", &host_name, &port))
@@ -118,34 +120,38 @@ socket_config (char * config,
 	    goto done;
 	}
 
+      sa->sin_family = PF_INET;
+      *addr_len = sizeof (sa[0]);
+      if (port != -1)
+	sa->sin_port = htons (port);
+      else
+	sa->sin_port = 0;
+
       if (host_name)
 	{
-	  host = gethostbyname (host_name);
-	  if (! host)
+	  /* Recognize localhost to avoid host lookup in most common cast. */
+	  if (! strcmp (host_name, "localhost"))
+	    sa->sin_addr.s_addr = htonl (INADDR_LOOPBACK);
+
+	  else if (inet_aton (host_name, &sa->sin_addr.s_addr))
+	    ;
+
+	  else if (host_name && strlen (host_name) > 0)
 	    {
-	      error = clib_error_return (0, "unknown host `%s'", config);
-	      goto done;
+	      struct hostent * host = gethostbyname (host_name);
+	      if (! host)
+		error = clib_error_return (0, "unknown host `%s'", config);
+	      else
+		memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
 	    }
+
+	  else
+	    sa->sin_addr.s_addr = htonl (ip4_default_address);
+
 	  vec_free (host_name);
+	  if (error)
+	    goto done;
 	}
-
-      {
-	struct sockaddr_in * sa = addr;
-	sa->sin_family = PF_INET;
-
-	/* Set address and port based on host lookup (if successful). */
-	if (host)
-	  memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
-	else
-	  sa->sin_addr.s_addr = htonl (ip4_default_address);
-
-	if (port != -1)
-	  sa->sin_port = htons (port);
-	else
-	  sa->sin_port = 0;
-
-	*addr_len = sizeof (sa[0]);
-      }
     }
 
  done:
