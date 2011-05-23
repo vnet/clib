@@ -186,6 +186,11 @@ _vec_resize (void * _v,
 	     uword header_bytes,
 	     uword data_align);
 
+uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes);
+
+always_inline uword clib_mem_is_vec (void * v)
+{ return clib_mem_is_vec_ha (v, 0, 0); }
+
 /* Local variable naming macro (prevents collisions with other macro naming). */
 #define _v(var) _vec_##var
 

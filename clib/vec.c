@@ -94,6 +94,9 @@ void * _vec_resize (void * _v,
   goto done;
 } 
 
+uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes)
+{ return clib_mem_is_heap_object (vec_header_ha (v, header_bytes, align_bytes)); }
+
 /** \cond */
 
 #ifdef TEST
