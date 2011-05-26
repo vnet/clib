@@ -763,8 +763,7 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
   return n ? f : 0;
 }
 
-static uword
-unformat_skip_white_space (unformat_input_t * input)
+uword unformat_skip_white_space (unformat_input_t * input)
 {
   uword n = 0;
   uword c;

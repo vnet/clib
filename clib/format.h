@@ -206,6 +206,8 @@ always_inline void unformat_skip_line (unformat_input_t * i)
     ;
 }
 
+uword unformat_skip_white_space (unformat_input_t * input);
+
 /* Unformat function. */
 typedef uword (unformat_function_t) (unformat_input_t * input, va_list * args);
 
