@@ -258,6 +258,21 @@ unserialize_likely_small_unsigned_integer (serialize_main_t * m)
   return r;
 }
 
+always_inline void
+serialize_likely_small_signed_integer (serialize_main_t * m, i64 s)
+{
+  u64 u = s < 0 ? -(2*s + 1) : 2*s;
+  serialize_likely_small_unsigned_integer (m, u);
+}
+
+always_inline i64
+unserialize_likely_small_signed_integer (serialize_main_t * m)
+{
+  u64 u = unserialize_likely_small_unsigned_integer (m);
+  i64 s = u / 2;
+  return (u & 1) ? -s : s;
+}
+
 void
 serialize_multiple_1 (serialize_main_t * m,
 		      void * data,
