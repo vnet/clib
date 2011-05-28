@@ -28,7 +28,9 @@
 #include <clib/mem.h>           /* clib_mem_free */
 #include <clib/string.h>	/* memcpy, memmove */
 
-/* CLIB vectors are ubiquitous dynamically resized arrays with by user
+/** \file
+
+ CLIB vectors are ubiquitous dynamically resized arrays with by user
    defined "headers".  Many CLIB data structures (e.g. hash, heap,
    pool) are vectors with various different headers.
 
@@ -54,14 +56,30 @@ user's pointer ->     vector element #1
    Vectors elements can be any C type e.g. (int, double, struct bar).
    This is also true for data types built atop vectors (e.g. heap,
    pool, etc.).
+
+   Many macros have _a variants supporting alignment of vector data
+   and _h variants supporting non zero length vector headers.
+   The _ha variants support both.
+
+   Standard programming error: memorize a pointer to the ith element 
+   of a vector then expand it. Vectors expand by 3/2, so such code
+   may appear to work for a period of time. Memorize vector indices
+   which are invariant. 
  */
 
-/* Bookeeping header preceding vector elements in memory.
+/** \brief vector header structure
+
+   Bookeeping header preceding vector elements in memory.
    User header information may preceed standard vec header. */
 typedef struct {
-  uword len;
+  uword len; /**< Effective length of the vector, NOT its allocated length  */
 } _VEC;
 
+/** \brief Find the vector header
+
+    Given the user's pointer to a vector, find the corresponding
+    vector header 
+*/
 #define _vec_find(v)	((_VEC *) (v) - 1)
 
 #define _vec_round_size(s) \
@@ -71,10 +89,10 @@ always_inline uword
 vec_header_bytes_ha (uword header_bytes,
 		     uword align_bytes)
 {
-    header_bytes = _vec_round_size (header_bytes) + sizeof (_VEC);
-    if (align_bytes > 0 && header_bytes < 8)
-	header_bytes = 8;
-    return header_bytes;
+  /* Header must be 8 byte aligned because mheap align_at_offset
+     needs to be 8 byte aligned for aligned vectors. */
+  return round_pow2 (header_bytes + sizeof (_VEC),
+		     align_bytes ? 8 : sizeof (uword));
 }
 
 always_inline void *
@@ -85,21 +103,41 @@ always_inline void *
 vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
 { return v + vec_header_bytes_ha (header_bytes, align_bytes); }
 
+/** \brief Find a user vector header
+    
+    Finds the user header of a vector with unspecified alignment given
+    the user pointer to the vector.
+*/
+    
 #define vec_header(v,header_bytes)     vec_header_ha(v,header_bytes,0)
+
+/** \brief Find the end of user vector header
+    
+    Finds the end of the user header of a vector with unspecified 
+    alignment given the user pointer to the vector.
+*/
 #define vec_header_end(v,header_bytes) vec_header_end_ha(v,header_bytes,0)
 
-/* Number of elements in vector.
-   0 is always the null zero-element vector.
+/** \brief Number of elements in vector (lvalue-capable)
+
    _vec_len (v) does not check for null, but can be used as a lvalue
-   (e.g. _vec_len (v) = 99). */
+   (e.g. _vec_len (v) = 99). 
+*/
 #define _vec_len(v)	(_vec_find(v)->len)
+
+/** \brief Number of elements in vector (rvalue-only, NULL tolerant)
+    
+    vec_len (v) checks for NULL, but cannot be used as an lvalue.
+    If in doubt, use vec_len...
+*/
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
+/** \brief Reset vector length to zero  */
 #define vec_reset_length(v) do { if (v) _vec_len (v) = 0; } while (0)
 
-/* Number of data bytes in vector. */
+/** \brief Number of data bytes in vector. */
 #define vec_bytes(v) (vec_len (v) * sizeof (v[0]))
 
-/* Total number of bytes that can fit in vector with current allocation. */
+/** \brief Total number of bytes that can fit in vector with current allocation. */
 #define vec_capacity(v,b)							\
 ({										\
   void * _vec_capacity_v = (void *) (v);					\
@@ -108,30 +146,39 @@ vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
   _vec_capacity_v ? clib_mem_size (_vec_capacity_v - _vec_capacity_b) : 0;	\
 })
 
-/* Total number of elements that can fit into vector. */
+/** \brief Total number of elements that can fit into vector. */
 #define vec_max_len(v) (vec_capacity(v,0) / sizeof (v[0]))
 
-/* End (last data address) of vector. */
+/** \brief End (last data address) of vector. */
 #define vec_end(v)	((v) + vec_len (v))
 
-/* True if given pointer is within given vector. */
+/** \brief True if given pointer is within given vector. */
 #define vec_is_member(v,e) ((e) >= (v) && (e) < vec_end (v))
 
+/** \brief Get vector element at index i
+
+    Will ASSERT() if i >= vec_len(v)
+*/
 #define vec_elt_at_index(v,i)			\
 ({						\
   ASSERT ((i) < vec_len (v));			\
   (v) + (i);					\
 })
 
+/** \brief Get vector value at index i */
 #define vec_elt(v,i) (vec_elt_at_index(v,i))[0]
 
-/* Vector iterator. */ 
+/** \brief Vector iterator */
 #define vec_foreach(var,vec) for (var = (vec); var < vec_end (vec); var++)
 
+/** \brief Vector iterator (reverse) */
 #define vec_foreach_backwards(var,vec) \
 for (var = vec_end (vec) - 1; var >= (vec); var--)
 
-/* Low-level resize function. */
+/** \brief Iterate over vector indices. */
+#define vec_foreach_index(var,v) for ((var) = 0; (var) < vec_len (v); (var)++)
+
+/** \brief Low-level resize function. */
 extern void *
 _vec_resize (void * _v,
 	     word length_increment,
@@ -139,16 +186,20 @@ _vec_resize (void * _v,
 	     uword header_bytes,
 	     uword data_align);
 
+uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes);
+
+always_inline uword clib_mem_is_vec (void * v)
+{ return clib_mem_is_vec_ha (v, 0, 0); }
+
 /* Local variable naming macro (prevents collisions with other macro naming). */
 #define _v(var) _vec_##var
 
-/* Many macros have _a variants supporting alignment of vector data
-   and _h variants supporting non zero length vector headers.
-   The _ha variants support both. */
+/** \brief Resize a vector (general version)
 
-/* Add N elements to end of given vector V, return pointer to start of vector.
+   Add N elements to end of given vector V, return pointer to start of vector.
    Vector will have room for H header bytes and will have user's data aligned
-   at alignment A (rounded to next power of 2). */
+   at alignment A (rounded to next power of 2). 
+*/
 #define vec_resize_ha(V,N,H,A)							\
 do {										\
   word _v(n) = (N);								\
@@ -156,10 +207,12 @@ do {										\
   V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), (A));	\
 } while (0)
 
+/** \brief Resize a vector (unspecified alignment) */
 #define vec_resize(V,N)     vec_resize_ha(V,N,0,0)
+/** \brief Resize a vector (aligned) */
 #define vec_resize_aligned(V,N,A) vec_resize_ha(V,N,0,A)
 
-/* Allocate space for N more elements but keep size the same. */
+/** \brief Allocate space for N more elements but keep size the same (general version). */
 #define vec_alloc_ha(V,N,H,A)			\
 do {						\
     uword _v(l) = vec_len (V);			\
@@ -167,20 +220,24 @@ do {						\
     _vec_len (V) = _v(l);			\
 } while (0)
 
+/** \brief Allocate space for N more elements but keep size the same (unspecified alignment) */
 #define vec_alloc(V,N) vec_alloc_ha(V,N,0,0)
+/** \brief Allocate space for N more elements but keep size the same (alignment specified but no header) */
 #define vec_alloc_aligned(V,N,A) vec_alloc_ha(V,N,0,A)
 
-/* Create new vector of given type and length. */
+/** \brief Create new vector of given type and length (general version). */
 #define vec_new_ha(T,N,H,A)					\
 ({								\
   word _v(n) = (N);						\
   _vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), (A));	\
 })
 
+/** \brief Create new vector of given type and length (unspecified alignment, no header). */
 #define vec_new(T,N)           vec_new_ha(T,N,0,0)
+/** \brief Create new vector of given type and length (alignment specified but no header). */
 #define vec_new_aligned(T,N,A) vec_new_ha(T,N,0,A)
 
-/* Free vector's memory. */
+/** \brief Free vector's memory (general version). */
 #define vec_free_ha(V,H,A)				\
 do {							\
   if (V)						\
@@ -190,12 +247,16 @@ do {							\
     }							\
 } while (0)
 
+/** \brief Free vector's memory (unspecified alignment, no header). */
 #define vec_free(V) vec_free_ha(V,0,0)
+/** \brief Free vector's memory (alignment specified but no header). */
 #define vec_free_aligned(V,A) vec_free_ha(V,0,A)
+/** \brief Free vector's memory (unspecified alignment, has header, unspecified header alignment). */
 #define vec_free_h(V,H) vec_free_ha(V,H,0)
+/** \brief Free vector user header */
 #define vec_free_header(h) clib_mem_free (h)
 
-/* Return copy of vector. */
+/** \brief Return copy of vector (general version). */
 #define vec_dup_ha(V,H,A)				\
 ({							\
   __typeof__ ((V)[0]) * _v(v) = 0;			\
@@ -208,12 +269,17 @@ do {							\
   _v(v);						\
 })
 
+/** \brief Return copy of vector (no alignment). */
 #define vec_dup(V) vec_dup_ha(V,0,0)
+/** \brief Return copy of vector (alignment specified). */
 #define vec_dup_aligned(V,A) vec_dup_ha(V,0,A)
 
+/** \brief Copy a vector */
 #define vec_copy(DST,SRC) memcpy (DST, SRC, vec_len (DST) * sizeof ((DST)[0]))
 
-/* Make a new vector with the same size as a given vector but
+/** \brief Clone a vector
+
+    Make a new vector with the same size as a given vector but
    possibly with a different type. */
 #define vec_clone(NEW_V,OLD_V)							\
 do {										\
@@ -222,7 +288,7 @@ do {										\
 			 vec_len (OLD_V) * sizeof ((NEW_V)[0]), (0), (0));	\
 } while (0)
 
-/* Make sure vector is long enough for given index. */
+/**\brief Make sure vector is long enough for given index (general version). */
 #define vec_validate_ha(V,I,H,A)					\
 do {									\
   word _v(i) = (I);							\
@@ -236,10 +302,12 @@ do {									\
     }									\
 } while (0)
 
+/** \brief Make sure vector is long enough for given index (unspecified alignment). */
 #define vec_validate(V,I)           vec_validate_ha(V,I,0,0)
+/** \brief Make sure vector is long enough for given index (alignment specified but no header). */
 #define vec_validate_aligned(V,I,A) vec_validate_ha(V,I,0,A)
 
-/* As above but initialize empty space with given value. */
+/** \brief Make sure vector is long enough for given index and initialize empty space (general version). */
 #define vec_validate_init_empty_ha(V,I,INIT,H,A)		\
 do {								\
   word _v(i) = (I);						\
@@ -255,12 +323,14 @@ do {								\
     }								\
 } while (0)
 
+/** \brief Make sure vector is long enough for given index and initialize empty space (unspecified alignment). */
 #define vec_validate_init_empty(V,I,INIT) \
   vec_validate_init_empty_ha(V,I,INIT,0,0)
+/** \brief Make sure vector is long enough for given index and initialize empty space (alignment specified). */
 #define vec_validate_init_empty_aligned(V,I,A) \
   vec_validate_init_empty_ha(V,I,INIT,0,A)
 
-/* Add 1 element to end of vector. */
+/** \brief Add 1 element to end of vector (general version). */
 #define vec_add1_ha(V,E,H,A)						\
 do {									\
   word _v(l) = vec_len (V);						\
@@ -268,10 +338,12 @@ do {									\
   (V)[_v(l)] = (E);							\
 } while (0)
 
+/** \brief Add 1 element to end of vector (unspecified alignment). */
 #define vec_add1(V,E)           vec_add1_ha(V,E,0,0)
+/** \brief Add 1 element to end of vector (alignment specified). */
 #define vec_add1_aligned(V,E,A) vec_add1_ha(V,E,0,A)
 
-/* Add N elements to end of vector V, return pointer to new elements in P. */
+/** \brief Add N elements to end of vector V, return pointer to new elements in P. (general version) */
 #define vec_add2_ha(V,P,N,H,A)							\
 do {										\
   word _v(n) = (N);								\
@@ -280,10 +352,12 @@ do {										\
   P = (V) + _v(l);								\
 } while (0)
 
+/** \brief Add N elements to end of vector V, return pointer to new elements in P. (unspecified alignment) */
 #define vec_add2(V,P,N)           vec_add2_ha(V,P,N,0,0)
+/** \brief Add N elements to end of vector V, return pointer to new elements in P. (alignment specified, no header) */
 #define vec_add2_aligned(V,P,N,A) vec_add2_ha(V,P,N,0,A)
 
-/* Add N elements E to end of vector V. */
+/** \brief Add N elements to end of vector V (general version) */
 #define vec_add_ha(V,E,N,H,A)							\
 do {										\
   word _v(n) = (N);								\
@@ -292,10 +366,12 @@ do {										\
   memcpy ((V) + _v(l), (E), _v(n) * sizeof ((V)[0]));				\
 } while (0)
 
+/** \brief Add N elements to end of vector V (unspecified alignment) */
 #define vec_add(V,E,N)           vec_add_ha(V,E,N,0,0)
+/** \brief Add N elements to end of vector V (alignment specified) */
 #define vec_add_aligned(V,E,N,A) vec_add_ha(V,E,N,0,A)
 
-/* Returns final element and decrements length. */
+/** \brief Returns last element of a vector and decrements its length */
 #define vec_pop(V)				\
 ({						\
   uword _v(l) = vec_len (V);			\
@@ -305,6 +381,7 @@ do {										\
   (V)[_v(l)];					\
 })
 
+/** \brief Set E to the last element of a vector, decrement vector length */
 #define vec_pop2(V,E)				\
 ({						\
   uword _v(l) = vec_len (V);			\
@@ -312,8 +389,7 @@ do {										\
   _v(l) > 0;					\
 })
 
-/* Resize vector by N elements starting from element M.
-   Zero new elements. */
+/** \brief Resize vector by N elements starting from element M, initialize new elements (general version). */
 #define vec_insert_init_empty_ha(V,N,M,INIT,H,A)	\
 do {							\
   word _v(l) = vec_len (V);				\
@@ -330,17 +406,21 @@ do {							\
   memset  ((V) + _v(m), INIT, _v(n) * sizeof ((V)[0]));	\
 } while (0)
 
+/** \brief Resize vector by N elements starting from element M, initialize new elements to zero (general version). */
 #define vec_insert_ha(V,N,M,H,A)    vec_insert_init_empty_ha(V,N,M,0,H,A)
+/** \brief Resize vector by N elements starting from element M, initialize new elements to zero (unspecified alignment, no header). */
 #define vec_insert(V,N,M)           vec_insert_ha(V,N,M,0,0)
+/** \brief Resize vector by N elements starting from element M, initialize new elements to zero (alignment specified, no header). */
 #define vec_insert_aligned(V,N,M,A) vec_insert_ha(V,N,M,0,A)
 
+/** \brief Resize vector by N elements starting from element M, initialize new elements to INIT (unspecified alignment, no header). */
 #define vec_insert_init_empty(V,N,M,INIT) \
   vec_insert_init_empty_ha(V,N,M,INIT,0,0)
+/** \brief Resize vector by N elements starting from element M, initialize new elements to INIT (alignment specified, no header). */
 #define vec_insert_init_empty_aligned(V,N,M,INIT,A) \
   vec_insert_init_empty_ha(V,N,M,INIT,0,A)
 
-/* Resize vector by N elements starting from element M.
-   Insert given elements. */
+/** \brief Resize vector by N elements starting from element M. Insert given elements (general version). */
 #define vec_insert_elts_ha(V,E,N,M,H,A)			\
 do {							\
   word _v(l) = vec_len (V);				\
@@ -357,10 +437,12 @@ do {							\
   memcpy  ((V) + _v(m), (E), _v(n) * sizeof ((V)[0]));	\
 } while (0)
 
+/** \brief Resize vector by N elements starting from element M. Insert given elements (unspecified alignment, no header). */
 #define vec_insert_elts(V,E,N,M)           vec_insert_elts_ha(V,E,N,M,0,0)
+/** \brief Resize vector by N elements starting from element M. Insert given elements (alignment specified, no header). */
 #define vec_insert_elts_aligned(V,E,N,M,A) vec_insert_elts_ha(V,E,N,M,0,A)
 
-/* Delete N elements starting from element M. */
+/** \brief Delete N elements starting from element M */
 #define vec_delete(V,N,M)					\
 do {								\
   word _v(l) = vec_len (V);					\
@@ -376,7 +458,7 @@ do {								\
   _vec_len (V) -= _v(n);					\
 } while (0)
 
-/* Appends v2 after v1. Result in v1. */
+/** \brief Appends v2 after v1. Result in v1. */
 #define vec_append(v1,v2)						\
 do {									\
   uword _v(l1) = vec_len (v1);						\
@@ -387,7 +469,7 @@ do {									\
   memcpy ((v1) + _v(l1), (v2), _v(l2) * sizeof ((v2)[0]));		\
 } while (0)
 
-/* Prepends v2 in front of v1. Result in v1. */
+/** \brief Prepends v2 in front of v1. Result in v1. */
 #define vec_prepend(v1,v2)					\
 do {								\
   uword _v(l1) = vec_len (v1);					\
@@ -399,14 +481,14 @@ do {								\
   memcpy ((v1), (v2), _v(l2) * sizeof ((v2)[0]));		\
 } while (0)
 
-/* Zero all elements. */
+/** \brief Zero all elements. */
 #define vec_zero(var)						\
 do {								\
   if (var)							\
     memset ((var), 0, vec_len (var) * sizeof ((var)[0]));	\
 } while (0)
 
-/* Set all elements to given value. */
+/** \brief Set all elements to given value. */
 #define vec_set(v,val)				\
 do {						\
   word _v(i);					\
@@ -419,11 +501,12 @@ do {						\
 #include <stdlib.h>		/* for qsort */
 #endif
 
-/* Compare two vectors. */
+/** \brief Compare two vectors. */
 #define vec_is_equal(v1,v2) \
   (vec_len (v1) == vec_len (v2) && ! memcmp ((v1), (v2), vec_len (v1) * sizeof ((v1)[0])))
 
-/* Compare two vectors (only applicable to vectors of signed numbers).
+/** \brief Compare two vectors (only applicable to vectors of signed numbers).
+
    Used in qsort compare functions. */
 #define vec_cmp(v1,v2)					\
 ({							\
@@ -440,7 +523,8 @@ do {						\
   (_v(cmp) < 0 ? -1 : (_v(cmp) > 0 ? +1 : 0));		\
 })
 
-/* Sort a vector with qsort via user's comparison body.
+/** \brief Sort a vector with qsort via user's comparison body
+
    Example to sort an integer vector:
      int * int_vec = ...;
      vec_sort (int_vec, i0, i1, i0[0] - i1[0]);
@@ -457,6 +541,9 @@ do {									\
   qsort (vec, vec_len (vec), sizeof (vec[0]), _vec_sort_compare);	\
 } while (0)
 
+/** \brief Sort a vector using the supplied element comparison function
+
+    A simple qsort wrapper */
 #define vec_sort_with_function(vec,f)				\
 do {								\
   qsort (vec, vec_len (vec), sizeof (vec[0]), (void *) (f));	\

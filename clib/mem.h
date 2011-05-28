@@ -299,10 +299,10 @@ always_inline void clib_mem_usage (clib_mem_usage_t * usage)
     clib_memfuncs->query_usage (usage);
 }
 
-always_inline void * clib_mem_set_funcs (clib_memfuncs_t * new)
+always_inline void * clib_mem_set_funcs (clib_memfuncs_t * new_param)
 {
   clib_memfuncs_t * old = clib_memfuncs;
-  clib_memfuncs = new;
+  clib_memfuncs = new_param;
   return old;
 }
 

@@ -48,14 +48,57 @@ typedef struct {
 } mhash_t;
 
 void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes);
-void mhash_init_c_string (mhash_t * h, uword n_value_bytes);
-void mhash_init_vec_string (mhash_t * h, uword n_value_bytes);
+
+hash_pair_t * mhash_get_pair (mhash_t * h, void * key);
+uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value);
+uword mhash_unset (mhash_t * h, void * key, uword * old_value);
 
 always_inline uword *
 mhash_get (mhash_t * h, void * key)
-{ return hash_get_mem (h->hash, key); }
+{
+  hash_pair_t * p = mhash_get_pair (h, key);
+  return p ? &p->value[0] : 0;
+}
 
-void mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value);
-uword mhash_unset (mhash_t * h, void * key, uword * old_value);
+always_inline uword
+mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value)
+{ return mhash_set_mem (h, key, &new_value, old_value); }
+
+always_inline uword
+mhash_value_bytes (mhash_t * m)
+{
+  hash_t * h = hash_header (m->hash);
+  return hash_value_bytes (h);
+}
+
+always_inline uword
+mhash_elts (mhash_t * m)
+{ return hash_elts (m->hash); }
+
+always_inline void
+mhash_free (mhash_t * h)
+{
+  vec_free (h->key_vector);
+  vec_free (h->key_vector_free_indices);
+  hash_free (h->hash);
+}
+
+always_inline void *
+mhash_key_to_mem (mhash_t * h, uword key)
+{
+  return ((key & 1)
+	  ? h->key_vector + (key / 2)
+	  : uword_to_pointer (key, void *));
+}
+
+#define mhash_foreach(k,v,mh,body)				\
+do {								\
+  hash_pair_t * _mhash_foreach_p;				\
+  hash_foreach_pair (_mhash_foreach_p, (mh)->hash, ({		\
+    (k) = mhash_key_to_mem ((mh), _mhash_foreach_p->key);	\
+    (v) = &_mhash_foreach_p->value[0];				\
+    body;							\
+  }));								\
+} while (0)
 
 #endif /* included_clib_mhash_h */

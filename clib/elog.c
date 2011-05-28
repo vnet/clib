@@ -128,8 +128,12 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
     uword i;
     t->n_enum_strings = static_type->n_enum_strings;
     for (i = 0; i < t->n_enum_strings; i++)
-      vec_add1 (t->enum_strings_vector,
-		(char *) format (0, "%s%c", static_type->enum_strings[i], 0));
+      {
+	if (! static_type->enum_strings[i])
+	  static_type->enum_strings[i] = "MISSING";
+        vec_add1 (t->enum_strings_vector,
+                  (char *) format (0, "%s%c", static_type->enum_strings[i], 0));
+      }
   }
 
   new_event_type (em, l);
@@ -164,7 +168,8 @@ static uword parse_2digit_decimal (char * p, uword * number)
     {
       if (i >= 2)
 	break;
-      digits[i++] = p[0] - '0';
+      digits[i] = p[i] - '0';
+      i++;
     }
 
   if (i >= 1 && i <= 2)
@@ -261,6 +266,7 @@ u8 * format_elog_event (u8 * s, va_list * va)
 	{
 	case 'i':
 	case 't':
+	case 'T':
 	  {
 	    u32 i = 0;
 	    u64 l = 0;
@@ -278,6 +284,11 @@ u8 * format_elog_event (u8 * s, va_list * va)
 	    if (a[0] == 't')
 	      {
 		char * e = vec_elt (t->enum_strings_vector, n_bytes == 8 ? l : i);
+		s = format (s, arg_format, e);
+	      }
+	    else if (a[0] == 'T')
+	      {
+		char * e = vec_elt_at_index (em->string_table, n_bytes == 8 ? l : i);
 		s = format (s, arg_format, e);
 	      }
 	    else if (n_bytes == 8)
@@ -327,7 +338,7 @@ u8 * format_elog_track (u8 * s, va_list * va)
   return format (s, "%s", t->name);
 }
 
-static void elog_time_now (elog_time_stamp_t * et)
+void elog_time_now (elog_time_stamp_t * et)
 {
   u64 cpu_time_now, os_time_now_nsec;
 
@@ -382,7 +393,12 @@ static void elog_alloc (elog_main_t * em, u32 n_events)
 
 void elog_init (elog_main_t * em, u32 n_events)
 {
+  u8 *old_string_table;
+
+  /* Save / restore string table, otherwise enumerated events break */
+  old_string_table = em->string_table;
   memset (em, 0, sizeof (em[0]));
+  em->string_table = old_string_table;
 
   if (n_events > 0)
     elog_alloc (em, n_events);
@@ -438,6 +454,24 @@ elog_event_t * elog_peek_events (elog_main_t * em)
   return es;
 }
 
+/* Add a formatted string to the string table. */
+u32 elog_string (elog_main_t * em, char * fmt, ...)
+{
+  u32 offset;
+  va_list va;
+
+  va_start (va, fmt);
+  offset = vec_len (em->string_table);
+  em->string_table = (char *) va_format ((u8 *) em->string_table, fmt, &va);
+  va_end (va);
+
+  /* Null terminate string if it is not already. */
+  if (vec_end (em->string_table)[-1] != 0)
+    vec_add1 (em->string_table, 0);
+
+  return offset;
+}
+
 elog_event_t * elog_get_events (elog_main_t * em)
 {
   if (! em->events)
@@ -445,22 +479,113 @@ elog_event_t * elog_get_events (elog_main_t * em)
   return em->events;
 }
 
-void elog_merge (elog_main_t * dst, elog_main_t * src)
+static void maybe_fix_string_table_offset (elog_event_t * e, 
+                                           elog_event_type_t * t,
+                                           u32 offset)
+{
+  void * d = (u8 *) e->data;
+  char * a;
+
+  if (offset == 0)
+    return;
+
+  a = t->format_args;
+
+  while (1)
+    {
+      uword n_bytes = 0, n_digits;
+
+      if (a[0] == 0)
+	  break;
+
+      /* Don't go past end of event data. */
+      ASSERT (d < (void *) (e->data + sizeof (e->data)));
+
+      n_digits = parse_2digit_decimal (a + 1, &n_bytes);
+      switch (a[0])
+	{
+	case 'T':
+            ASSERT (n_bytes == 4);
+            clib_mem_unaligned (d, u32) += offset;
+            break;
+
+	case 'i':
+	case 't':
+	case 'f':
+	case 's':
+	  break;
+
+	default:
+	  ASSERT (0);
+	  break;
+	}
+
+      ASSERT (n_digits > 0 && n_digits <= 2);
+      a += 1 + n_digits;
+      d += n_bytes;
+    }
+}
+
+void elog_merge (elog_main_t * dst, u8 * dst_tag, 
+                 elog_main_t * src, u8 * src_tag)
 {
   elog_event_t * e;
   uword l;
+  u32 string_table_offset_for_src_events;
+  u32 track_offset_for_src_tracks;
+  elog_track_t newt;
+  int i;
 
   elog_get_events (src);
   elog_get_events (dst);
 
+  string_table_offset_for_src_events = vec_len (dst->string_table);
+  vec_append (dst->string_table, src->string_table);
+
   l = vec_len (dst->events);
   vec_add (dst->events, src->events, vec_len (src->events));
+
+  /* Prepend the supplied tag (if any) to all dst track names */
+  if (dst_tag)
+    {
+      for (i = 0; i < vec_len(dst->tracks); i++)
+        {
+          elog_track_t * t = vec_elt_at_index (dst->tracks, i);
+          u8 *new_name;
+
+          new_name = format (0, "%s:%s%c", dst_tag, t->name, 0);
+          vec_free (t->name);
+          t->name = new_name;
+        }
+    }
+  
+  track_offset_for_src_tracks = vec_len (dst->tracks);
+  
+  /* Copy / tag source tracks */
+  for (i = 0; i < vec_len (src->tracks); i++)
+    {
+      elog_track_t * t = vec_elt_at_index (src->tracks, i);
+      if (src_tag)
+        newt.name = format (0, "%s:%s%c", src_tag, t->name, 0);
+      else
+        newt.name = format (0, "%s%c", t->name, 0);
+      (void) elog_track_register (dst, &newt);
+      vec_free (newt.name);
+    }
+  
+  /* Across all (copied) src events... */
   for (e = dst->events + l; e < vec_end (dst->events); e++)
     {
       elog_event_type_t * t = vec_elt_at_index (src->event_types, e->type);
-
-      /* Re-map type from src -> dst. */
+      
+      /* Remap type from src -> dst. */
       e->type = find_or_create_type (dst, t);
+
+      /* Remap string table offsets for 'T' format args */
+      maybe_fix_string_table_offset (e, t, string_table_offset_for_src_events);
+      
+      /* Remap track */
+      e->track += track_offset_for_src_tracks;
     }
 
   /* Adjust event times for relative starting times of event streams. */
@@ -508,6 +633,29 @@ void elog_merge (elog_main_t * dst, elog_main_t * src)
 
   /* Sort events by increasing time. */
   vec_sort (dst->events, e1, e2, e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
+
+  /* Recreate the event ring or the results won't serialize */
+  {
+    int i;
+
+    ASSERT (dst->cpu_timer.seconds_per_clock);
+
+    elog_alloc (dst, vec_len (dst->events));
+    for (i = 0; i < vec_len(dst->events); i++)
+      {
+        elog_event_t *es, *ed;
+        
+        es = dst->events + i;
+        ed = dst->event_ring + i;
+        
+        ed[0] = es[0];
+        
+        /* Invert elog_peek_events calculation */
+        ed->time_cycles = 
+          (es->time/dst->cpu_timer.seconds_per_clock) + dst->init_time.cpu;
+      }
+    dst->n_total_events = vec_len (dst->events);
+  }
 }
 
 static void
@@ -533,6 +681,7 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 	{
 	case 'i':
 	case 't':
+	case 'T':
 	  if (n_bytes == 1)
 	    serialize_integer (m, d[0], sizeof (u8));
 	  else if (n_bytes == 2)
@@ -579,7 +728,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   u8 * p, * d, * d_end;
 
   {
-    u32 tmp[2];
+    u16 tmp[2];
 
     unserialize_integer (m, &tmp[0], sizeof (e->type));
     unserialize_integer (m, &tmp[1], sizeof (e->track));
@@ -611,6 +760,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	{
 	case 'i':
 	case 't':
+	case 'T':
 	  if (n_bytes == 1)
 	    {
 	      unserialize_integer (m, &tmp, sizeof (u8));
@@ -636,11 +786,15 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	    ASSERT (0);
 	  break;
 
-	case 's':
-	  serialize_cstring (m, (char *) d);
+	case 's': {
+	  char * t;
+	  unserialize_cstring (m, &t);
 	  if (n_bytes == 0)
-	    n_bytes = strlen ((char *) d) + 1;
+	    n_bytes = strlen (t) + 1;
+	  memcpy (d, t, clib_min (n_bytes, vec_len (t)));
+	  vec_free (t);
 	  break;
+	}
 
 	case 'f':
 	  if (n_bytes == 4)
@@ -762,8 +916,12 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
 
   vec_serialize (m, em->event_types, serialize_elog_event_type);
   vec_serialize (m, em->tracks, serialize_elog_track);
+  vec_serialize (m, em->string_table, serialize_vec_8);
 
+  /* Free old events (cached) in case they have changed. */
+  vec_free (em->events);
   elog_get_events (em);
+
   serialize_integer (m, vec_len (em->events), sizeof (u32));
   vec_foreach (e, em->events)
     serialize (m, serialize_elog_event, em, e);
@@ -790,6 +948,7 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
     new_event_type (em, i);
 
   vec_unserialize (m, &em->tracks, unserialize_elog_track);
+  vec_unserialize (m, &em->string_table, unserialize_vec_8);
 
   {
     u32 ne;

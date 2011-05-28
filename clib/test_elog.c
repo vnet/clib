@@ -36,6 +36,7 @@ int test_elog_main (unformat_input_t * input)
   u32 verbose;
   f64 min_sample_time;
   char * dump_file, * load_file, * merge_file, ** merge_files;
+  char * tag, ** tags;
 
   n_iter = 100;
   max_events = 100000;
@@ -44,6 +45,7 @@ int test_elog_main (unformat_input_t * input)
   dump_file = 0;
   load_file = 0;
   merge_files = 0;
+  tags = 0;
   min_sample_time = 2;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -55,6 +57,8 @@ int test_elog_main (unformat_input_t * input)
 	;
       else if (unformat (input, "load %s", &load_file))
 	;
+      else if (unformat (input, "tag %s", &tag))
+        vec_add1 (tags, tag);
       else if (unformat (input, "merge %s", &merge_file))
 	vec_add1 (merge_files, merge_file);
 
@@ -92,31 +96,16 @@ int test_elog_main (unformat_input_t * input)
 	  if ((error = elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
 	    goto done;
 	  if (i > 0)
-	    elog_merge (em, &ems[i]);
+            {
+              elog_merge (em, tags[0], &ems[i], tags[i]);
+              tags[0] = 0;
+            }
 	}
     }
 
   else
 #endif /* CLIB_UNIX */
     {
-      ELOG_TYPE_XF (foo);
-      ELOG_TYPE_XF (zap);
-      ELOG_TYPE_DECLARE (bar) = {
-	.format = "bar %d.%d.%d.%d",
-	.format_args = "i1i1i1i1",
-      };
-      ELOG_TYPE_DECLARE (fumble) = {
-	.format = "fumble %s %.9f",
-	.format_args = "t4f4",
-	.n_enum_strings = 4,
-	.enum_strings = {
-	  "string0",
-	  "string1",
-	  "string2",
-	  "string3",
-	},
-      };
-      ELOG_TRACK (mumble);
       f64 t[2];
 
       elog_init (em, max_events);
@@ -132,24 +121,71 @@ int test_elog_main (unformat_input_t * input)
 	  for (j = 0; j < n; j++)
 	    sum += random_u32 (&seed);
 
-	  ELOG (em, foo, sum);
-	  ELOG (em, zap, sum + 1);
+	  {
+	    ELOG_TYPE_XF (e);
+	    ELOG (em, e, sum);
+	  }
+
+	  {
+	    ELOG_TYPE_XF (e);
+	    ELOG (em, e, sum + 1);
+	  }
 
 	  {
 	    struct { u32 string_index; f32 f; } * d;
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "fumble %s %.9f",
+	      .format_args = "t4f4",
+	      .n_enum_strings = 4,
+	      .enum_strings = {
+		"string0",
+		"string1",
+		"string2",
+		"string3",
+	      },
+	    };
 
-	    d = ELOG_DATA (em, fumble);
+	    d = ELOG_DATA (em, e);
 
 	    d->string_index = sum & 3;
 	    d->f = (sum & 0xff) / 128.;
 	  }
 	  
 	  {
-	    u8 * d = ELOG_TRACK_DATA (em, bar, mumble);
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar %d.%d.%d.%d",
+	      .format_args = "i1i1i1i1",
+	    };
+	    ELOG_TRACK (my_track);
+	    u8 * d = ELOG_TRACK_DATA (em, e, my_track);
 	    d[0] = i + 0;
 	    d[1] = i + 1;
 	    d[2] = i + 2;
 	    d[3] = i + 3;
+	  }
+
+	  {
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar `%s'",
+	      .format_args = "s20",
+	    };
+	    struct { char s[20]; } * d;
+	    u8 * v;
+
+	    d = ELOG_DATA (em, e);
+	    v = format (0, "foo %d%c", i, 0);
+	    memcpy (d->s, v, clib_min (vec_len (v), sizeof (d->s)));
+	  }
+
+	  {
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar `%s'",
+	      .format_args = "T4",
+	    };
+	    struct { u32 offset; } * d;
+
+	    d = ELOG_DATA (em, e);
+	    d->offset = elog_string (em, "string table %d", i);
 	  }
 	}
 

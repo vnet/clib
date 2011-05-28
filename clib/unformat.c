@@ -195,9 +195,7 @@ unformat_string (unformat_input_t * input,
 	  case '\t':
 	  case '\n':
 	  case '\r':
-	    if (! is_paren_delimited
-		&& (delimiter_character == 0
-		    || c == delimiter_character))
+	    if (! is_paren_delimited)
 	      {
 		unformat_put_input (input);
 		goto done;
@@ -543,14 +541,31 @@ unformat_float (unformat_input_t * input,
 	case '-':
 	  if (value_index == 2 && n_digits[2] == 0)
 	    /* sign of exponent: it's ok. */;
+
+	  else if (value_index == 0 && n_digits[0] > 0)
+	    {
+	      /* 123- */
+	      unformat_put_input (input);
+	      goto done;
+	    }
+
 	  else if (n_input > 0)
 	    goto error;
+
 	  signs[sign_index++] = 1;
 	  goto next_digit;
 
 	case '+':
 	  if (value_index == 2 && n_digits[2] == 0)
 	    /* sign of exponent: it's ok. */;
+
+	  else if (value_index == 0 && n_digits[0] > 0)
+	    {
+	      /* 123+ */
+	      unformat_put_input (input);
+	      goto done;
+	    }
+
 	  else if (n_input > 0)
 	    goto error;
 	  signs[sign_index++] = 0;
@@ -693,6 +708,11 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
 			    UNFORMAT_INTEGER_SIGNED, data_bytes);
       break;
 
+    case 'u':
+      n = unformat_integer (input, va, 10,
+			    UNFORMAT_INTEGER_UNSIGNED, data_bytes);
+      break;
+
     case 'b':
       n = unformat_integer (input, va, 2,
 			    UNFORMAT_INTEGER_UNSIGNED, data_bytes);
@@ -743,8 +763,7 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
   return n ? f : 0;
 }
 
-static uword
-unformat_skip_white_space (unformat_input_t * input)
+uword unformat_skip_white_space (unformat_input_t * input)
 {
   uword n = 0;
   uword c;
@@ -769,6 +788,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
   uword default_skip_input_white_space;
   uword n_input_white_space_skipped;
   uword last_non_white_space_match_percent;
+  uword last_non_white_space_match_format;
 
   vec_add1 (input->buffer_marks, input->index);
 
@@ -776,6 +796,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
   default_skip_input_white_space = 1;
   input_matches_format = 0;
   last_non_white_space_match_percent = 0;
+  last_non_white_space_match_format = 0;
   
   while (1)
     {
@@ -846,6 +867,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 	     "foo %d" match input "foo 10,bletch" with %d matching 10. */
 	  if (skip_input_white_space
 	      && ! last_non_white_space_match_percent
+	      && ! last_non_white_space_match_format
 	      && n_input_white_space_skipped == 0
 	      && input->index != UNFORMAT_END_OF_INPUT)
 	    goto parse_fail;
@@ -853,6 +875,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 	}
 
       last_non_white_space_match_percent = is_percent;
+      last_non_white_space_match_format = 0;
 
       /* Explicit spaces in format must match input white space. */
       if (cf == ' ' && !default_skip_input_white_space)
@@ -869,8 +892,11 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 
       else
 	{
-	  if (! (f = match_input_with_format (input, f)))
+	  char * g = match_input_with_format (input, f);
+	  if (! g)
 	    goto parse_fail;
+	  last_non_white_space_match_format = g > f;
+	  f = g;
 	}
     }
 

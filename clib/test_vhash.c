@@ -88,11 +88,11 @@ test_vhash_4key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
   ASSERT (wi < n_key_u32s);
 
   p = vec_elt_at_index (tm->vhash_key_indices, vi + 0);
-  x.data_u32[0] = tm->keys[p[0] * n_key_u32s + wi];
-  x.data_u32[1] = tm->keys[p[1] * n_key_u32s + wi];
-  x.data_u32[2] = tm->keys[p[2] * n_key_u32s + wi];
-  x.data_u32[3] = tm->keys[p[3] * n_key_u32s + wi];
-  return x.data_u32x4;
+  x.as_u32[0] = tm->keys[p[0] * n_key_u32s + wi];
+  x.as_u32[1] = tm->keys[p[1] * n_key_u32s + wi];
+  x.as_u32[2] = tm->keys[p[2] * n_key_u32s + wi];
+  x.as_u32[3] = tm->keys[p[3] * n_key_u32s + wi];
+  return x.as_u32x4;
 }
 
 always_inline u32
@@ -702,7 +702,10 @@ int test_vhash_main (unformat_input_t * input)
 
 #ifndef CLIB_HAVE_VEC128
 int test_vhash_main (unformat_input_t * input)
-{ return 0; }
+{
+  clib_error ("compiled without vector support");
+  return 0;
+}
 #endif
 
 #ifdef CLIB_UNIX

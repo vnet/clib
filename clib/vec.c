@@ -24,6 +24,9 @@
 #include <clib/vec.h>
 #include <clib/mem.h>
 
+/** \brief low-level vector resize operator (do not call directly)
+
+    Called as needed by various macros such as vec_add1() */
 void * _vec_resize (void * _v,
 		    word length_increment,
 		    uword data_bytes,
@@ -91,6 +94,11 @@ void * _vec_resize (void * _v,
   goto done;
 } 
 
+uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes)
+{ return clib_mem_is_heap_object (vec_header_ha (v, header_bytes, align_bytes)); }
+
+/** \cond */
+
 #ifdef TEST
 
 #include <stdio.h>
@@ -134,3 +142,4 @@ void main (int argc, char * argv[])
   exit (0);
 }
 #endif
+/** \endcond */

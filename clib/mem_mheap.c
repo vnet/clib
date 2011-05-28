@@ -128,7 +128,7 @@ static uword my_is_heap_object (void * p)
     return 0;
 
   e = mheap_elt_at_offset (heap, offset);
-  if (mheap_is_last (e))
+  if (mheap_is_last (e) || mheap_is_first (e))
     return 1;
 
   n = mheap_next_elt (heap, e);

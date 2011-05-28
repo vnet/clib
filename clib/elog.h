@@ -30,6 +30,7 @@
 #include <clib/error.h>		/* for ASSERT */
 #include <clib/serialize.h>
 #include <clib/time.h>		/* for clib_cpu_time_now */
+#include <clib/mhash.h>
 
 typedef struct{
   union {
@@ -126,6 +127,9 @@ typedef struct {
 
   /* Hash table mapping type format to type index. */
   uword * event_type_by_format;
+
+  /* Events may refer to strings in string table. */
+  char * string_table;
 
   /* Vector of tracks. */
   elog_track_t * tracks;
@@ -338,6 +342,9 @@ elog_data_inline (elog_main_t * em, elog_event_type_t * type, elog_track_t * tra
 #define ELOG_DATA(em,f) elog_data ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 #define ELOG_DATA_INLINE(em,f) elog_data_inline ((em), &__ELOG_TYPE_VAR (f), &(em)->default_track)
 
+u32 elog_string (elog_main_t * em, char * format, ...);
+void elog_time_now (elog_time_stamp_t * et);
+
 /* Convert ievents to events and return them as a vector.
    Sets em->events to resulting vector. */
 elog_event_t * elog_get_events (elog_main_t * em);
@@ -345,8 +352,9 @@ elog_event_t * elog_get_events (elog_main_t * em);
 /* Convert ievents to events and return them as a vector with no side effects. */
 elog_event_t * elog_peek_events (elog_main_t * em);
 
-/* Merge two logs. */
-void elog_merge (elog_main_t * dst, elog_main_t * src);
+/* Merge two logs, add suplied track tags. */
+void elog_merge (elog_main_t * dst, u8 * dst_tag, 
+                 elog_main_t * src, u8 * src_tag);
 
 /* 2 arguments elog_main_t and elog_event_t to format event or track name. */
 u8 * format_elog_event (u8 * s, va_list * va);
@@ -364,8 +372,11 @@ elog_write_file (elog_main_t * em, char * unix_file)
   serialize_main_t m;
   clib_error_t * error;
 
-  serialize_open_unix_file (&m, unix_file);
-  if (! (error = serialize (&m, serialize_elog_main, em)))
+  error = serialize_open_unix_file (&m, unix_file);
+  if (error)
+    return error;
+  error = serialize (&m, serialize_elog_main, em);
+  if (! error)
     serialize_close (&m);
   return error;
 }
@@ -376,8 +387,11 @@ elog_read_file (elog_main_t * em, char * unix_file)
   serialize_main_t m;
   clib_error_t * error;
 
-  unserialize_open_unix_file (&m, unix_file);
-  if (! (error = unserialize (&m, unserialize_elog_main, em)))
+  error = unserialize_open_unix_file (&m, unix_file);
+  if (error)
+    return error;
+  error = unserialize (&m, unserialize_elog_main, em);
+  if (! error)
     unserialize_close (&m);
   return error;
 }

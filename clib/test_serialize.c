@@ -21,6 +21,8 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <clib/format.h>
+#include <clib/random.h>
 #include <clib/serialize.h>
 #include <clib/os.h>
 

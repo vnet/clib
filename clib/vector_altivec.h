@@ -90,8 +90,8 @@ always_inline u32
 u32x4_get0 (u32x4 x)
 {
   u32x4_union_t y;
-  y.data_u32x4 = x;
-  return y.data_u32[3];
+  y.as_u32x4 = x;
+  return y.as_u32[3];
 }
 
 /* Interleave. */

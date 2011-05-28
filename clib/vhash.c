@@ -45,8 +45,8 @@ set_overflow_result (vhash_overflow_search_bucket_t * b,
 		     u32 result,
 		     u32 key_hash)
 {
-  b->result.data_u32[i] = result;
-  b->key_hash.data_u32[i] = key_hash;
+  b->result.as_u32[i] = result;
+  b->key_hash.as_u32[i] = key_hash;
 }
 
 always_inline void
@@ -87,7 +87,7 @@ vhash_get_overflow (vhash_t * h,
 
   foreach_vhash_overflow_bucket (b, ob, n_key_u32s)
     {
-      u32x4 r = b->result.data_u32x4;
+      u32x4 r = b->result.as_u32x4;
       
       for (i = 0; i < n_key_u32s; i++)
 	r &= vhash_bucket_compare (h, &b->key[0], i, vi);
@@ -115,7 +115,7 @@ vhash_set_overflow (vhash_t * h,
     {
       u32x4 r;
 
-      r = b->result.data_u32x4;
+      r = b->result.as_u32x4;
       for (i = 0; i < n_key_u32s; i++)
 	r &= vhash_bucket_compare (h, &b->key[0], i, vi);
 
@@ -153,7 +153,7 @@ vhash_set_overflow (vhash_t * h,
 
   /* Insert key. */
   for (i = 0; i < n_key_u32s; i++)
-    b->key[i].data_u32[i_set] = vhash_get_key_word (h, i, vi);
+    b->key[i].as_u32[i_set] = vhash_get_key_word (h, i, vi);
 
   ob->n_overflow++;
   h->n_elts++;
@@ -175,7 +175,7 @@ vhash_unset_overflow (vhash_t * h,
     {
       u32x4 r;
 
-      r = b->result.data_u32x4;
+      r = b->result.as_u32x4;
       for (i = 0; i < n_key_u32s; i++)
 	r &= vhash_bucket_compare (h, &b->key[0], i, vi);
 
@@ -210,23 +210,23 @@ vhash_unset_refill_from_overflow (vhash_t * h,
 {
   vhash_overflow_buckets_t * obs = vhash_get_overflow_buckets (h, key_hash);
   vhash_overflow_search_bucket_t * ob;
-  u32 i, j, i_refill, bucket_mask = h->bucket_mask.data_u32[0];
+  u32 i, j, i_refill, bucket_mask = h->bucket_mask.as_u32[0];
 
   /* Find overflow element with matching key hash. */
   foreach_vhash_overflow_bucket (ob, obs, n_key_u32s)
     {
       for (i = 0; i < 4; i++)
 	{
-	  if (! ob->result.data_u32[i])
+	  if (! ob->result.as_u32[i])
 	    continue;
-	  if ((ob->key_hash.data_u32[i] & bucket_mask)
+	  if ((ob->key_hash.as_u32[i] & bucket_mask)
 	      != (key_hash & bucket_mask))
 	    continue;
 
-	  i_refill = vhash_empty_result_index (sb->result.data_u32x4);
-	  sb->result.data_u32[i_refill] = ob->result.data_u32[i];
+	  i_refill = vhash_empty_result_index (sb->result.as_u32x4);
+	  sb->result.as_u32[i_refill] = ob->result.as_u32[i];
 	  for (j = 0; j < n_key_u32s; j++)
-	    sb->key[j].data_u32[i_refill] = ob->key[j].data_u32[i];
+	    sb->key[j].as_u32[i_refill] = ob->key[j].as_u32[i];
 	  set_overflow_result (ob, i, 0, ~key_hash);
 	  free_overflow_bucket (obs, ob, i);
 	  return;
@@ -248,7 +248,7 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
   h->n_key_u32 = n_key_u32;
   m = pow2_mask (h->log2_n_keys) &~ 3;
   for (i = 0; i < VECTOR_WORD_TYPE_LEN (u32); i++)
-    h->bucket_mask.data_u32[i] = m;
+    h->bucket_mask.as_u32[i] = m;
 
   /* Allocate and zero search buckets. */
   i = (sizeof (b[0]) / sizeof (u32x4) + n_key_u32) << (log2_n_keys - 2);
@@ -259,17 +259,17 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
 
   for (i = 0; i < ARRAY_LEN (h->hash_seeds); i++)
     for (j = 0; j < VECTOR_WORD_TYPE_LEN (u32); j++)
-      h->hash_seeds[i].data_u32[j] = hash_seeds[i];
+      h->hash_seeds[i].as_u32[j] = hash_seeds[i];
 }
 
-always_inline u32
+static_always_inline u32
 vhash_main_key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
   return vec_elt (vm->keys, vi * n_key_u32 + wi);
 }
 
-always_inline u32x4
+static_always_inline u32x4
 vhash_main_4key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32s)
 {
   vhash_main_t * vm = _vm;
@@ -278,14 +278,14 @@ vhash_main_4key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32s)
   ASSERT (n_key_u32s == vm->n_key_u32);
   ASSERT (wi < n_key_u32s);
 
-  x.data_u32[0] = vec_elt (vm->keys, (vi + 0) * n_key_u32s + wi);
-  x.data_u32[1] = vec_elt (vm->keys, (vi + 1) * n_key_u32s + wi);
-  x.data_u32[2] = vec_elt (vm->keys, (vi + 2) * n_key_u32s + wi);
-  x.data_u32[3] = vec_elt (vm->keys, (vi + 3) * n_key_u32s + wi);
-  return x.data_u32x4;
+  x.as_u32[0] = vec_elt (vm->keys, (vi + 0) * n_key_u32s + wi);
+  x.as_u32[1] = vec_elt (vm->keys, (vi + 1) * n_key_u32s + wi);
+  x.as_u32[2] = vec_elt (vm->keys, (vi + 2) * n_key_u32s + wi);
+  x.as_u32[3] = vec_elt (vm->keys, (vi + 3) * n_key_u32s + wi);
+  return x.as_u32x4;
 }
 
-always_inline u32
+static_always_inline u32
 vhash_main_set_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
@@ -295,7 +295,7 @@ vhash_main_set_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
   return new_result;
 }
 
-always_inline u32
+static_always_inline u32
 vhash_main_get_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
@@ -303,7 +303,7 @@ vhash_main_get_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
   return old_result;
 }
 
-always_inline u32x4
+static_always_inline u32x4
 vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 {
   vhash_main_t * vm = _vm;
@@ -313,15 +313,15 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 }
 
 #define _(N_KEY_U32)							\
-  always_inline u32							\
+  static_always_inline u32						\
   vhash_main_key_gather_##N_KEY_U32 (void * _vm, u32 vi, u32 i)		\
   { return vhash_main_key_gather (_vm, vi, i, N_KEY_U32); }		\
 									\
-  always_inline u32x4							\
+  static_always_inline u32x4						\
   vhash_main_4key_gather_##N_KEY_U32 (void * _vm, u32 vi, u32 i)	\
   { return vhash_main_4key_gather (_vm, vi, i, N_KEY_U32); }		\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_gather_keys_stage_##N_KEY_U32,				\
    vhash_main_t *, vm, i,						\
    {									\
@@ -360,7 +360,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
      vhash_finalize_stage (vm->vhash, vm->n_vectors_div_4, N_KEY_U32);	\
    })									\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_get_stage_##N_KEY_U32,					\
    vhash_main_t *, vm, i,						\
    {									\
@@ -381,7 +381,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 		      vm, N_KEY_U32);					\
    })									\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_set_stage_##N_KEY_U32,					\
    vhash_main_t *, vm, i,						\
    {									\
@@ -403,7 +403,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 		      vm, N_KEY_U32);					\
    })									\
 									\
-  clib_pipeline_stage							\
+  clib_pipeline_stage_static						\
   (vhash_main_unset_stage_##N_KEY_U32,					\
    vhash_main_t *, vm, i,						\
    {									\
@@ -644,9 +644,9 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
   if (vector_index == 0)
     {
       u32 hash_seeds[3];
-      hash_seeds[0] = old->hash_seeds[0].data_u32[0];
-      hash_seeds[1] = old->hash_seeds[1].data_u32[0];
-      hash_seeds[2] = old->hash_seeds[2].data_u32[0];
+      hash_seeds[0] = old->hash_seeds[0].as_u32[0];
+      hash_seeds[1] = old->hash_seeds[1].as_u32[0];
+      hash_seeds[2] = old->hash_seeds[2].as_u32[0];
       vhash_init (new, old->log2_n_keys + 1, n_key_u32, hash_seeds);
     }
 
@@ -661,12 +661,12 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
 	  u32 r, * k;
 
 #define _(I)					\
-  if ((r = b->result.data_u32[I]) != 0)		\
+  if ((r = b->result.as_u32[I]) != 0)		\
     {						\
       vec_add1 (vm->results, r - 1);		\
       vec_add2 (vm->keys, k, n_key_u32);	\
       for (j = 0; j < n_key_u32; j++)		\
-	k[j] = b->key[j].data_u32[I];		\
+	k[j] = b->key[j].as_u32[I];		\
     }
 
 	  _ (0);
@@ -698,12 +698,12 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
 	    u32 r, * k;
 
 #define _(I)					\
-  if ((r = b->result.data_u32[I]) != 0)		\
+  if ((r = b->result.as_u32[I]) != 0)		\
     {						\
       vec_add1 (vm->results, r - 1);		\
       vec_add2 (vm->keys, k, n_key_u32);	\
       for (j = 0; j < n_key_u32; j++)		\
-	k[j] = b->key[j].data_u32[I];		\
+	k[j] = b->key[j].as_u32[I];		\
     }
 
 	  _ (0);

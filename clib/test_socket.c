@@ -30,7 +30,7 @@ static int verbose;
 
 int test_socket_main (unformat_input_t * input)
 {
-  socket_t _s = {0}, * s = &_s;
+  clib_socket_t _s = {0}, * s = &_s;
   char * config;
   clib_error_t * error;
 
@@ -53,38 +53,38 @@ int test_socket_main (unformat_input_t * input)
 	}
     }
 
-  error = socket_init (s);
+  error = clib_socket_init (s);
   if (error)
     goto done;
 
   if (0)
     {
       struct { int a, b; } * msg;
-      msg = socket_tx_add (s, sizeof (msg[0]));
+      msg = clib_socket_tx_add (s, sizeof (msg[0]));
       msg->a = 99;
       msg->b = 100;
     }
   else
-    socket_tx_add_formatted (s, "hello there mr server %d\n", 99);
+    clib_socket_tx_add_formatted (s, "hello there mr server %d\n", 99);
 
-  error = socket_tx (s);
+  error = clib_socket_tx (s);
   if (error)
     goto done;
 
   while (1)
     {
-      error = socket_rx (s, 100);
+      error = clib_socket_rx (s, 100);
       if (error)
 	break;
 
-      if (socket_rx_end_of_file (s))
+      if (clib_socket_rx_end_of_file (s))
 	break;
 
       if_verbose   ("%v", s->rx_buffer);
       _vec_len (s->rx_buffer) = 0;
     }
 
-  error = socket_close (s);
+  error = clib_socket_close (s);
 
  done:
   if (error)

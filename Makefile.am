@@ -14,6 +14,7 @@ if WITH_LINUX_KERNEL
 endif
 
 TESTS	=  test_elog \
+	   test_elf \
 	   test_fifo \
 	   test_format \
 	   test_hash \
@@ -22,7 +23,9 @@ TESTS	=  test_elog \
 	   test_md5 \
 	   test_mheap \
 	   test_phash \
+	   test_pool_iterate \
 	   test_qhash \
+	   test_random \
 	   test_random_isaac \
 	   test_serialize \
 	   test_socket \
@@ -36,6 +39,7 @@ noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
 test_elog_SOURCES = clib/test_elog.c
+test_elf_SOURCES = clib/test_elf.c
 test_fifo_SOURCES = clib/test_fifo.c
 test_format_SOURCES = clib/test_format.c
 test_hash_SOURCES = clib/test_hash.c
@@ -44,7 +48,9 @@ test_longjmp_SOURCES = clib/test_longjmp.c
 test_md5_SOURCES = clib/test_md5.c
 test_mheap_SOURCES = clib/test_mheap.c
 test_phash_SOURCES = clib/test_phash.c
+test_pool_iterate_SOURCES = clib/test_pool_iterate.c
 test_qhash_SOURCES = clib/test_qhash.c
+test_random_SOURCES = clib/test_random.c
 test_random_isaac_SOURCES = clib/test_random_isaac.c
 test_serialize_SOURCES = clib/test_serialize.c
 test_socket_SOURCES = clib/test_socket.c
@@ -57,6 +63,7 @@ test_zvec_SOURCES = clib/test_zvec.c
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
 test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_format_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_hash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
@@ -65,7 +72,9 @@ test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_random_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
 test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
@@ -76,6 +85,7 @@ test_vhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
 test_elog_LDADD =	libclib.la -lpthread
+test_elf_LDADD =	libclib.la -lpthread
 test_fifo_LDADD =	libclib.la -lpthread
 test_format_LDADD =	libclib.la -lpthread
 test_hash_LDADD =	libclib.la -lpthread
@@ -84,7 +94,9 @@ test_longjmp_LDADD =	libclib.la -lpthread
 test_md5_LDADD =	libclib.la -lpthread
 test_mheap_LDADD =	libclib.la -lpthread
 test_phash_LDADD =	libclib.la -lpthread
+test_pool_iterate_LDADD =	libclib.la -lpthread
 test_qhash_LDADD =	libclib.la -lpthread
+test_random_LDADD =	libclib.la -lpthread
 test_random_isaac_LDADD =	libclib.la -lpthread
 test_serialize_LDADD =	libclib.la -lpthread
 test_socket_LDADD =	libclib.la -lpthread
@@ -95,6 +107,7 @@ test_vhash_LDADD =	libclib.la -lpthread
 test_zvec_LDADD =	libclib.la -lpthread
 
 test_elog_LDFLAGS = -static
+test_elf_LDFLAGS = -static
 test_fifo_LDFLAGS = -static
 test_format_LDFLAGS = -static
 test_hash_LDFLAGS = -static
@@ -103,7 +116,9 @@ test_longjmp_LDFLAGS = -static
 test_md5_LDFLAGS = -static
 test_mheap_LDFLAGS = -static
 test_phash_LDFLAGS = -static
+test_pool_iterate_LDFLAGS = -static
 test_qhash_LDFLAGS = -static
+test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
 test_serialize_LDFLAGS = -static
 test_socket_LDFLAGS = -static
@@ -122,6 +137,7 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_longjmp.c \
   clib/test_mheap.c \
   clib/test_phash.c \
+  clib/test_pool_iterate.c \
   clib/test_qhash.c \
   clib/test_random.c \
   clib/test_random_isaac.c \

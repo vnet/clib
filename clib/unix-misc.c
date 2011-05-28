@@ -126,5 +126,6 @@ int os_get_cpu_number () __attribute__ ((weak));
 int os_get_cpu_number (void)
 { return 0; }
 
+void os_out_of_memory (void) __attribute__ ((weak));
 void os_out_of_memory (void)
-{ os_exit (1); }
+{ os_panic (); }

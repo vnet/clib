@@ -296,17 +296,17 @@ typedef struct {
 #undef _
 
 /* Special section names.  */
-#define foreach_elf_special_section_name				\
-  _ (UNDEFINED, 0)		/* Undefined section */			\
-  _ (RESERVED_LO, 0xff00)	/* Start of reserved indices */		\
-  _ (ARCH_SPECIFIC_LO, 0xff00)						\
-  _ (ARCH_SPECIFIC_HI, 0xff1f)						\
-  _ (OS_SPECIFIC_LO, 0xff20)						\
-  _ (OS_SPECIFIC_HI, 0xff3f)						\
+#define foreach_elf_symbol_reserved_section_index			\
   _ (ABSOLUTE, 0xfff1)		/* Associated symbol is absolute */	\
   _ (COMMON, 0xfff2)		/* Associated symbol is common */	\
-  _ (XINDEX, 0xffff)		/* Index is in extra table.  */		\
-  _ (RESERVED_HI, 0xffff)	/* End of reserved indices */
+  _ (XINDEX, 0xffff)		/* Index is in extra table.  */
+
+#define ELF_SYMBOL_SECTION_RESERVED_LO 0xff00
+#define ELF_SYMBOL_SECTION_RESERVED_HI 0xffff
+#define ELF_SYMBOL_SECTION_ARCH_SPECIFIC_LO 0xff00
+#define ELF_SYMBOL_SECTION_ARCH_SPECIFIC_HI 0xff1f
+#define ELF_SYMBOL_SECTION_OS_SPECIFIC_LO 0xff20
+#define ELF_SYMBOL_SECTION_OS_SPECIFIC_HI 0xff3f
 
 /* Section types. */
 #define foreach_elf_section_type					\
@@ -441,6 +441,12 @@ typedef struct {
   i64 addend[0];
 } elf64_relocation_t;
 
+typedef struct {
+  u64 address;
+  u64 symbol_and_type;
+  u64 addend;
+} elf_relocation_with_addend_t;
+
 #define elf_relocation_next(r,type)					\
   ((void *) ((r) + 1)							\
    + ((type) == ELF_SECTION_RELOCATION_ADD ? sizeof ((r)->addend[0]) : 0))
@@ -514,92 +520,82 @@ typedef struct {
 
 #define foreach_elf_dynamic_entry_type					\
   _ (END, 0)			/* Marks end of dynamic section */	\
-  _ (NEEDED, 1)			/* Name of needed library */		\
-  _ (PLTRELSZ, 2)		/* Size in bytes of PLT relocs */	\
-  _ (PLTGOT, 3)			/* Processor defined value */		\
-  _ (HASH, 4)			/* Address of symbol hash table */	\
-  _ (STRTAB, 5)			/* Address of string table */		\
-  _ (SYMTAB, 6)			/* Address of symbol table */		\
-  _ (RELA, 7)			/* Address of Rela relocs */		\
-  _ (RELASZ, 8)			/* Total size of Rela relocs */		\
-  _ (RELAENT, 9)		/* Size of one Rela reloc */		\
-  _ (STRSZ, 10)			/* Size of string table */		\
-  _ (SYMENT, 11)		/* Size of one symbol table entry */	\
-  _ (INIT, 12)			/* Address of init function */		\
-  _ (FINI, 13)			/* Address of termination function */	\
+  _ (NEEDED_LIBRARY, 1)		/* Name of needed library */		\
+  _ (PLT_RELOCATION_SIZE, 2)	/* Size in bytes of PLT relocs */	\
+  _ (PLT_GOT, 3)		/* Processor defined value */		\
+  _ (SYMBOL_HASH, 4)		/* Address of symbol hash table */	\
+  _ (STRING_TABLE, 5)		/* Address of string table */		\
+  _ (SYMBOL_TABLE, 6)		/* Address of symbol table */		\
+  _ (RELA_ADDRESS, 7)		/* Address of Rela relocs */		\
+  _ (RELA_SIZE, 8)		/* Total size of Rela relocs */		\
+  _ (RELA_ENTRY_SIZE, 9)	/* Size of one Rela reloc */		\
+  _ (STRING_TABLE_SIZE, 10)	/* Size of string table */		\
+  _ (SYMBOL_TABLE_ENTRY_SIZE, 11) /* Size of one symbol table entry */	\
+  _ (INIT_FUNCTION, 12)		/* Address of init function */		\
+  _ (FINI_FUNCTION, 13)		/* Address of termination function */	\
   _ (SONAME, 14)		/* Name of shared object */		\
   _ (RPATH, 15)			/* Library search path (deprecated) */	\
   _ (SYMBOLIC, 16)		/* Start symbol search here */		\
   _ (REL, 17)			/* Address of Rel relocs */		\
   _ (RELSZ, 18)			/* Total size of Rel relocs */		\
   _ (RELENT, 19)		/* Size of one Rel reloc */		\
-  _ (PLTREL, 20)		/* Type of reloc in PLT */		\
+  _ (PLT_RELOCATION_TYPE, 20)	/* Type of reloc in PLT */		\
   _ (DEBUG, 21)			/* For debugging; unspecified */	\
   _ (TEXTREL, 22)		/* Reloc might modify .text */		\
-  _ (JMPREL, 23)		/* Address of PLT relocs */		\
+  _ (PLT_RELOCATION_ADDRESS, 23) /* Address of PLT relocs */		\
   _ (BIND_NOW, 24)		/* Process relocations of object */	\
   _ (INIT_ARRAY, 25)		/* Array with addresses of init fct */	\
   _ (FINI_ARRAY, 26)		/* Array with addresses of fini fct */	\
   _ (INIT_ARRAYSZ, 27)		/* Size in bytes of DT_INIT_ARRAY */	\
   _ (FINI_ARRAYSZ, 28)		/* Size in bytes of DT_FINI_ARRAY */	\
-  _ (RUNPATH, 29)		/* Library search path */		\
+  _ (RUN_PATH, 29)		/* Library search path */		\
   _ (FLAGS, 30)			/* Flags for object being loaded */	\
-  _ (ENCODING, 32)		/* Start of encoded range */		\
+  _ (ENCODING, 31)		/* Start of encoded range */		\
   _ (PREINIT_ARRAY, 32)		/* Array with addresses of fns */	\
   _ (PREINIT_ARRAY_SIZE, 33)	/* Size of PREINIT_ARRAY in bytes. */	\
-  _ (OS_SPECIFIC_LO, 0x60000000)					\
-  _ (OS_SPECIFIC_HI, 0x6fffffff)					\
-  _ (ARCH_SPECIFIC_LO, 0x70000000)					\
-  _ (ARCH_SPECIFIC_HI, 0x7fffffff)
+  _ (GNU_PRELINKED, 0x6ffffdf5)	/* Prelinking timestamp */		\
+  _ (GNU_CONFLICTSZ, 0x6ffffdf6)	/* Size of conflict section */	\
+  _ (GNU_LIBLISTSZ, 0x6ffffdf7)	/* Size of library list */		\
+  _ (CHECKSUM, 0x6ffffdf8)						\
+  _ (PLTPADSZ, 0x6ffffdf9)						\
+  _ (MOVEENT, 0x6ffffdfa)						\
+  _ (MOVESZ, 0x6ffffdfb)						\
+  _ (FEATURE_1,	0x6ffffdfc)	/* Feature selection (DTF_*).  */	\
+  _ (POSFLAG_1,	0x6ffffdfd)	/* Flags for following entries.  */	\
+  _ (SYMINSZ, 0x6ffffdfe)	/* Size of syminfo table (in bytes) */	\
+  _ (SYMINENT, 0x6ffffdff)	/* Entry size of syminfo */		\
+  _ (GNU_HASH, 0x6ffffef5)						\
+  _ (GNU_CONFLICT, 0x6ffffef8)	/* Start of conflict section */		\
+  _ (GNU_LIBLIST, 0x6ffffef9)	/* Library list */			\
+  _ (CONFIG, 0x6ffffefa)	/* Configuration information.  */	\
+  _ (DEPAUDIT, 0x6ffffefb)	/* Dependency auditing.  */		\
+  _ (AUDIT, 0x6ffffefc)	/* Object auditing.  */				\
+  _ (PLTPAD, 0x6ffffefd)	/* PLT padding.  */			\
+  _ (MOVETAB, 0x6ffffefe)	/* Move table.  */			\
+  _ (SYMINFO, 0x6ffffeff)	/* Syminfo table.  */			\
+  _ (VERSYM, 0x6ffffff0)						\
+  _ (RELACOUNT, 0x6ffffff9)						\
+  _ (RELCOUNT, 0x6ffffffa)						\
+  _ (FLAGS_1, 0x6ffffffb)	/* State flags, see DF_1_* below.  */	\
+  _ (VERSION_DEF, 0x6ffffffc)	/* Address of version definition table */ \
+  _ (VERSION_DEF_COUNT, 0x6ffffffd)	/* Number of version definitions */ \
+  _ (VERSION_NEED, 0x6ffffffe)	/* Address of table with needed versions */ \
+  _ (VERSION_NEED_COUNT, 0x6fffffff)	/* Number of needed versions */	\
+  _ (AUXILIARY, 0x7ffffffd)      /* Shared object to load before self */ \
+  _ (FILTER, 0x7fffffff)      /* Shared object to get values from */
 
-#define DT_GNU_PRELINKED 0x6ffffdf5	/* Prelinking timestamp */
-#define DT_GNU_CONFLICTSZ 0x6ffffdf6	/* Size of conflict section */
-#define DT_GNU_LIBLISTSZ 0x6ffffdf7	/* Size of library list */
-#define DT_CHECKSUM	0x6ffffdf8
-#define DT_PLTPADSZ	0x6ffffdf9
-#define DT_MOVEENT	0x6ffffdfa
-#define DT_MOVESZ	0x6ffffdfb
-#define DT_FEATURE_1	0x6ffffdfc	/* Feature selection (DTF_*).  */
-#define DT_POSFLAG_1	0x6ffffdfd	/* Flags for following entries.  */
-#define DT_SYMINSZ	0x6ffffdfe	/* Size of syminfo table (in bytes) */
-#define DT_SYMINENT	0x6ffffdff	/* Entry size of syminfo */
-
-#define DT_GNU_CONFLICT	0x6ffffef8	/* Start of conflict section */
-#define DT_GNU_LIBLIST	0x6ffffef9	/* Library list */
-#define DT_CONFIG	0x6ffffefa	/* Configuration information.  */
-#define DT_DEPAUDIT	0x6ffffefb	/* Dependency auditing.  */
-#define DT_AUDIT	0x6ffffefc	/* Object auditing.  */
-#define	DT_PLTPAD	0x6ffffefd	/* PLT padding.  */
-#define	DT_MOVETAB	0x6ffffefe	/* Move table.  */
-#define DT_SYMINFO	0x6ffffeff	/* Syminfo table.  */
-
-/* The versioning entry types.  The next are defined as part of the
-   GNU extension.  */
-#define DT_VERSYM	0x6ffffff0
-
-#define DT_RELACOUNT	0x6ffffff9
-#define DT_RELCOUNT	0x6ffffffa
-
-/* These were chosen by Sun.  */
-#define DT_FLAGS_1	0x6ffffffb	/* State flags, see DF_1_* below.  */
-#define	DT_VERDEF	0x6ffffffc	/* Address of version definition
-					   table */
-#define	DT_VERDEFNUM	0x6ffffffd	/* Number of version definitions */
-#define	DT_VERNEED	0x6ffffffe	/* Address of table with needed
-					   versions */
-#define	DT_VERNEEDNUM	0x6fffffff	/* Number of needed versions */
-
-/* Sun added these machine-independent extensions in the "processor-specific"
-   range.  Be compatible.  */
-#define DT_AUXILIARY    0x7ffffffd      /* Shared object to load before self */
-#define DT_FILTER       0x7fffffff      /* Shared object to get values from */
+typedef enum {
+#define _(f,n) ELF_DYNAMIC_ENTRY_##f = (n),
+  foreach_elf_dynamic_entry_type
+#undef _
+} elf_dynamic_entry_type_t;
 
 /* Values of `d_un.d_val' in the DT_FLAGS entry.  */
-#define DF_ORIGIN	0x00000001	/* Object may use DF_ORIGIN */
-#define DF_SYMBOLIC	0x00000002	/* Symbol resolutions starts here */
-#define DF_TEXTREL	0x00000004	/* Object contains text relocations */
-#define DF_BIND_NOW	0x00000008	/* No lazy binding for this object */
-#define DF_STATIC_TLS	0x00000010	/* Module uses the static TLS model */
+#define ELF_DYNAMIC_FLAGS_ORIGIN	(1 << 0) /* Object may use DF_ORIGIN */
+#define ELF_DYNAMIC_FLAGS_SYMBOLIC	(1 << 1) /* Symbol resolutions starts here */
+#define ELF_DYNAMIC_FLAGS_TEXT_RELOCATIONS (1 << 2)	/* Object contains text relocations */
+#define ELF_DYNAMIC_FLAGS_BIND_NOW	(1 << 3)	/* No lazy binding for this object */
+#define ELF_DYNAMIC_FLAGS_STATIC_TLS	(1 << 4)	/* Module uses the static TLS model */
 
 /* State flags selectable in the `d_un.d_val' element of the DT_FLAGS_1
    entry in the dynamic section.  */
@@ -631,51 +627,66 @@ typedef struct {
 					   generally available.  */
 
 /* Version definition sections.  */
-
 typedef struct
 {
   u16 version;
   u16 flags;
-  u16 version_index;
+  u16 index;
   u16 aux_count;
   u32 name_hash;
-  u32 aux_offset;
-  u32 next_offset;
-} elf_version_t;
+  u32 aux_byte_offset;
+  u32 byte_offset_next_version_definition;
+} elf_dynamic_version_definition_t;
 
 typedef struct {
   u32 name;
-  u32 next_offset;
-} elf_version_aux_t;
+  u32 next_offset; /* byte offset of ver def aux next entry */
+} elf_dynamic_version_definition_aux_t;
 
 /* Version definition flags. */
-#define ELF_VERSION_FILE (1 << 0) /* Version definition of file itself */
-#define ELF_VERSION_WEAK (1 << 1) /* Weak version identifier */
+#define ELF_DYNAMIC_VERSION_FILE (1 << 0) /* Version definition of file itself */
+#define ELF_DYNAMIC_VERSION_WEAK (1 << 1) /* Weak version identifier */
 
 /* Version symbol index. */
-#define	ELF_VERSION_LOCAL 0	/* Symbol is local.  */
-#define	ELF_VERSION_GLOBAL 1	/* Symbol is global.  */
-#define	ELF_VERSION_RESERVED_LO	0xff00 /* Beginning of reserved entries.  */
-#define	ELF_VERSION_ELIMINATE	0xff01	/* Symbol is to be eliminated.  */
+#define	ELF_DYNAMIC_VERSYM_LOCAL 0	/* Symbol is local.  */
+#define	ELF_DYNAMIC_VERSYM_GLOBAL 1	/* Symbol is global.  */
+#define	ELF_DYNAMIC_VERSYM_RESERVED_LO	0xff00 /* Beginning of reserved entries.  */
+#define	ELF_DYNAMIC_VERSYM_ELIMINATE	0xff01	/* Symbol is to be eliminated.  */
 
 /* Version dependency section.  */
+#define foreach_elf_dynamic_version_need_field	\
+  _ (u16, version)				\
+  _ (u16, aux_count)				\
+  _ (u32, file_name_offset)			\
+  _ (u32, first_aux_offset)			\
+  _ (u32, next_offset)
+
+#define foreach_elf_dynamic_version_need_aux_field	\
+  _ (u32, hash)						\
+  _ (u16, flags)					\
+  _ (u16, versym_index)					\
+  _ (u32, name)						\
+  _ (u32, next_offset)
 
 typedef struct
 {
-  u16 version;
-  u16 dep_aux_count;
-  u32 file_name_offset;
-  u32 dep_aux_offset;
-  u32 next_offset;
-} elf_version_dependency_t;
+#define _(t,f) t f;
+  foreach_elf_dynamic_version_need_field
+#undef _
+} elf_dynamic_version_need_t;
 
-typedef struct {
-  u32 hash;
-  u16 flags;
-  u16 unused;
-  u32 name;
-  u32 next_offset;
-} elf_version_dependency_aux_t;
+typedef struct
+{
+#define _(t,f) t f;
+  foreach_elf_dynamic_version_need_aux_field
+#undef _
+} elf_dynamic_version_need_aux_t;
+
+typedef union
+{
+  elf_dynamic_version_need_t need;
+  elf_dynamic_version_need_aux_t aux;
+} elf_dynamic_version_need_union_t;
 
 /* Note section contents.  Each entry in the note section begins with
    a header of a fixed form.  */
@@ -751,6 +762,8 @@ typedef struct
 typedef struct {
   elf64_symbol_t * symbols;
 
+  u32 section_index;
+
   u8 * string_table;
 
   uword * symbol_by_name;
@@ -768,7 +781,7 @@ elf_symbol_name (elf_symbol_table_t * t, elf64_symbol_t * sym)
 { return vec_elt_at_index (t->string_table, sym->name); }
 
 typedef struct {
-  elf64_relocation_t * relocations;
+  elf_relocation_with_addend_t * relocations;
 
   u32 section_index;
 } elf_relocation_table_t;
@@ -782,17 +795,37 @@ elf_relocation_table_free (elf_relocation_table_t * r)
 typedef struct {
   elf64_section_header_t header;
 
-  void * contents;
+  u32 index;
+
+  /* Index of segments containing this section. */
+  uword * segment_index_bitmap;
+
+  /* Aligned size (included padding not included in
+     header.file_size). */
+  u64 align_size;
+
+  i64 exec_address_change;
+
+  u8 * contents;
 } elf_section_t;
 
 typedef struct {
   elf64_segment_header_t header;
+
+  /* Sections contained in this segment. */
+  uword * section_index_bitmap;
+
+  u32 index;
 
   u8 * contents;
 } elf_segment_t;
 
 typedef struct {
   u8 need_byte_swap;
+
+  u8 parsed_symbols;
+
+  char * file_name;
 
   elf_first_header_t first_header;
 
@@ -803,9 +836,23 @@ typedef struct {
   elf_section_t * sections;
 
   uword * section_by_name;
+  uword * section_by_start_address;
 
   elf_symbol_table_t * symbol_tables;
   elf_relocation_table_t * relocation_tables;
+
+  char * interpreter;
+
+  elf64_dynamic_entry_t * dynamic_entries;
+  u8 * dynamic_string_table;
+  u32 dynamic_string_table_section_index;
+  u32 dynamic_symbol_table_section_index;
+  u32 dynamic_symbol_table_index;
+  u32 dynamic_section_index;
+  u16 * versym;
+  u32 versym_section_index;
+  elf_dynamic_version_need_union_t * verneed;
+  u32 verneed_section_index;
 } elf_main_t;
 
 always_inline void
@@ -832,50 +879,57 @@ elf_main_free (elf_main_t * em)
     elf_symbol_table_free (em->symbol_tables + i);
   for (i = 0; i < vec_len (em->relocation_tables); i++)
     elf_relocation_table_free (em->relocation_tables + i);
+
+  vec_free (em->dynamic_entries);
+  vec_free (em->interpreter);
 }
 
-always_inline void *
-elf_get_contents (elf_main_t * em,
-		  void * data,
-		  uword file_offset,
-		  uword file_size,
-		  uword elt_size)
+always_inline void
+elf_get_segment_contents (elf_main_t * em,
+			  void * data,
+			  uword segment_index)
 {
-  u8 * v = 0;
-
-  if (file_size > 0)
-    {
-      vec_add (v, data + file_offset, file_size);
-      ASSERT (vec_len (v) % elt_size == 0);
-      _vec_len (v) /= elt_size;
-    }
-
-  return v;
+  elf_segment_t * g = vec_elt_at_index (em->segments, segment_index);
+  if (! g->contents)
+    vec_add (g->contents, data + g->header.file_offset, g->header.memory_size);
 }
 
 always_inline void *
-elf_section_contents (elf_main_t * em,
-		      void * data,
-		      uword section_index,
-		      uword elt_size)
+elf_get_section_contents (elf_main_t * em,
+			  uword section_index,
+			  uword elt_size)
 {
   elf_section_t * s;
+  void * result;
+
   s = vec_elt_at_index (em->sections, section_index);
-  if (! s->contents)
-    s->contents = elf_get_contents (em, data, s->header.file_offset, s->header.file_size, elt_size);
-  return s->contents;
+
+  result = 0;
+  if (vec_len (s->contents) > 0)
+    {
+      /* Make vector copy of contents with given element size. */
+      result = _vec_resize (result,
+			    vec_len (s->contents) / elt_size,
+			    vec_len (s->contents),
+			    /* header_bytes */ 0,
+			    /* align */ 0);
+      memcpy (result, s->contents, vec_len (s->contents));
+    }
+
+  return result;
 }
 
-always_inline void *
-elf_segment_contents (elf_main_t * em,
-		      void * data,
-		      uword segment_index)
+always_inline void
+elf_set_section_contents (elf_main_t * em,
+			  uword section_index,
+			  void * new_contents,
+			  uword n_content_bytes)
 {
-  elf_segment_t * s;
-  s = vec_elt_at_index (em->segments, segment_index);
-  if (! s->contents)
-    s->contents = elf_get_contents (em, data, s->header.file_offset, s->header.file_size, sizeof (u8));
-  return s->contents;
+  elf_section_t * s;
+
+  s = vec_elt_at_index (em->sections, section_index);
+  vec_free (s->contents);
+  vec_add (s->contents, new_contents, n_content_bytes);
 }
 
 always_inline u8 *
@@ -885,20 +939,38 @@ elf_section_name (elf_main_t * em, elf_section_t * s)
   return vec_elt_at_index (es->contents, s->header.name);
 }
 
+always_inline u8
+elf_swap_u8 (elf_main_t * em, u8 x)
+{ return x; }
+
+always_inline u16
+elf_swap_u16 (elf_main_t * em, u16 x)
+{ return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
+
+always_inline u32
+elf_swap_u32 (elf_main_t * em, u32 x)
+{ return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
+
+always_inline u64
+elf_swap_u64 (elf_main_t * em, u64 x)
+{ return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
+
+#define FORMAT_ELF_MAIN_SYMBOLS (1 << 0)
+#define FORMAT_ELF_MAIN_RELOCATIONS (1 << 1)
+#define FORMAT_ELF_MAIN_DYNAMIC (1 << 2)
+
 format_function_t format_elf_main;
-
-/* Read headers: sections + segments but no symbols/relocations. */
-clib_error_t *
-elf_parse (elf_main_t * em,
-	   void * data,
-	   uword data_bytes);
-
-/* Read symbols & relocations. */
-void elf_parse_symbols (elf_main_t * em, void * data);
 
 clib_error_t * elf_read_file (elf_main_t * em, char * file_name);
 clib_error_t * elf_write_file (elf_main_t * em, char * file_name);
 clib_error_t * elf_delete_named_section (elf_main_t * em, char * section_name);
+clib_error_t * elf_parse (elf_main_t * em, void * data, uword data_bytes);
+
+clib_error_t *
+elf_get_section_by_name (elf_main_t * em, char * section_name, elf_section_t ** result);
+clib_error_t *
+elf_get_section_by_start_address (elf_main_t * em, uword start_address, elf_section_t ** result);
+
 void
 elf_create_section_with_contents (elf_main_t * em,
 				  char * section_name,
@@ -906,5 +978,6 @@ elf_create_section_with_contents (elf_main_t * em,
 				  void * contents,
 				  uword n_content_bytes);
 uword elf_delete_segment_with_type (elf_main_t * em, elf_segment_type_t segment_type);
+void elf_set_dynamic_entries (elf_main_t * em);
 
 #endif /* included_clib_elf_h */

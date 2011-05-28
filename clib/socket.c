@@ -37,11 +37,11 @@
 #include <clib/format.h>
 #include <clib/error.h>
 
-void socket_tx_add_formatted (socket_t * s, char * fmt, ...)
+void clib_socket_tx_add_formatted (clib_socket_t * s, char * fmt, ...)
 {
   va_list va;
   va_start (va, fmt);
-  socket_tx_add_va_formatted (s, fmt, &va);
+  clib_socket_tx_add_va_formatted (s, fmt, &va);
   va_end (va);
 }
 
@@ -87,20 +87,22 @@ socket_config (char * config,
 	      clib_min (sizeof (su->sun_path), 1 + strlen (config)));
       *addr_len = sizeof (su[0]);
     }
+
   /* Hostname or hostname:port or port. */
   else
     {
       char * host_name;
-      struct hostent * host = 0;
       int port = -1;
       int got_port = 0;
-      unformat_input_t i;
+      struct sockaddr_in * sa = addr;
 
       host_name = 0;
       port = -1;
       got_port = 0;
       if (config[0] != 0)
 	{
+	  unformat_input_t i;
+
 	  unformat_init_string (&i, config, strlen (config));
 	  if (unformat (&i, "%s:%d", &host_name, &port)
 	      || unformat (&i, "%s:0x%x", &host_name, &port))
@@ -118,34 +120,38 @@ socket_config (char * config,
 	    goto done;
 	}
 
+      sa->sin_family = PF_INET;
+      *addr_len = sizeof (sa[0]);
+      if (port != -1)
+	sa->sin_port = htons (port);
+      else
+	sa->sin_port = 0;
+
       if (host_name)
 	{
-	  host = gethostbyname (host_name);
-	  if (! host)
+	  /* Recognize localhost to avoid host lookup in most common cast. */
+	  if (! strcmp (host_name, "localhost"))
+	    sa->sin_addr.s_addr = htonl (INADDR_LOOPBACK);
+
+	  else if (inet_aton (host_name, &sa->sin_addr.s_addr))
+	    ;
+
+	  else if (host_name && strlen (host_name) > 0)
 	    {
-	      error = clib_error_return (0, "unknown host `%s'", config);
-	      goto done;
+	      struct hostent * host = gethostbyname (host_name);
+	      if (! host)
+		error = clib_error_return (0, "unknown host `%s'", config);
+	      else
+		memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
 	    }
+
+	  else
+	    sa->sin_addr.s_addr = htonl (ip4_default_address);
+
 	  vec_free (host_name);
+	  if (error)
+	    goto done;
 	}
-
-      {
-	struct sockaddr_in * sa = addr;
-	sa->sin_family = PF_INET;
-
-	/* Set address and port based on host lookup (if successful). */
-	if (host)
-	  memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
-	else
-	  sa->sin_addr.s_addr = htonl (ip4_default_address);
-
-	if (port != -1)
-	  sa->sin_port = htons (port);
-	else
-	  sa->sin_port = 0;
-
-	*addr_len = sizeof (sa[0]);
-      }
     }
 
  done:
@@ -153,7 +159,7 @@ socket_config (char * config,
 }
 
 static clib_error_t *
-default_socket_write (socket_t * s)
+default_socket_write (clib_socket_t * s)
 {
   clib_error_t	* err = 0;
   word written = 0;
@@ -203,7 +209,7 @@ default_socket_write (socket_t * s)
 }
 
 static clib_error_t *
-default_socket_read (socket_t * sock, int n_bytes)
+default_socket_read (clib_socket_t * sock, int n_bytes)
 {
   word fd, n_read;
   u8 * buf;
@@ -238,14 +244,14 @@ default_socket_read (socket_t * sock, int n_bytes)
   return 0;
 }
 
-clib_error_t * default_socket_close (socket_t * s)
+static clib_error_t * default_socket_close (clib_socket_t * s)
 {
   if (close (s->fd) < 0)
     return clib_error_return_unix (0, "close");
   return 0;
 }
 
-static void socket_init_funcs (socket_t * s)
+static void socket_init_funcs (clib_socket_t * s)
 {
   if (! s->write_func)
     s->write_func = default_socket_write;
@@ -256,7 +262,7 @@ static void socket_init_funcs (socket_t * s)
 }
 
 clib_error_t *
-socket_init (socket_t * s)
+clib_socket_init (clib_socket_t * s)
 {
   union {
     struct sockaddr sa;
@@ -352,7 +358,7 @@ socket_init (socket_t * s)
   return error;
 }
 
-clib_error_t * socket_accept (socket_t * server, socket_t * client)
+clib_error_t * clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
 {
   clib_error_t	* err = 0;
   socklen_t	len = 0;

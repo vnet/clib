@@ -238,6 +238,11 @@ always_inline uword round_pow2 (uword x, uword pow2)
   return (x + pow2 - 1) &~ (pow2 - 1);
 }
 
+always_inline u64 round_pow2_u64 (u64 x, u64 pow2)
+{
+  return (x + pow2 - 1) &~ (pow2 - 1);
+}
+
 always_inline uword first_set (uword x)
 { return x & -x; }
 

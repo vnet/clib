@@ -28,13 +28,12 @@
 #include <clib/byte_order.h>
 #include <clib/types.h>
 #include <clib/vec.h>
-#include <clib/pool.h>
 #include <clib/longjmp.h>
 
 struct serialize_main_header_t;
 struct serialize_stream_t;
 
-typedef void (serialize_data_function_t) (struct serialize_main_header_t *h,
+typedef void (serialize_data_function_t) (struct serialize_main_header_t * h,
 					  struct serialize_stream_t * s);
 
 typedef struct serialize_stream_t {
@@ -57,9 +56,9 @@ typedef struct serialize_stream_t {
   u32 flags;
 #define SERIALIZE_END_OF_STREAM (1 << 0)
 
-  u32 data_function_opaque;
+  uword data_function_opaque;
 
-  u32 opaque[64 - 5 * sizeof (u32) - 2 * sizeof (void *)];
+  u32 opaque[64 - 4 * sizeof (u32) - 1 * sizeof (uword) - 2 * sizeof (void *)];
 } serialize_stream_t;
 
 always_inline void
@@ -155,6 +154,8 @@ serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
     clib_mem_unaligned (p, u16) = clib_host_to_net_u16 (x);
   else if (n_bytes == 4)
     clib_mem_unaligned (p, u32) = clib_host_to_net_u32 (x);
+  else if (n_bytes == 8)
+    clib_mem_unaligned (p, u64) = clib_host_to_net_u64 (x);
   else
     ASSERT (0);
 }
@@ -169,6 +170,8 @@ unserialize_integer (serialize_main_t * m, void * x, u32 n_bytes)
     *(u16 *) x = clib_net_to_host_unaligned_mem_u16 ((u16 *) p);
   else if (n_bytes == 4)
     *(u32 *) x = clib_net_to_host_unaligned_mem_u32 ((u32 *) p);
+  else if (n_bytes == 8)
+    *(u64 *) x = clib_net_to_host_unaligned_mem_u64 ((u64 *) p);
   else
     ASSERT (0);
 }
@@ -255,6 +258,21 @@ unserialize_likely_small_unsigned_integer (serialize_main_t * m)
   return r;
 }
 
+always_inline void
+serialize_likely_small_signed_integer (serialize_main_t * m, i64 s)
+{
+  u64 u = s < 0 ? -(2*s + 1) : 2*s;
+  serialize_likely_small_unsigned_integer (m, u);
+}
+
+always_inline i64
+unserialize_likely_small_signed_integer (serialize_main_t * m)
+{
+  u64 u = unserialize_likely_small_unsigned_integer (m);
+  i64 s = u / 2;
+  return (u & 1) ? -s : s;
+}
+
 void
 serialize_multiple_1 (serialize_main_t * m,
 		      void * data,
@@ -329,8 +347,14 @@ serialize_function_t serialize_8, unserialize_8;
 serialize_function_t serialize_f64, unserialize_f64;
 serialize_function_t serialize_f32, unserialize_f32;
 
+/* Basic vector types. */
+serialize_function_t serialize_vec_8, unserialize_vec_8;
+serialize_function_t serialize_vec_16, unserialize_vec_16;
+serialize_function_t serialize_vec_32, unserialize_vec_32;
+serialize_function_t serialize_vec_64, unserialize_vec_64;
+
 /* Serialize generic vectors. */
-serialize_function_t serialize_vector, unserialize_vector;
+serialize_function_t serialize_vector, unserialize_vector, unserialize_aligned_vector;
 
 #define vec_serialize(m,v,f) \
   serialize ((m), serialize_vector, (v), sizeof ((v)[0]), (f))
@@ -338,14 +362,23 @@ serialize_function_t serialize_vector, unserialize_vector;
 #define vec_unserialize(m,v,f) \
   unserialize ((m), unserialize_vector, (v), sizeof ((*(v))[0]), (f))
 
+#define vec_unserialize_aligned(m,v,f) \
+  unserialize ((m), unserialize_aligned_vector, (v), sizeof ((*(v))[0]), (f))
+
 /* Serialize pools. */
-serialize_function_t serialize_pool, unserialize_pool;
+serialize_function_t serialize_pool, unserialize_pool, unserialize_aligned_pool;
 
 #define pool_serialize(m,v,f) \
   serialize ((m), serialize_pool, (v), sizeof ((v)[0]), (f))
 
 #define pool_unserialize(m,v,f) \
   unserialize ((m), unserialize_pool, (v), sizeof ((*(v))[0]), (f))
+
+#define pool_unserialize_aligned(m,v,a,f)				\
+  unserialize ((m), unserialize_aligned_pool, (v), sizeof ((*(v))[0]), (a), (f))
+
+/* Serialize heaps. */
+serialize_function_t serialize_heap, unserialize_heap;
 
 void serialize_bitmap (serialize_main_t * m, uword * b);
 uword * unserialize_bitmap (serialize_main_t * m);

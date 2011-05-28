@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2001, 2002, 2003 Eliot Dresselhaus
+  Copyright (c) 2011 by Cisco Systems, Inc.
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,9 +21,34 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <clib/random.h>
+#include <clib/mem.h>
+#include <clib/pool.h>
 
-/* Default random seed for standalone version of library.
-   Value can be overridden by platform code from e.g.
-   machine's clock count register. */
-u32 standalone_random_default_seed = 1;
+#ifdef __KERNEL__
+# include <linux/unistd.h>
+#else
+# include <unistd.h>
+#endif
+
+int main (int argc, char * argv[])
+{
+  uword *bm = 0;
+  int i;
+  uword next;
+  u32 *tp = 0;
+  u32 *junk;
+
+  for (i = 0; i < 70; i++)
+    pool_get (tp, junk);
+  
+  pool_put_index (tp, 1);
+  pool_put_index (tp, 65);
+
+  next = ~0;
+  do {
+    next = pool_next_index (tp, next);
+    fformat (stdout, "next index %d\n", next);
+  } while (next != ~0);
+
+  return 0;
+}

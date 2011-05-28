@@ -32,7 +32,7 @@
 #define CLIB_HAVE_VEC64
 #endif
 
-#if defined (__SSE2__)
+#if defined (__SSE2__) && __GNUC__ >= 4
 #define CLIB_HAVE_VEC128
 #endif
 
@@ -120,8 +120,8 @@ typedef u64 u64x _vector_size (8);
 
 #define _(t)					\
   typedef union {				\
-    t##x data_##t##x;				\
-    t data_##t[VECTOR_WORD_TYPE_LEN (t)];	\
+    t##x as_##t##x;				\
+    t as_##t[VECTOR_WORD_TYPE_LEN (t)];	\
   } t##x##_union_t;
 
 _ (u8);
@@ -141,8 +141,8 @@ _ (i64);
 
 #define _(t,n)					\
   typedef union {				\
-    t##x##n data_##t##x##n;			\
-    t data_##t[n];				\
+    t##x##n as_##t##x##n;			\
+    t as_##t[n];				\
   } t##x##n##_union_t;				\
 
 _ (u8, 8);
@@ -160,8 +160,8 @@ _ (i32, 2);
 
 #define _(t,n)					\
   typedef union {				\
-    t##x##n data_##t##x##n;			\
-    t data_##t[n];				\
+    t##x##n as_##t##x##n;			\
+    t as_##t[n];				\
   } t##x##n##_union_t;				\
 
 _ (u8, 16);
@@ -177,7 +177,28 @@ _ (i64, 2);
 
 #endif
 
-#if defined (__SSE2__)
+/* When we don't have vector types, still define e.g. u32x4_union_t but as an array. */
+#if !defined(CLIB_HAVE_VEC128) && !defined(CLIB_HAVE_VEC64)
+
+#define _(t,n)					\
+  typedef union {				\
+    t as_##t[n];				\
+  } t##x##n##_union_t;				\
+
+_ (u8, 16);
+_ (u16, 8);
+_ (u32, 4);
+_ (u64, 2);
+_ (i8, 16);
+_ (i16, 8);
+_ (i32, 4);
+_ (i64, 2);
+
+#undef _
+
+#endif
+
+#if defined (__SSE2__) && __GNUC__ >= 4
 #include <clib/vector_sse2.h>
 #endif
 

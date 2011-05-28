@@ -21,6 +21,7 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <clib/cache.h>
 #include <clib/fifo.h>
 #include <clib/error.h>
 #include <clib/string.h>
@@ -75,7 +76,8 @@ void * _clib_fifo_resize (void * v_old, uword n_new_elts, uword elt_bytes)
   else
     n_new_elts = max_pow2 (n_new_elts);
 
-  header_bytes = sizeof (clib_fifo_header_t) + sizeof (_vec_len (v_new));
+  header_bytes = vec_header_bytes_ha (sizeof (clib_fifo_header_t),
+				      /* align */ CLIB_CACHE_LINE_BYTES);
 
   v_new = clib_mem_alloc_no_fail (n_new_elts * elt_bytes + header_bytes);
   v_new += header_bytes;

@@ -7,7 +7,13 @@
 #include <clib/timing_wheel.h>
 #include <clib/zvec.h>
 
-#include <math.h>
+#include <clib/math.h>
+
+#if __GNUC__ < 4
+#define SQRT(a) a
+#else
+#define SQRT(a) sqrt(a)
+#endif
 
 typedef struct {
   uword n_iter;
@@ -239,7 +245,7 @@ test_timing_wheel_main (unformat_input_t * input)
 	    if (n_expired > 0)
 	      {
 		ave = ave_error / n_expired;
-		rms = sqrt (rms_error / n_expired - ave * ave);
+		rms = SQRT (rms_error / n_expired - ave * ave);
 	      }
 
 	    clib_warning ("%12wd iter done %10wd expired; ave. error %.4e +- %.4e, range %.4e %.4e",
@@ -266,7 +272,7 @@ test_timing_wheel_main (unformat_input_t * input)
       }
     
     ave_error /= n_expired;
-    rms_error = sqrt (rms_error / n_expired - ave_error * ave_error);
+    rms_error = SQRT (rms_error / n_expired - ave_error * ave_error);
 
     clib_warning ("%wd iter done %wd expired; ave. error %.4e +- %.4e, range %.4e %.4e",
 		  1 + iter, n_expired,
