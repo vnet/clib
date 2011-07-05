@@ -253,30 +253,26 @@ u8 * format_unformat_input (u8 * s, va_list * va);
 
 /* Unformat (parse) function which reads a %s string and converts it
    to and unformat_input_t. */
-uword unformat_input (unformat_input_t * i, va_list * arg);
+unformat_function_t unformat_input;
 
 /* Parse a line ending with \n and return it. */
-uword unformat_line (unformat_input_t * i, va_list * va);
+unformat_function_t unformat_line;
 
 /* Parse a line ending with \n and return it as an unformat_input_t. */
-uword unformat_line_input (unformat_input_t * i, va_list * va);
+unformat_function_t unformat_line_input;
 
 /* Parse a token containing given set of characters. */
-uword
-unformat_token (unformat_input_t * input,
-		va_list * va);
+unformat_function_t unformat_token;
 
 /* Parses a hexstring into a vector of bytes. */
-uword
-unformat_hex_string (unformat_input_t * input,
-		     va_list * va);
+unformat_function_t unformat_hex_string;
 
 /* Returns non-zero match if input is exhausted.
    Useful to ensure that the entire input matches with no trailing junk. */
-uword unformat_eof (unformat_input_t *, va_list *);
+unformat_function_t unformat_eof;
 
 /* Parse memory size e.g. 100, 100k, 100m, 100g. */
-uword unformat_memory_size (unformat_input_t * input, va_list * va);
+unformat_function_t unformat_memory_size;
 
 /* Unparse memory size e.g. 100, 100k, 100m, 100g. */
 u8 * format_memory_size (u8 * s, va_list * va);
