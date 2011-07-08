@@ -290,6 +290,7 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 	  break;
 
 	case 's':
+	case 'S':
 	  {
 	    char * cstring = va_arg (*va, char *);
 	    uword len;
@@ -304,7 +305,14 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 	    else
 	      len = strlen (cstring);
 	    
-	    vec_add (s, cstring, len);
+	    /* %S => format string as C identifier (replace _ with space). */
+	    if (c == 'S')
+	      {
+		for (i = 0; i < len; i++)
+		  vec_add1 (s, cstring[i] == '_' ? ' ' : cstring[i]);
+	      }		
+	    else
+	      vec_add (s, cstring, len);
 	  }
 	  break;
 

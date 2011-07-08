@@ -82,6 +82,7 @@ int test_format_main (unformat_input_t * input)
   ret |= expectation ("(nil)", "%.*s", 3, (void *) 0);
   ret |= expectation ("foo", "%.*v", 3, food);
   ret |= expectation ("foobar", "%.*v%s", 3, food, "bar");
+  ret |= expectation ("foo bar", "%S", "foo_bar");
   vec_free (food);
   vec_free (test_vec);
   return ret;
