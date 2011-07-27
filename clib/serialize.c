@@ -629,7 +629,7 @@ static void * serialize_write_not_inline (serialize_main_header_t * m,
   n_left_o = vec_len (s->overflow_buffer);
 
   /* Prepend overflow buffer if present. */
-  if (n_left_o > 0 && n_left_b > 0)
+  while (n_left_o > 0 && n_left_b > 0)
     {
       uword n = clib_min (n_left_b, n_left_o);
       memcpy (s->buffer + cur_bi, s->overflow_buffer, n);
@@ -640,17 +640,17 @@ static void * serialize_write_not_inline (serialize_main_header_t * m,
 	_vec_len (s->overflow_buffer) = 0;
       else
 	vec_delete (s->overflow_buffer, n, 0);
-    }
 
-  /* Call data function when buffer is complete.  Data function should
-     dispatch with current buffer and give us a new one to write more
-     data into. */
-  if (n_left_b == 0)
-    {
-      s->current_buffer_index = cur_bi;
-      m->data_function (m, s);
-      cur_bi = s->current_buffer_index;
-      n_left_b = s->n_buffer_bytes - cur_bi;
+      /* Call data function when buffer is complete.  Data function should
+	 dispatch with current buffer and give us a new one to write more
+	 data into. */
+      if (n_left_b == 0)
+	{
+	  s->current_buffer_index = cur_bi;
+	  m->data_function (m, s);
+	  cur_bi = s->current_buffer_index;
+	  n_left_b = s->n_buffer_bytes - cur_bi;
+	}
     }
 
   if (n_left_o > 0 || n_left_b < n_bytes_to_write)
@@ -774,11 +774,11 @@ static void serialize_read_write_close (serialize_main_header_t * m, serialize_s
   if (serialize_stream_is_end_of_stream (s))
     return;
 
-  serialize_stream_set_end_of_stream (s);
-
   if (flags & SERIALIZE_FLAG_IS_WRITE)
     /* "Write" 0 bytes to flush overflow vector. */
     serialize_write_not_inline (m, s, /* n bytes */ 0, flags);
+
+  serialize_stream_set_end_of_stream (s);
 
   /* Call it one last time to flush buffer and close. */
   m->data_function (m, s);
