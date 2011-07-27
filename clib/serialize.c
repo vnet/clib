@@ -629,29 +629,31 @@ static void * serialize_write_not_inline (serialize_main_header_t * m,
   n_left_o = vec_len (s->overflow_buffer);
 
   /* Prepend overflow buffer if present. */
-  while (n_left_o > 0 && n_left_b > 0)
-    {
-      uword n = clib_min (n_left_b, n_left_o);
-      memcpy (s->buffer + cur_bi, s->overflow_buffer, n);
-      cur_bi += n;
-      n_left_b -= n;
-      n_left_o -= n;
-      if (n_left_o == 0)
-	_vec_len (s->overflow_buffer) = 0;
-      else
-	vec_delete (s->overflow_buffer, n, 0);
+  do {
+    if (n_left_o > 0 && n_left_b > 0)
+      {
+	uword n = clib_min (n_left_b, n_left_o);
+	memcpy (s->buffer + cur_bi, s->overflow_buffer, n);
+	cur_bi += n;
+	n_left_b -= n;
+	n_left_o -= n;
+	if (n_left_o == 0)
+	  _vec_len (s->overflow_buffer) = 0;
+	else
+	  vec_delete (s->overflow_buffer, n, 0);
+      }
 
-      /* Call data function when buffer is complete.  Data function should
-	 dispatch with current buffer and give us a new one to write more
-	 data into. */
-      if (n_left_b == 0)
-	{
-	  s->current_buffer_index = cur_bi;
-	  m->data_function (m, s);
-	  cur_bi = s->current_buffer_index;
-	  n_left_b = s->n_buffer_bytes - cur_bi;
-	}
-    }
+    /* Call data function when buffer is complete.  Data function should
+       dispatch with current buffer and give us a new one to write more
+       data into. */
+    if (n_left_b == 0)
+      {
+	s->current_buffer_index = cur_bi;
+	m->data_function (m, s);
+	cur_bi = s->current_buffer_index;
+	n_left_b = s->n_buffer_bytes - cur_bi;
+      }
+  } while (n_left_o > 0);
 
   if (n_left_o > 0 || n_left_b < n_bytes_to_write)
     {
