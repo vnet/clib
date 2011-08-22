@@ -208,11 +208,9 @@ serialize_likely_small_unsigned_integer (serialize_main_t * m, u64 x)
       return;
     }
 
-  r -= 1 << 29;
-
-  ASSERT ((r >> (64 - 3)) == 0);
-  p = serialize_get (m, 8);
-  clib_mem_unaligned (p, u64) = clib_host_to_little_u64 (8 * r + 0);
+  p = serialize_get (m, 9);
+  p[0] = 0;			/* Only low 3 bits are used. */
+  clib_mem_unaligned (p + 1, u64) = clib_host_to_little_u64 (x);
 }
 
 always_inline u64
@@ -244,17 +242,10 @@ unserialize_likely_small_unsigned_integer (serialize_main_t * m)
       return r;
     }
 
-  r += 1 << 29;
-  p = unserialize_get (m, 7);
-  r += ((y / 8)
-	+ (((u64) p[0] << (u64) (5 + 8*0)))
-	+ (((u64) p[1] << (u64) (5 + 8*1)))
-	+ (((u64) p[2] << (u64) (5 + 8*2)))
-	+ (((u64) p[3] << (u64) (5 + 8*3)))
-	+ (((u64) p[4] << (u64) (5 + 8*4)))
-	+ (((u64) p[5] << (u64) (5 + 8*5)))
-	+ (((u64) p[6] << (u64) (5 + 8*6)))
-	+ (((u64) p[7] << (u64) (5 + 8*7))));
+  p = unserialize_get (m, 8);
+  r = clib_mem_unaligned (p, u64);
+  r = clib_little_to_host_u64 (r);
+
   return r;
 }
 
