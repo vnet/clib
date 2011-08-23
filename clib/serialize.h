@@ -145,7 +145,7 @@ serialize_get (serialize_main_t * m, uword n_bytes)
 { return serialize_stream_read_write (&m->header, &m->stream, n_bytes, SERIALIZE_FLAG_IS_WRITE); }
 
 always_inline void
-serialize_integer (serialize_main_t * m, u32 x, u32 n_bytes)
+serialize_integer (serialize_main_t * m, u64 x, u32 n_bytes)
 {
   u8 * p = serialize_get (m, n_bytes);
   if (n_bytes == 1)
