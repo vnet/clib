@@ -350,7 +350,8 @@ set_indirect_is_user (void * v,
 }
 
 static hash_pair_union_t *
-set_indirect (void * v, hash_pair_indirect_t * pi, uword key)
+set_indirect (void * v, hash_pair_indirect_t * pi, uword key,
+	      uword * found_key)
 {
   hash_t * h = hash_header (v);
   hash_pair_t * new_pair;
@@ -358,7 +359,10 @@ set_indirect (void * v, hash_pair_indirect_t * pi, uword key)
 
   q = get_indirect (v, pi, key);
   if (q)
-    return q;
+    {
+      *found_key = 1;
+      return q;
+    }
 
   if (h->log2_pair_size == 0)
     vec_add2 (pi->pairs, new_pair, 1);
@@ -383,6 +387,7 @@ set_indirect (void * v, hash_pair_indirect_t * pi, uword key)
     }
   new_pair->key = key;
   init_pair (h, new_pair);
+  *found_key = 0;
   return (hash_pair_union_t *) new_pair;
 }
 
@@ -489,7 +494,7 @@ static hash_pair_t * lookup (void * v, uword key, enum lookup_opcode op,
 	      set_is_user (v, i, 1);
 	    }
 	  else
-	    p = set_indirect (v, pi, key);
+	    p = set_indirect (v, pi, key, &found_key);
 	}
       else
 	{

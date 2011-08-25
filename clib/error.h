@@ -162,9 +162,13 @@ do {							\
     return clib_error_return (_error_return_if, 0);	\
 } while (0)
 
+#ifndef CLIB_ASSERT_ENABLE
+#define CLIB_ASSERT_ENABLE (DEBUG > 0)
+#endif
+
 #define ASSERT(truth)					\
 do {							\
-  if (DEBUG > 0 && ! (truth))				\
+  if (CLIB_ASSERT_ENABLE && ! (truth))			\
     {							\
       _clib_error (ERROR_ABORT, 0, 0,			\
 		   "%s:%d (%s) assertion `%s' fails",	\
