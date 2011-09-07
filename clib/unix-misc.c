@@ -111,6 +111,43 @@ clib_error_t * unix_file_contents (char * file, u8 ** result)
   return error;
 }
 
+clib_error_t * unix_proc_file_contents (char * file, u8 ** result)
+{
+  u8 *rv = 0;
+  uword pos;
+  int bytes, fd;
+
+  /* Unfortunately, stat(/proc/XXX) returns zero... */
+  fd = open (file, O_RDONLY);
+
+  if (fd < 0)
+    return clib_error_return_unix (0, "open `%s'", file);
+
+  vec_validate(rv, 4095);
+  pos = 0;
+  while (1) 
+    {
+      bytes = read(fd, rv+pos, 4096);
+      if (bytes < 0) 
+        {
+          close (fd);
+          vec_free (rv);
+          return clib_error_return_unix (0, "read '%s'", file);
+        }
+
+      if (bytes == 0) 
+        {
+          _vec_len(rv) = pos;
+          break;
+        }
+      pos += bytes;
+      vec_validate(rv, pos+4095);
+    }
+  *result = rv;
+  close (fd);
+  return 0;
+}
+
 void os_panic (void)
 { abort (); }
 

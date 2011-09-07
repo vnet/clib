@@ -36,4 +36,7 @@ unix_file_read_contents (char * file, u8 * result, uword n_bytes);
 /* Read and return contents of Unix file. */
 clib_error_t * unix_file_contents (char * file, u8 ** result);
 
+/* As above but for /proc file system on Linux. */
+clib_error_t * unix_proc_file_contents (char * file, u8 ** result);
+
 #endif /* included_clib_unix_h */
