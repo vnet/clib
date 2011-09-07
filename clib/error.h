@@ -163,7 +163,7 @@ do {							\
 } while (0)
 
 #ifndef CLIB_ASSERT_ENABLE
-#define CLIB_ASSERT_ENABLE (DEBUG > 0)
+#define CLIB_ASSERT_ENABLE (CLIB_DEBUG > 0)
 #endif
 
 #define ASSERT(truth)					\
@@ -182,7 +182,7 @@ do {							\
 #define ERROR_ASSERT(truth)			\
 ({						\
   clib_error_t * _error_assert = 0;		\
-  if (DEBUG > 0 && ! (truth))			\
+  if (CLIB_DEBUG > 0 && ! (truth))		\
     {						\
       _error_assert = clib_error_return_fatal	\
         (0, "%s:%d (%s) assertion `%s' fails",	\
@@ -194,7 +194,7 @@ do {							\
   _error_assert;				\
 })
 
-/* Assert to remain even if DEBUG is set to 0. */
+/* Assert to remain even if CLIB_DEBUG is set to 0. */
 #define CLIB_ERROR_ASSERT(truth)		\
 ({						\
   clib_error_t * _error_assert = 0;		\

@@ -33,8 +33,8 @@
 
 /* Global DEBUG flag.  Setting this to 1 or 0 turns off
    ASSERT (see clib/error.h) & other debugging code. */
-#ifndef DEBUG
-#define DEBUG 0
+#ifndef CLIB_DEBUG
+#define CLIB_DEBUG 0
 #endif
 
 #ifndef NULL
@@ -64,7 +64,7 @@
 
 #define never_inline __attribute__ ((__noinline__))
 
-#if DEBUG > 0
+#if CLIB_DEBUG > 0
 #define always_inline static inline
 #define static_always_inline static inline
 #else

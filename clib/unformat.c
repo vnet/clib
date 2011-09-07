@@ -129,7 +129,7 @@ u8 * format_unformat_input (u8 * s,
   return s;
 }
 
-#if DEBUG > 0
+#if CLIB_DEBUG > 0
 void di (unformat_input_t * i)
 { fformat (stderr, "%U\n", format_unformat_input, i); }
 #endif

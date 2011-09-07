@@ -287,7 +287,7 @@ always_inline uword key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 always_inline uword key_equal (hash_t * h, uword key1, uword key2)
 {
   uword e = key1 == key2;
-  if (DEBUG > 0 && key1 == key2)
+  if (CLIB_DEBUG > 0 && key1 == key2)
     ASSERT (key_equal1 (h, key1, key2, e));
   if (! e)
     e = key_equal1 (h, key1, key2, e);

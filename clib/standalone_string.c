@@ -46,7 +46,7 @@
 /* Cannot call ASSERT() because it calls _clib_error() which in turn... */
 #define TRUE_OR_SEGFAULT(truth)			\
 do {						\
-  if (DEBUG > 0 && ! (truth))			\
+  if (CLIB_DEBUG > 0 && ! (truth))		\
     *((uword *) 0x00000000) = 34;		\
 } while (0)
 

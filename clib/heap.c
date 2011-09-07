@@ -445,7 +445,7 @@ void * _heap_alloc (void * v,
 
   /* Keep track of used elements when debugging.
      This allows deallocation to check that passed objects are valid. */
-  if (DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     {
       uword handle = e - h->elts;
       ASSERT (! clib_bitmap_get (h->used_elt_bitmap, handle));
@@ -470,7 +470,7 @@ void heap_dealloc (void * v, uword handle)
 
   /* For debugging we keep track of indices for valid objects.
      We make sure user is not trying to free object with an invalid index. */
-  if (DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     {
       ASSERT (clib_bitmap_get (h->used_elt_bitmap, handle));
       h->used_elt_bitmap = clib_bitmap_andnoti (h->used_elt_bitmap, handle);
@@ -563,7 +563,7 @@ uword heap_len (void * v, word handle)
 {
   heap_header_t * h = heap_header (v);
 
-  if (DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     ASSERT (clib_bitmap_get (h->used_elt_bitmap, handle));
   return heap_elt_size (v, elt_at (h, handle));
 }

@@ -519,7 +519,7 @@ void unserialize_heap (serialize_main_t * m, va_list * va)
   vec_unserialize (m, &h.free_elts, unserialize_vec_32);
 
   /* Re-construct used elt bitmap. */
-  if (DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     {
       heap_elt_t * e;
       vec_foreach (e, h.elts)

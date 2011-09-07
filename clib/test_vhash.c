@@ -23,7 +23,7 @@
 
 #if 0
 #ifdef __OPTIMIZE__
-#undef DEBUG
+#undef CLIB_DEBUG
 #endif
 #endif
 

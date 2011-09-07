@@ -152,7 +152,7 @@ always_inline void
 free_elt_vector (timing_wheel_t * w, timing_wheel_elt_t * ev)
 {
   /* Poison free elements so we never use them by mistake. */
-  if (DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     memset (ev, ~0, vec_len (ev) * sizeof (ev[0]));
   _vec_len (ev) = 0;
   vec_add1 (w->free_elt_vectors, ev);
@@ -375,7 +375,7 @@ always_inline void
 validate_expired_elt (timing_wheel_t * w, timing_wheel_elt_t * e,
 		      u64 current_cpu_time)
 {
-  if (DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     {
       u64 e_time = elt_cpu_time (w, e);
 
