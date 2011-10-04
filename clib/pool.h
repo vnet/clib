@@ -70,6 +70,22 @@ always_inline void pool_validate (void * v)
     ASSERT (clib_bitmap_get (p->free_bitmap, p->free_indices[i]) == 1);
 }
 
+always_inline void pool_header_validate_index (void * v, uword index)
+{
+  pool_header_t * p = pool_header (v);
+
+  if (v)
+    vec_validate (p->free_bitmap, index / BITS (uword));
+}
+
+#define pool_validate_index(v,i)				\
+do {								\
+  uword __pool_validate_index = (i);				\
+  vec_validate_ha ((v), __pool_validate_index,			\
+		   sizeof (pool_header_t), /* align */ 0);	\
+  pool_header_validate_index ((v), __pool_validate_index);	\
+} while (0)
+
 /** \brief Number of active elements in a pool */
 always_inline uword pool_elts (void * v)
 {
