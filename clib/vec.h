@@ -458,6 +458,16 @@ do {								\
   _vec_len (V) -= _v(n);					\
 } while (0)
 
+/* Delete a single element at index I. */
+#define vec_del1(v,i)				\
+do {						\
+  uword __vec_del_l = _vec_len (v) - 1;		\
+  uword __vec_del_i = (i);			\
+  if (_vec_del_i < __vec_del_l)			\
+    (v)[_vec_del_i] = (v)[_vec_del_l];		\
+  _vec_len (v) = __vec_del_l;			\
+} while (0)
+
 /** \brief Appends v2 after v1. Result in v1. */
 #define vec_append(v1,v2)						\
 do {									\

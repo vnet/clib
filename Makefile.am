@@ -162,6 +162,7 @@ nobase_include_HEADERS = \
     clib/error.h \
     clib/fifo.h \
     clib/format.h \
+    clib/graph.h \
     clib/hash.h \
     clib/heap.h \
     clib/linux_kernel_init.h \
@@ -211,6 +212,7 @@ CLIB_CORE = \
   clib/error.c \
   clib/fifo.c \
   clib/format.c \
+  clib/graph.c \
   clib/hash.c \
   clib/heap.c \
   clib/longjmp.S \
