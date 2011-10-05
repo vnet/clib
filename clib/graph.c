@@ -412,54 +412,38 @@ uword fheap_del_min (fheap_t * f, u32 * min_key)
   f->min_root = ~0;
   if (ri != ~0)
     {
+      u32 ri_last, ri_next, i, min_ds;
+
       ASSERT (f->nodes[ri].parent == ~0);
 
       vec_reset_length (f->root_list_by_rank);
 
-      if (1) {
-	static u32 * rs = 0;
-	uword i;
-	vec_reset_length (rs);
-	foreach_fheap_node_sibling (f, ni, ri, ({
-	  vec_add1 (rs, ni);
-	}));
-	vec_foreach_index (i, rs)
-	  {
-	    fheap_link_root (f, rs[i]);
-	  }
-
+      r = fheap_get_node (f, ri);
+      ri_last = r->prev_sibling;
+      while (1)
 	{
-	  uword i;
-	  vec_foreach_index (i, f->root_list_by_rank)
+	  ri_next = r->next_sibling;
+	  fheap_link_root (f, ri);
+	  if (ri == ri_last)
+	    break;
+	  ri = ri_next;
+	  r = fheap_get_node (f, ri);
+	}
+
+      min_ds = ~0;
+      vec_foreach_index (i, f->root_list_by_rank)
+	{
+	  ni = f->root_list_by_rank[i];
+	  if (ni == ~0)
+	    continue;
+	  r = fheap_get_node (f, ni);
+	  if (r->key < min_ds)
 	    {
-	      ni = f->root_list_by_rank[i];
-	      if (ni == ~0)
-		continue;
-	      r = fheap_get_node (f, ni);
-	      if (f->min_root == ~0 || r->key < f->nodes[f->min_root].key)
-		{
-		  f->min_root = ni;
-		  ASSERT (r->parent == ~0);
-		}
+	      f->min_root = ni;
+	      min_ds = r->key;
+	      ASSERT (r->parent == ~0);
 	    }
 	}
-      } else {
-	u32 min_key = ~0;
-	pool_foreach (r, f->nodes, ({
-	  uword ri = r - f->nodes;
-	  if (ri == to_delete_min_ri)
-	    continue;
-	  if (r->parent != ~0)
-	    continue;
-	  if (r->key < min_key)
-	    {
-	      min_key = r->key;
-	      f->min_root = ri;
-	    }
-	  if (r->parent == ~0)
-	    fheap_link_root (f, ri);
-	}));
-      }
     }
 
   /* Return deleted min root. */
