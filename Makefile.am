@@ -159,6 +159,7 @@ nobase_include_HEADERS = \
     clib/clib.h \
     clib/elf.h \
     clib/elog.h \
+    clib/fheap.h \
     clib/error.h \
     clib/fifo.h \
     clib/format.h \
@@ -211,6 +212,7 @@ CLIB_CORE = \
   clib/elog.c \
   clib/error.c \
   clib/fifo.c \
+  clib/fheap.c \
   clib/format.c \
   clib/graph.c \
   clib/hash.c \

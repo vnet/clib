@@ -102,6 +102,7 @@ am__objects_1 = clib/libclibkernel_a-asm_x86.$(OBJEXT) \
 	clib/libclibkernel_a-elog.$(OBJEXT) \
 	clib/libclibkernel_a-error.$(OBJEXT) \
 	clib/libclibkernel_a-fifo.$(OBJEXT) \
+	clib/libclibkernel_a-fheap.$(OBJEXT) \
 	clib/libclibkernel_a-format.$(OBJEXT) \
 	clib/libclibkernel_a-graph.$(OBJEXT) \
 	clib/libclibkernel_a-hash.$(OBJEXT) \
@@ -155,6 +156,7 @@ am__objects_3 = clib/libclibstandalone_a-asm_x86.$(OBJEXT) \
 	clib/libclibstandalone_a-elog.$(OBJEXT) \
 	clib/libclibstandalone_a-error.$(OBJEXT) \
 	clib/libclibstandalone_a-fifo.$(OBJEXT) \
+	clib/libclibstandalone_a-fheap.$(OBJEXT) \
 	clib/libclibstandalone_a-format.$(OBJEXT) \
 	clib/libclibstandalone_a-graph.$(OBJEXT) \
 	clib/libclibstandalone_a-hash.$(OBJEXT) \
@@ -202,10 +204,10 @@ libclibstandalone_a_OBJECTS = $(am_libclibstandalone_a_OBJECTS)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libclib_la_LIBADD =
 am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
-	clib/elog.lo clib/error.lo clib/fifo.lo clib/format.lo \
-	clib/graph.lo clib/hash.lo clib/heap.lo clib/longjmp.lo \
-	clib/mhash.lo clib/mheap.lo clib/md5.lo clib/mem_mheap.lo \
-	clib/phash.lo clib/qhash.lo clib/random.lo \
+	clib/elog.lo clib/error.lo clib/fifo.lo clib/fheap.lo \
+	clib/format.lo clib/graph.lo clib/hash.lo clib/heap.lo \
+	clib/longjmp.lo clib/mhash.lo clib/mheap.lo clib/md5.lo \
+	clib/mem_mheap.lo clib/phash.lo clib/qhash.lo clib/random.lo \
 	clib/random_buffer.lo clib/random_isaac.lo clib/serialize.lo \
 	clib/std-formats.lo clib/string.lo clib/time.lo \
 	clib/timing_wheel.lo clib/unformat.lo clib/vec.lo \
@@ -650,6 +652,7 @@ nobase_include_HEADERS = \
     clib/clib.h \
     clib/elf.h \
     clib/elog.h \
+    clib/fheap.h \
     clib/error.h \
     clib/fifo.h \
     clib/format.h \
@@ -702,6 +705,7 @@ CLIB_CORE = \
   clib/elog.c \
   clib/error.c \
   clib/fifo.c \
+  clib/fheap.c \
   clib/format.c \
   clib/graph.c \
   clib/hash.c \
@@ -871,6 +875,8 @@ clib/libclibkernel_a-error.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-fifo.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibkernel_a-fheap.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-format.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-graph.$(OBJEXT): clib/$(am__dirstamp) \
@@ -970,6 +976,8 @@ clib/libclibstandalone_a-elog.$(OBJEXT): clib/$(am__dirstamp) \
 clib/libclibstandalone_a-error.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-fifo.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibstandalone_a-fheap.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-format.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
@@ -1096,6 +1104,7 @@ clib/elf.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/elog.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/error.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/fifo.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+clib/fheap.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/format.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/graph.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/hash.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
@@ -1268,6 +1277,8 @@ mostlyclean-compile:
 	-rm -f clib/elog.lo
 	-rm -f clib/error.$(OBJEXT)
 	-rm -f clib/error.lo
+	-rm -f clib/fheap.$(OBJEXT)
+	-rm -f clib/fheap.lo
 	-rm -f clib/fifo.$(OBJEXT)
 	-rm -f clib/fifo.lo
 	-rm -f clib/format.$(OBJEXT)
@@ -1283,6 +1294,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibkernel_a-elf.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-elog.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-error.$(OBJEXT)
+	-rm -f clib/libclibkernel_a-fheap.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-fifo.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-format.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-graph.$(OBJEXT)
@@ -1331,6 +1343,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-elf.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-elog.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-error.$(OBJEXT)
+	-rm -f clib/libclibstandalone_a-fheap.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-fifo.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-format.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-graph.$(OBJEXT)
@@ -1452,6 +1465,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/elf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/elog.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/error.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/fheap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/fifo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/format.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/graph.Plo@am__quote@
@@ -1462,6 +1476,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-elf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-fheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-format.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-graph.Po@am__quote@
@@ -1510,6 +1525,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-elf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-elog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-fheap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-format.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-graph.Po@am__quote@
@@ -1758,6 +1774,20 @@ clib/libclibkernel_a-fifo.obj: clib/fifo.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/fifo.c' object='clib/libclibkernel_a-fifo.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-fifo.obj `if test -f 'clib/fifo.c'; then $(CYGPATH_W) 'clib/fifo.c'; else $(CYGPATH_W) '$(srcdir)/clib/fifo.c'; fi`
+
+clib/libclibkernel_a-fheap.o: clib/fheap.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-fheap.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-fheap.Tpo -c -o clib/libclibkernel_a-fheap.o `test -f 'clib/fheap.c' || echo '$(srcdir)/'`clib/fheap.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-fheap.Tpo clib/$(DEPDIR)/libclibkernel_a-fheap.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/fheap.c' object='clib/libclibkernel_a-fheap.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-fheap.o `test -f 'clib/fheap.c' || echo '$(srcdir)/'`clib/fheap.c
+
+clib/libclibkernel_a-fheap.obj: clib/fheap.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-fheap.obj -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-fheap.Tpo -c -o clib/libclibkernel_a-fheap.obj `if test -f 'clib/fheap.c'; then $(CYGPATH_W) 'clib/fheap.c'; else $(CYGPATH_W) '$(srcdir)/clib/fheap.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-fheap.Tpo clib/$(DEPDIR)/libclibkernel_a-fheap.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/fheap.c' object='clib/libclibkernel_a-fheap.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-fheap.obj `if test -f 'clib/fheap.c'; then $(CYGPATH_W) 'clib/fheap.c'; else $(CYGPATH_W) '$(srcdir)/clib/fheap.c'; fi`
 
 clib/libclibkernel_a-format.o: clib/format.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-format.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-format.Tpo -c -o clib/libclibkernel_a-format.o `test -f 'clib/format.c' || echo '$(srcdir)/'`clib/format.c
@@ -2416,6 +2446,20 @@ clib/libclibstandalone_a-fifo.obj: clib/fifo.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/fifo.c' object='clib/libclibstandalone_a-fifo.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-fifo.obj `if test -f 'clib/fifo.c'; then $(CYGPATH_W) 'clib/fifo.c'; else $(CYGPATH_W) '$(srcdir)/clib/fifo.c'; fi`
+
+clib/libclibstandalone_a-fheap.o: clib/fheap.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-fheap.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-fheap.Tpo -c -o clib/libclibstandalone_a-fheap.o `test -f 'clib/fheap.c' || echo '$(srcdir)/'`clib/fheap.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-fheap.Tpo clib/$(DEPDIR)/libclibstandalone_a-fheap.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/fheap.c' object='clib/libclibstandalone_a-fheap.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-fheap.o `test -f 'clib/fheap.c' || echo '$(srcdir)/'`clib/fheap.c
+
+clib/libclibstandalone_a-fheap.obj: clib/fheap.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-fheap.obj -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-fheap.Tpo -c -o clib/libclibstandalone_a-fheap.obj `if test -f 'clib/fheap.c'; then $(CYGPATH_W) 'clib/fheap.c'; else $(CYGPATH_W) '$(srcdir)/clib/fheap.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-fheap.Tpo clib/$(DEPDIR)/libclibstandalone_a-fheap.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/fheap.c' object='clib/libclibstandalone_a-fheap.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-fheap.obj `if test -f 'clib/fheap.c'; then $(CYGPATH_W) 'clib/fheap.c'; else $(CYGPATH_W) '$(srcdir)/clib/fheap.c'; fi`
 
 clib/libclibstandalone_a-format.o: clib/format.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-format.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-format.Tpo -c -o clib/libclibstandalone_a-format.o `test -f 'clib/format.c' || echo '$(srcdir)/'`clib/format.c
