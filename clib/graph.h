@@ -106,9 +106,6 @@ typedef struct {
   u32 rank;
 
   u32 is_marked;
-
-  /* Uniquely identifies user's item corresponding to this node. */
-  uword item_opaque;
 } fheap_node_t;
 
 #define foreach_fheap_node_sibling(f,ni,first_ni,body)			\
@@ -138,7 +135,7 @@ do {									\
 typedef struct {
   u32 min_root;
 
-  /* Pool of nodes. */
+  /* Vector of nodes. */
   fheap_node_t * nodes;
 
   u32 * root_list_by_rank;
@@ -150,17 +147,26 @@ typedef struct {
 
 /* Initialize empty heap. */
 always_inline void
-fheap_init (fheap_t * f)
+fheap_init (fheap_t * f, u32 n_nodes)
 {
-  pool_free (f->nodes);
+  fheap_node_t * save_nodes = f->nodes;
+  u32 * save_root_list = f->root_list_by_rank;
+
   memset (f, 0, sizeof (f[0]));
+
+  f->nodes = save_nodes;
+  f->root_list_by_rank = save_root_list;
+
+  vec_validate (f->nodes, n_nodes - 1);
+  vec_reset_length (f->root_list_by_rank);
+
   f->min_root = ~0;
 }
 
 always_inline void
 fheap_free (fheap_t * f)
 {
-  pool_free (f->nodes);
+  vec_free (f->nodes);
   vec_free (f->root_list_by_rank);
 }
 
@@ -172,10 +178,10 @@ always_inline u32
 fheap_is_empty (fheap_t * f)
 { return f->min_root == ~0; }
 
-uword fheap_add_item (fheap_t * f, uword item_opaque, u32 key);
-uword fheap_del_item (fheap_t * f, u32 ni);
+void fheap_add_item (fheap_t * f, u32 ni, u32 key);
+void fheap_del_item (fheap_t * f, u32 ni);
 
-uword fheap_del_min (fheap_t * f, u32 * min_key);
+u32 fheap_del_min (fheap_t * f, u32 * min_key);
 
 void fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key);
 

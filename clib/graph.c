@@ -138,7 +138,7 @@ u8 * format_graph (u8 * s, va_list * args)
 /* Fibonacci heaps. */
 always_inline fheap_node_t *
 fheap_get_node (fheap_t * f, u32 i)
-{ return i != ~0 ? pool_elt_at_index (f->nodes, i) : 0; }
+{ return i != ~0 ? vec_elt_at_index (f->nodes, i) : 0; }
 
 always_inline fheap_node_t *
 fheap_get_root (fheap_t * f)
@@ -154,13 +154,10 @@ static void fheap_validate (fheap_t * f)
 
   vec_foreach_index (ni, f->nodes)
     {
-      if (pool_is_free_index (f->nodes, ni))
-	continue;
-
-      n = pool_elt_at_index (f->nodes, ni);
+      n = vec_elt_at_index (f->nodes, ni);
 
       /* Min root must have minimal key. */
-      m = pool_elt_at_index (f->nodes, f->min_root);
+      m = vec_elt_at_index (f->nodes, f->min_root);
       ASSERT (n->key >= m->key);
 
       /* Min root must have no parent. */
@@ -177,9 +174,9 @@ static void fheap_validate (fheap_t * f)
 	  fheap_node_t * prev, * next;
 	  u32 si = n->next_sibling, si_start = si;
 	  do {
-	    m = pool_elt_at_index (f->nodes, si);
-	    prev = pool_elt_at_index (f->nodes, m->prev_sibling);
-	    next = pool_elt_at_index (f->nodes, m->next_sibling);
+	    m = vec_elt_at_index (f->nodes, si);
+	    prev = vec_elt_at_index (f->nodes, m->prev_sibling);
+	    next = vec_elt_at_index (f->nodes, m->next_sibling);
 	    ASSERT (prev->next_sibling == si);
 	    ASSERT (next->prev_sibling == si);
 	    si = m->next_sibling;
@@ -191,7 +188,7 @@ static void fheap_validate (fheap_t * f)
 	u32 n_siblings = 0;
 
 	foreach_fheap_node_sibling (f, si, n->next_sibling, ({
-	  m = pool_elt_at_index (f->nodes, si);
+	  m = vec_elt_at_index (f->nodes, si);
 
 	  /* All siblings must have same parent. */
 	  ASSERT (m->parent == n->parent);
@@ -210,7 +207,7 @@ static void fheap_validate (fheap_t * f)
 	u32 n_children = 0;
 
 	foreach_fheap_node_sibling (f, si, n->first_child, ({
-	  m = pool_elt_at_index (f->nodes, si);
+	  m = vec_elt_at_index (f->nodes, si);
 
 	  /* Children must have larger keys than their parent. */
 	  ASSERT (m->key >= n->key);
@@ -237,8 +234,8 @@ static void fheap_validate (fheap_t * f)
 static void
 fheap_node_add_sibling (fheap_t * f, u32 ni, u32 ni_to_add)
 {
-  fheap_node_t * n = pool_elt_at_index (f->nodes, ni);
-  fheap_node_t * n_to_add = pool_elt_at_index (f->nodes, ni_to_add);
+  fheap_node_t * n = vec_elt_at_index (f->nodes, ni);
+  fheap_node_t * n_to_add = vec_elt_at_index (f->nodes, ni_to_add);
   fheap_node_t * n_next = fheap_get_node (f, n->next_sibling);
   fheap_node_t * parent;
 
@@ -265,17 +262,15 @@ fheap_node_add_sibling (fheap_t * f, u32 ni, u32 ni_to_add)
     parent->rank += 1;
 }
 
-uword fheap_add_item (fheap_t * f, uword item_opaque, u32 key)
+void fheap_add_item (fheap_t * f, u32 ni, u32 key)
 {
   fheap_node_t * r, * n;
-  u32 ni, ri;
+  u32 ri;
 
-  pool_get (f->nodes, n);
-  ni = n - f->nodes;
+  n = vec_elt_at_index (f->nodes, ni);
 
   memset (n, 0, sizeof (n[0]));
   n->parent = n->first_child = n->next_sibling = n->prev_sibling = ~0;
-  n->item_opaque = item_opaque;
   n->key = key;
 
   r = fheap_get_root (f);
@@ -296,14 +291,12 @@ uword fheap_add_item (fheap_t * f, uword item_opaque, u32 key)
     }
 
   fheap_validate (f);
-
-  return ni;
 }
 
 static u32
 fheap_node_remove (fheap_t * f, u32 ni)
 {
-  fheap_node_t * n = pool_elt_at_index (f->nodes, ni);
+  fheap_node_t * n = vec_elt_at_index (f->nodes, ni);
   u32 prev_ni = n->prev_sibling;
   u32 next_ni = n->next_sibling;
   u32 list_has_single_element = prev_ni == ni;
@@ -337,7 +330,7 @@ fheap_node_remove (fheap_t * f, u32 ni)
 
 static void fheap_link_root (fheap_t * f, u32 ni)
 {
-  fheap_node_t * n = pool_elt_at_index (f->nodes, ni);
+  fheap_node_t * n = vec_elt_at_index (f->nodes, ni);
   fheap_node_t * r, * lo, * hi;
   u32 ri, lo_i, hi_i, k;
 
@@ -389,7 +382,7 @@ static void fheap_link_root (fheap_t * f, u32 ni)
     }
 }
 
-uword fheap_del_min (fheap_t * f, u32 * min_key)
+u32 fheap_del_min (fheap_t * f, u32 * min_key)
 {
   fheap_node_t * r = fheap_get_root (f);
   u32 to_delete_min_ri = f->min_root;
@@ -416,8 +409,6 @@ uword fheap_del_min (fheap_t * f, u32 * min_key)
 
       ASSERT (f->nodes[ri].parent == ~0);
 
-      vec_reset_length (f->root_list_by_rank);
-
       r = fheap_get_node (f, ri);
       ri_last = r->prev_sibling;
       while (1)
@@ -436,6 +427,7 @@ uword fheap_del_min (fheap_t * f, u32 * min_key)
 	  ni = f->root_list_by_rank[i];
 	  if (ni == ~0)
 	    continue;
+	  f->root_list_by_rank[i] = ~0;
 	  r = fheap_get_node (f, ni);
 	  if (r->key < min_ds)
 	    {
@@ -447,25 +439,18 @@ uword fheap_del_min (fheap_t * f, u32 * min_key)
     }
 
   /* Return deleted min root. */
-  {
-    uword item_opaque;
+  r = vec_elt_at_index (f->nodes, to_delete_min_ri);
+  if (min_key)
+    *min_key = r->key;
 
-    r = pool_elt_at_index (f->nodes, to_delete_min_ri);
-    item_opaque = r->item_opaque;
-    if (min_key)
-      *min_key = r->key;
+  fheap_validate (f);
 
-    pool_put (f->nodes, r);
-
-    fheap_validate (f);
-
-    return item_opaque;
-  }
+  return to_delete_min_ri;
 }
 
 static void fheap_mark_parent (fheap_t * f, u32 pi)
 {
-  fheap_node_t * p = pool_elt_at_index (f->nodes, pi);
+  fheap_node_t * p = vec_elt_at_index (f->nodes, pi);
 
   /* Parent is a root: do nothing. */
   if (p->parent == ~0)
@@ -494,7 +479,7 @@ static void fheap_mark_parent (fheap_t * f, u32 pi)
 /* Set key to new smaller value. */
 void fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key)
 {
-  fheap_node_t * n = pool_elt_at_index (f->nodes, ni);
+  fheap_node_t * n = vec_elt_at_index (f->nodes, ni);
   fheap_node_t * r = fheap_get_root (f);
 
   n->key = new_key;
@@ -514,18 +499,16 @@ void fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key)
   fheap_validate (f);
 }
 
-uword fheap_del_item (fheap_t * f, u32 ni)
+void fheap_del_item (fheap_t * f, u32 ni)
 {
   fheap_node_t * n;
-  uword item_opaque;
 
-  n = pool_elt_at_index (f->nodes, ni);
-  item_opaque = n->item_opaque;
+  n = vec_elt_at_index (f->nodes, ni);
 
   if (n->parent == ~0)
     {
       ASSERT (ni == f->min_root);
-      return fheap_del_min (f, 0);
+      fheap_del_min (f, 0);
     }
   else
     {
@@ -544,6 +527,4 @@ uword fheap_del_item (fheap_t * f, u32 ni)
     }
 
   fheap_validate (f);
-
-  return item_opaque;
 }
