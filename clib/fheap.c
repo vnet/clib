@@ -99,7 +99,7 @@ static void fheap_validate (fheap_t * f)
   f->validate_serial++;
 }
 
-static void
+always_inline void
 fheap_node_add_sibling (fheap_t * f, u32 ni, u32 ni_to_add)
 {
   fheap_node_t * n = vec_elt_at_index (f->nodes, ni);
@@ -161,7 +161,7 @@ void fheap_add (fheap_t * f, u32 ni, u32 key)
   fheap_validate (f);
 }
 
-static u32
+always_inline u32
 fheap_node_remove_internal (fheap_t * f, u32 ni, u32 invalidate)
 {
   fheap_node_t * n = vec_elt_at_index (f->nodes, ni);
@@ -197,10 +197,10 @@ fheap_node_remove_internal (fheap_t * f, u32 ni, u32 invalidate)
   return list_has_single_element ? ~0 : next_ni;
 }
 
-static u32 fheap_node_remove (fheap_t * f, u32 ni)
+always_inline u32 fheap_node_remove (fheap_t * f, u32 ni)
 { return fheap_node_remove_internal (f, ni, /* invalidate */ 0); }
 
-static u32 fheap_node_remove_and_invalidate (fheap_t * f, u32 ni)
+always_inline u32 fheap_node_remove_and_invalidate (fheap_t * f, u32 ni)
 { return fheap_node_remove_internal (f, ni, /* invalidate */ 1); }
 
 static void fheap_link_root (fheap_t * f, u32 ni)
@@ -267,11 +267,26 @@ u32 fheap_del_min (fheap_t * f, u32 * min_key)
   if (! r)
     return ~0;
 
-  /* Root's children become siblings. */
-  foreach_fheap_node_sibling (f, ni, r->first_child, ({
-    fheap_node_remove (f, ni);
-    fheap_node_add_sibling (f, to_delete_min_ri, ni);
-  }));
+  /* Root's children become siblings.  Call this step a; see below. */
+  if (r->first_child != ~0)
+    {
+      u32 ci, cni, rni;
+      fheap_node_t * c, * cn, * rn;
+
+      /* Splice child & root circular lists together. */
+      ci = r->first_child;
+      c = vec_elt_at_index (f->nodes, ci);
+
+      cni = c->next_sibling;
+      rni = r->next_sibling;
+      cn = vec_elt_at_index (f->nodes, cni);
+      rn = vec_elt_at_index (f->nodes, rni);
+
+      r->next_sibling = cni;
+      c->next_sibling = rni;
+      cn->prev_sibling = to_delete_min_ri;
+      rn->prev_sibling = ci;
+    }
 
   /* Remove min root. */
   ri = fheap_node_remove_and_invalidate (f, to_delete_min_ri);
@@ -282,12 +297,13 @@ u32 fheap_del_min (fheap_t * f, u32 * min_key)
     {
       u32 ri_last, ri_next, i, min_ds;
 
-      ASSERT (f->nodes[ri].parent == ~0);
-
       r = fheap_get_node (f, ri);
       ri_last = r->prev_sibling;
       while (1)
 	{
+	  /* Step a above can put children (with r->parent != ~0) on root list. */
+	  r->parent = ~0;
+
 	  ri_next = r->next_sibling;
 	  fheap_link_root (f, ri);
 	  if (ri == ri_last)
