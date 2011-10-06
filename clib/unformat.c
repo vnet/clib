@@ -542,7 +542,7 @@ unformat_float (unformat_input_t * input,
 	  if (value_index == 2 && n_digits[2] == 0)
 	    /* sign of exponent: it's ok. */;
 
-	  else if (value_index == 0 && n_digits[0] > 0)
+	  else if (value_index < 2 && n_digits[0] > 0)
 	    {
 	      /* 123- */
 	      unformat_put_input (input);
@@ -559,7 +559,7 @@ unformat_float (unformat_input_t * input,
 	  if (value_index == 2 && n_digits[2] == 0)
 	    /* sign of exponent: it's ok. */;
 
-	  else if (value_index == 0 && n_digits[0] > 0)
+	  else if (value_index < 2 && n_digits[0] > 0)
 	    {
 	      /* 123+ */
 	      unformat_put_input (input);
