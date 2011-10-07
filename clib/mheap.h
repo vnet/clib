@@ -73,7 +73,6 @@ typedef struct {
 
   /* Offset of this item */
   uword offset;    
-
 } mheap_trace_t;
 
 typedef struct {
