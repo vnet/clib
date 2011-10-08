@@ -48,7 +48,7 @@ typedef struct {
 
   /** Pad so that sizeof (pool_header_t) + sizeof (vec_header_t)
      is a multiple of 8 bytes. */
-  u8 pad[MHEAP_ALIGN_PAD_BYTES (sizeof(2*sizeof (void *) + sizeof (_VEC)))];
+  u8 pad[MHEAP_ALIGN_PAD_BYTES (sizeof(2*sizeof (void *) + sizeof (vec_header_t)))];
 } pool_header_t;
 
 /** \brief Get pool header from user pool pointer */

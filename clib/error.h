@@ -25,6 +25,7 @@
 #define included_error_h
 
 #include <clib/clib.h> /* for CLIB_LINUX_KERNEL */
+#include <clib/error_bootstrap.h>
 
 #ifdef CLIB_UNIX
 #include <errno.h>
@@ -37,44 +38,25 @@
 #include <stdarg.h>
 #include <clib/vec.h>
 
-enum {
-  ERROR_FATAL	= 1 << 0,
-  ERROR_ABORT	= 1 << 1,
-  ERROR_WARNING	= 1 << 2,
-  ERROR_ERRNO_VALID = 1 << 16,
-  ERROR_NO_RATE_LIMIT = 1 << 17,
-};
-
 /* Callback functions for error reporting. */
 typedef void clib_error_handler_func_t (void * arg, u8 * msg, int msg_len);
 void clib_error_register_handler (clib_error_handler_func_t func, void * arg);
 
-/* Low level error reporting function.
-   Code specifies whether to call exit, abort or nothing at
-   all (for non-fatal warnings). */
-extern void _clib_error (int code,
-			 char * function_name,
-			 uword line_number,
-			 char * format, ...);
-
-/* Current function name.  Need (char *) cast to silence gcc4 pointer signedness warning. */
-#define clib_error_function ((char *) __FUNCTION__)
-
 #define clib_warning(format,args...) \
-  _clib_error (ERROR_WARNING, clib_error_function, __LINE__, format, ## args)
+  _clib_error (CLIB_ERROR_WARNING, clib_error_function, __LINE__, format, ## args)
 
 #define clib_error(format,args...) \
-  _clib_error (ERROR_FATAL, clib_error_function, __LINE__, format, ## args)
+  _clib_error (CLIB_ERROR_FATAL, clib_error_function, __LINE__, format, ## args)
 
 #define clib_unix_error(format,args...) \
-  _clib_error (ERROR_FATAL | ERROR_ERRNO_VALID, clib_error_function, __LINE__, format, ## args)
+  _clib_error (CLIB_ERROR_FATAL | CLIB_ERROR_ERRNO_VALID, clib_error_function, __LINE__, format, ## args)
 
 #define clib_unix_warning(format,args...) \
-  _clib_error (ERROR_WARNING | ERROR_ERRNO_VALID, clib_error_function, __LINE__, format, ## args)
+  _clib_error (CLIB_ERROR_WARNING | CLIB_ERROR_ERRNO_VALID, clib_error_function, __LINE__, format, ## args)
 
 /* For programming errors and assert. */
 #define clib_panic(format,args...) \
-  _clib_error (ERROR_ABORT, (char *) clib_error_function, __LINE__, format, ## args)
+  _clib_error (CLIB_ERROR_ABORT, (char *) clib_error_function, __LINE__, format, ## args)
 
 typedef struct {
   /* Error message. */
@@ -117,13 +99,13 @@ _clib_error_return (clib_error_t * errors,
   clib_error_return_code(e,0,0,args)
 
 #define clib_error_return_unix(e,args...) \
-  clib_error_return_code(e,errno,ERROR_ERRNO_VALID,args)
+  clib_error_return_code(e,errno,CLIB_ERROR_ERRNO_VALID,args)
 
 #define clib_error_return_fatal(e,args...) \
-  clib_error_return_code(e,0,ERROR_FATAL,args)
+  clib_error_return_code(e,0,CLIB_ERROR_FATAL,args)
 
 #define clib_error_return_unix_fatal(e,args...) \
-  clib_error_return_code(e,errno,ERROR_ERRNO_VALID|ERROR_FATAL,args)
+  clib_error_return_code(e,errno,CLIB_ERROR_ERRNO_VALID|CLIB_ERROR_FATAL,args)
 
 extern clib_error_t * _clib_error_report (clib_error_t * errors);
 
@@ -160,23 +142,6 @@ do {							\
   clib_error_t * _error_return_if = (x);		\
   if (_error_return_if)					\
     return clib_error_return (_error_return_if, 0);	\
-} while (0)
-
-#ifndef CLIB_ASSERT_ENABLE
-#define CLIB_ASSERT_ENABLE (CLIB_DEBUG > 0)
-#endif
-
-#define ASSERT(truth)					\
-do {							\
-  if (CLIB_ASSERT_ENABLE && ! (truth))			\
-    {							\
-      _clib_error (ERROR_ABORT, 0, 0,			\
-		   "%s:%d (%s) assertion `%s' fails",	\
-		   __FILE__,				\
-		   (uword) __LINE__,			\
-		   clib_error_function,			\
-		   # truth);				\
-    }							\
 } while (0)
 
 #define ERROR_ASSERT(truth)			\

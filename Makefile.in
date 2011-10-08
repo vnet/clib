@@ -212,9 +212,8 @@ am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
 	clib/std-formats.lo clib/string.lo clib/time.lo \
 	clib/timing_wheel.lo clib/unformat.lo clib/vec.lo \
 	clib/vhash.lo clib/zvec.lo
-am_libclib_la_OBJECTS = $(am__objects_5) clib/mem_malloc.lo \
-	clib/socket.lo clib/timer.lo clib/unix-formats.lo \
-	clib/unix-misc.lo
+am_libclib_la_OBJECTS = $(am__objects_5) clib/socket.lo clib/timer.lo \
+	clib/unix-formats.lo clib/unix-misc.lo
 libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
 @WITH_UNIX_TRUE@am_libclib_la_rpath = -rpath $(libdir)
 am__EXEEXT_1 = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
@@ -654,6 +653,7 @@ nobase_include_HEADERS = \
     clib/elog.h \
     clib/fheap.h \
     clib/error.h \
+    clib/error_bootstrap.h \
     clib/fifo.h \
     clib/format.h \
     clib/graph.h \
@@ -666,6 +666,7 @@ nobase_include_HEADERS = \
     clib/mem.h \
     clib/mhash.h \
     clib/mheap.h \
+    clib/mheap_bootstrap.h \
     clib/os.h \
     clib/phash.h \
     clib/pipeline.h \
@@ -686,11 +687,13 @@ nobase_include_HEADERS = \
     clib/types.h \
     clib/unix.h \
     clib/vec.h \
+    clib/vec_bootstrap.h \
     clib/vector.h \
     clib/vector_altivec.h \
     clib/vector_funcs.h \
     clib/vector_iwmmxt.h \
     clib/vector_sse2.h \
+    clib/valgrind.h \
     clib/vhash.h \
     clib/vm_linux_kernel.h \
     clib/vm_standalone.h \
@@ -734,7 +737,6 @@ CLIB_CORE = \
 # Core plus Unix additions
 libclib_la_SOURCES = \
   $(CLIB_CORE) \
-  clib/mem_malloc.c \
   clib/socket.c \
   clib/timer.c \
   clib/unix-formats.c \
@@ -1132,8 +1134,6 @@ clib/unformat.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/vec.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/vhash.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/zvec.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
-clib/mem_malloc.lo: clib/$(am__dirstamp) \
-	clib/$(DEPDIR)/$(am__dirstamp)
 clib/socket.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/timer.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/unix-formats.lo: clib/$(am__dirstamp) \
@@ -1391,8 +1391,6 @@ mostlyclean-compile:
 	-rm -f clib/longjmp.lo
 	-rm -f clib/md5.$(OBJEXT)
 	-rm -f clib/md5.lo
-	-rm -f clib/mem_malloc.$(OBJEXT)
-	-rm -f clib/mem_malloc.lo
 	-rm -f clib/mem_mheap.$(OBJEXT)
 	-rm -f clib/mem_mheap.lo
 	-rm -f clib/mhash.$(OBJEXT)
@@ -1571,7 +1569,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/longjmp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/md5.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mem_malloc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mem_mheap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mhash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mheap.Plo@am__quote@

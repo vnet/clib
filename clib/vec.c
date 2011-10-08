@@ -24,74 +24,66 @@
 #include <clib/vec.h>
 #include <clib/mem.h>
 
-/** \brief low-level vector resize operator (do not call directly)
-
-    Called as needed by various macros such as vec_add1() */
-void * _vec_resize (void * _v,
-		    word length_increment,
-		    uword data_bytes,
-		    uword header_bytes,
-		    uword data_align)
+/* Vector resize operator.  Called as needed by various macros such as
+   vec_add1() when we need to allocate memory. */
+void * vec_resize_allocate_memory (void * v,
+				   word length_increment,
+				   uword data_bytes,
+				   uword header_bytes,
+				   uword data_align)
 {
-  _VEC * v = _vec_find (_v);
+  vec_header_t * vh = _vec_find (v);
   uword old_alloc_bytes, new_alloc_bytes;
-  void * _v_new;
+  void * old, * new;
 
   header_bytes = vec_header_bytes_ha (header_bytes, data_align);
 
   data_bytes += header_bytes;
 
-  if (! _v)
-    goto new;
+  if (! v)
+    {
+      new = clib_mem_alloc_aligned_at_offset (data_bytes, data_align, header_bytes);
+      data_bytes = clib_mem_size (new);
+      memset (new, 0, data_bytes);
+      v = new + header_bytes;
+      _vec_len (v) = length_increment;
+      return v;
+    }
 
-  v->len += length_increment;
-  _v -= header_bytes;
+  vh->len += length_increment;
+  old = v - header_bytes;
 
   /* Vector header must start heap object. */
-  ASSERT (clib_mem_is_heap_object (_v));
+  ASSERT (clib_mem_is_heap_object (old));
 
-  old_alloc_bytes = clib_mem_size (_v);
+  old_alloc_bytes = clib_mem_size (old);
 
   /* Need to resize? */
   if (data_bytes <= old_alloc_bytes)
-    {
-    done:
-      return (void *) (v + 1);
-    }
+    return v;
 
   new_alloc_bytes = (old_alloc_bytes * 3) / 2;
   if (new_alloc_bytes < data_bytes)
       new_alloc_bytes = data_bytes;
 
-  _v_new = clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align, header_bytes);
+  new = clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align, header_bytes);
 
   /* FIXME fail gracefully. */
-  if (! _v_new)
+  if (! new)
     clib_panic ("vec_resize fails, length increment %d, data bytes %d, alignment %d",
 		length_increment, data_bytes, data_align);
 
-  memcpy (_v_new, _v, old_alloc_bytes);
-  clib_mem_free (_v);
-  _v = _v_new;
+  memcpy (new, old, old_alloc_bytes);
+  clib_mem_free (old);
+  v = new;
 
   /* Allocator may give a bit of extra room. */
-  new_alloc_bytes = clib_mem_size (_v);
+  new_alloc_bytes = clib_mem_size (v);
 
   /* Zero new memory. */
-  memset (_v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
+  memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
 
-  _v += header_bytes;
-  v = _vec_find (_v);
-  goto done;
-
- new:
-  _v = clib_mem_alloc_aligned_at_offset (data_bytes, data_align, header_bytes);
-  data_bytes = clib_mem_size (_v);
-  memset (_v, 0, data_bytes);
-  _v += header_bytes;
-  v = _vec_find (_v);
-  v->len = length_increment;
-  goto done;
+  return v + header_bytes;
 } 
 
 uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes)

@@ -161,6 +161,7 @@ nobase_include_HEADERS = \
     clib/elog.h \
     clib/fheap.h \
     clib/error.h \
+    clib/error_bootstrap.h \
     clib/fifo.h \
     clib/format.h \
     clib/graph.h \
@@ -173,6 +174,7 @@ nobase_include_HEADERS = \
     clib/mem.h \
     clib/mhash.h \
     clib/mheap.h \
+    clib/mheap_bootstrap.h \
     clib/os.h \
     clib/phash.h \
     clib/pipeline.h \
@@ -193,11 +195,13 @@ nobase_include_HEADERS = \
     clib/types.h \
     clib/unix.h \
     clib/vec.h \
+    clib/vec_bootstrap.h \
     clib/vector.h \
     clib/vector_altivec.h \
     clib/vector_funcs.h \
     clib/vector_iwmmxt.h \
     clib/vector_sse2.h \
+    clib/valgrind.h \
     clib/vhash.h \
     clib/vm_linux_kernel.h \
     clib/vm_standalone.h \
@@ -240,7 +244,6 @@ CLIB_CORE = \
 # Core plus Unix additions
 libclib_la_SOURCES = \
   $(CLIB_CORE) \
-  clib/mem_malloc.c \
   clib/socket.c \
   clib/timer.c \
   clib/unix-formats.c \

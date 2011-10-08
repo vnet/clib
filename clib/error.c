@@ -110,7 +110,7 @@ void _clib_error (int how_to_die,
   va_end (va);
 
 #ifdef HAVE_ERRNO
-  if (how_to_die & ERROR_ERRNO_VALID)
+  if (how_to_die & CLIB_ERROR_ERRNO_VALID)
     msg = format (msg, ": %s (errno %d)", strerror (errno), errno);
 #endif
 
@@ -121,9 +121,9 @@ void _clib_error (int how_to_die,
 
   vec_free (msg);
 
-  if (how_to_die & ERROR_ABORT)
+  if (how_to_die & CLIB_ERROR_ABORT)
     debugger ();
-  if (how_to_die & ERROR_FATAL)
+  if (how_to_die & CLIB_ERROR_FATAL)
     error_exit (1);
 }
 
@@ -147,7 +147,7 @@ clib_error_t * _clib_error_return (clib_error_t * errors,
     e->what = va_format (0, fmt, &va);
 
 #ifdef HAVE_ERRNO
-  if (flags & ERROR_ERRNO_VALID)
+  if (flags & CLIB_ERROR_ERRNO_VALID)
     {
       if (e->what)
 	e->what = format (e->what, ": ");
@@ -208,9 +208,9 @@ clib_error_t * _clib_error_report (clib_error_t * errors)
       msg = dispatch_message (msg);
       vec_free (msg);
 
-      if (errors->flags & ERROR_ABORT)
+      if (errors->flags & CLIB_ERROR_ABORT)
 	debugger ();
-      if (errors->flags & ERROR_FATAL)
+      if (errors->flags & CLIB_ERROR_FATAL)
 	error_exit (1);
 
       clib_error_free (errors);

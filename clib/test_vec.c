@@ -233,11 +233,10 @@ static void validate_vec_hdr (elt_t * vec, uword hdr_bytes)
 {
   u8 * hdr;
   u8 * hdr_end;
-  _VEC * vh;
+  vec_header_t * vh;
 
   if (! vec)
     return;
-  
 
   vh = _vec_find (vec);
   hdr = vec_header (vec, hdr_bytes);
