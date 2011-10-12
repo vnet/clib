@@ -123,7 +123,7 @@ vhash_is_non_empty_overflow_bucket (vhash_t * h, u32 key)
 always_inline void
 vhash_free_overflow_buckets (vhash_overflow_buckets_t * obs)
 {
-  vec_free_aligned (obs->search_buckets, CLIB_CACHE_LINE_BYTES);
+  vec_free (obs->search_buckets);
   vec_free (obs->free_indices);
 }
 
@@ -133,9 +133,9 @@ vhash_free (vhash_t * h)
   uword i;
   for (i = 0; i < ARRAY_LEN (h->overflow_buckets); i++)
     vhash_free_overflow_buckets (&h->overflow_buckets[i]);
-  vec_free_aligned (h->search_buckets, CLIB_CACHE_LINE_BYTES);
-  vec_free_aligned (h->key_work_space, CLIB_CACHE_LINE_BYTES);
-  vec_free_aligned (h->hash_work_space, CLIB_CACHE_LINE_BYTES);
+  vec_free (h->search_buckets);
+  vec_free (h->key_work_space);
+  vec_free (h->hash_work_space);
 }
 
 always_inline void

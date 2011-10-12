@@ -225,22 +225,19 @@ do {									\
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
 
 /** \brief low-level free pool operator (do not call directly) */
-always_inline void * _pool_free_aligned (void * v, uword align)
+always_inline void * _pool_free (void * v)
 {
   pool_header_t * p = pool_header (v);
   if (! v)
     return v;
   clib_bitmap_free (p->free_bitmap);
   vec_free (p->free_indices);
-  vec_free_ha (v, sizeof (p[0]), align);
+  vec_free_h (v, sizeof (p[0]));
   return 0;
 }
 
-/** \brief Free a pool (general version) */
-#define pool_free_aligned(p,a) (p) = _pool_free_aligned(p,a)
-
-/** \brief Free a pool (unspecified alignment) */
-#define pool_free(p) (p) = _pool_free_aligned(p,0)
+/** \brief Free a pool. */
+#define pool_free(p) (p) = _pool_free(p)
 
 /** \brief Optimized iteration through pool 
 

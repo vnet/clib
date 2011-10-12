@@ -381,7 +381,7 @@ elog_nsec_per_clock (elog_main_t * em)
 static void elog_alloc (elog_main_t * em, u32 n_events)
 {
   if (em->event_ring)
-    vec_free_aligned (em->event_ring, CLIB_CACHE_LINE_BYTES);
+    vec_free (em->event_ring);
   
   /* Ring size must be a power of 2. */
   em->event_ring_size = n_events = max_pow2 (n_events);

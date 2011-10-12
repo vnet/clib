@@ -86,7 +86,7 @@ _vec_resize (void * v,
   vec_header_t * vh = _vec_find (v);
   uword new_data_bytes, aligned_header_bytes;
 
-  aligned_header_bytes = vec_header_bytes_ha (header_bytes, data_align);
+  aligned_header_bytes = vec_header_bytes (header_bytes);
 
   new_data_bytes = data_bytes + aligned_header_bytes;
 
@@ -110,10 +110,10 @@ _vec_resize (void * v,
 				     clib_max (sizeof (vec_header_t), data_align));
 }
 
-uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes);
+uword clib_mem_is_vec_h (void * v, uword header_bytes);
 
 always_inline uword clib_mem_is_vec (void * v)
-{ return clib_mem_is_vec_ha (v, 0, 0); }
+{ return clib_mem_is_vec_h (v, 0); }
 
 /* Local variable naming macro (prevents collisions with other macro naming). */
 #define _v(var) _vec_##var
@@ -160,21 +160,17 @@ do {						\
 #define vec_new_aligned(T,N,A) vec_new_ha(T,N,0,A)
 
 /* Free vector's memory (general version). */
-#define vec_free_ha(V,H,A)				\
-do {							\
-  if (V)						\
-    {							\
-      clib_mem_free (vec_header_ha ((V), (H), (A)));	\
-      V = 0;						\
-    }							\
+#define vec_free_h(V,H)				\
+do {						\
+  if (V)					\
+    {						\
+      clib_mem_free (vec_header ((V), (H)));	\
+      V = 0;					\
+    }						\
 } while (0)
 
 /* Free vector's memory (unspecified alignment, no header). */
-#define vec_free(V) vec_free_ha(V,0,0)
-/* Free vector's memory (alignment specified but no header). */
-#define vec_free_aligned(V,A) vec_free_ha(V,0,A)
-/* Free vector's memory (unspecified alignment, has header, unspecified header alignment). */
-#define vec_free_h(V,H) vec_free_ha(V,H,0)
+#define vec_free(V) vec_free_h(V,0)
 /* Free vector user header */
 #define vec_free_header(h) clib_mem_free (h)
 

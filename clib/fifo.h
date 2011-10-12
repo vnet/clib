@@ -235,7 +235,7 @@ clib_fifo_tail_index (void * v)
 #define clib_fifo_head(v) ((v) + clib_fifo_head_index (v))
 #define clib_fifo_tail(v) ((v) + clib_fifo_tail_index (v))
 
-#define clib_fifo_free(f) vec_free_ha((f),sizeof(clib_fifo_header_t),CLIB_CACHE_LINE_BYTES)
+#define clib_fifo_free(f) vec_free_h((f),sizeof(clib_fifo_header_t))
 
 always_inline uword
 clib_fifo_elt_index (void * v, uword i)

@@ -71,8 +71,11 @@ clib_bitmap_is_equal (uword * a, uword * b)
 #define clib_bitmap_alloc(v,n_bits) \
   v = vec_new (uword, ((n_bits) + BITS (uword) - 1) / BITS (uword))
 
+#define clib_bitmap_vec_validate(v,i) vec_validate_aligned((v),(i),sizeof(uword))
+
 /** \brief Make sure that a bitmap is at least n_bits in size */
-#define clib_bitmap_validate(v,n_bits) vec_validate ((v), (n_bits) / BITS (uword))
+#define clib_bitmap_validate(v,n_bits) \
+  clib_bitmap_vec_validate ((v), ((n_bits) - 1) / BITS (uword))
 
 /** \brief low-level routine to remove trailing zeros from a bitmap */
 always_inline uword *
@@ -124,7 +127,7 @@ clib_bitmap_set (uword * ai, uword i, uword value)
   if (value == 0 && i0 >= vec_len (ai))
     return ai;			/* Implied trailing zeros. */
 
-  vec_validate (ai, i0);
+  clib_bitmap_vec_validate (ai, i0);
 
   a = ai[i0];
   a &= ~((uword) 1 << i1);
@@ -218,7 +221,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
   i1 = i % BITS (bitmap[0]);
 
   /* Allocate bitmap. */
-  vec_validate (bitmap, (i + n_bits) / BITS (bitmap[0]));
+  clib_bitmap_vec_validate (bitmap, (i + n_bits) / BITS (bitmap[0]));
   l = vec_len (bitmap);
 
   m = ~0;
@@ -263,7 +266,7 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
   b0 = i_end / BITS (bitmap[0]);
   b1 = i_end % BITS (bitmap[0]);
 
-  vec_validate (bitmap, b0);
+  clib_bitmap_vec_validate (bitmap, b0);
 
   /* First word. */
   mask = n_bits < BITS (bitmap[0]) ? pow2_mask (n_bits) : ~0;
@@ -361,7 +364,7 @@ clib_bitmap_##name (uword * ai, uword * bi)			\
   n_trailing_zeros = 0;						\
   bi_len = vec_len (bi);					\
   if (bi_len > 0)						\
-    vec_validate (ai, bi_len - 1);				\
+    clib_bitmap_vec_validate (ai, bi_len - 1);			\
   for (i = 0; i < vec_len (ai); i++)				\
     {								\
       a = ai[i];						\
@@ -405,7 +408,7 @@ clib_bitmap_##name (uword * ai, uword i)		\
   uword i0 = i / BITS (ai[0]);				\
   uword i1 = i % BITS (ai[0]);				\
   uword a, b;						\
-  vec_validate (ai, i0);				\
+  clib_bitmap_vec_validate (ai, i0);			\
   a = ai[i0];						\
   b = (uword) 1 << i1;					\
   do { body; } while (0);				\
@@ -441,7 +444,7 @@ clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
       i0 = i / BITS (ai[0]);
       i1 = i % BITS (ai[0]);
 
-      vec_validate (ai, i0);
+      clib_bitmap_vec_validate (ai, i0);
       for (i = 0; i <= i0; i++)
 	{
 	  uword n;

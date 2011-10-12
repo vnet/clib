@@ -26,12 +26,11 @@
 
 /* Bootstrap include so that #include <clib/mem.h> can include e.g.
    <clib/mheap.h> which depends on <clib/vec.h>. */
-
 /* Bookeeping header preceding vector elements in memory.
    User header information may preceed standard vec header. */
 typedef struct {
   /* Number of elements in vector (NOT its allocated length). */
-  uword len;
+  u32 len;
 
   /* Vector data follows. */
   u8 vector_data[0];
@@ -44,32 +43,20 @@ typedef struct {
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
 
 always_inline uword
-vec_header_bytes_ha (uword header_bytes,
-		     uword align_bytes)
-{
-  /* Header must be 8 byte aligned because mheap align_at_offset
-     needs to be 8 byte aligned for aligned vectors. */
-  return round_pow2 (header_bytes + sizeof (vec_header_t),
-		     align_bytes ? 8 : sizeof (uword));
-}
+vec_header_bytes (uword header_bytes)
+{ return round_pow2 (header_bytes + sizeof (vec_header_t), sizeof (vec_header_t)); }
 
 always_inline void *
-vec_header_ha (void * v, uword header_bytes, uword align_bytes)
-{ return v - vec_header_bytes_ha (header_bytes, align_bytes); }
+vec_header (void * v, uword header_bytes)
+{ return v - vec_header_bytes (header_bytes); }
 
 always_inline void *
-vec_header_end_ha (void * v, uword header_bytes, uword align_bytes)
-{ return v + vec_header_bytes_ha (header_bytes, align_bytes); }
+vec_header_end (void * v, uword header_bytes)
+{ return v + vec_header_bytes (header_bytes); }
 
 /* Finds the user header of a vector with unspecified alignment given
    the user pointer to the vector. */
     
-#define vec_header(v,header_bytes)     vec_header_ha(v,header_bytes,0)
-
-/* Finds the end of the user header of a vector with unspecified 
-   alignment given the user pointer to the vector. */
-#define vec_header_end(v,header_bytes) vec_header_end_ha(v,header_bytes,0)
-
 /* Number of elements in vector (lvalue-capable).
    _vec_len (v) does not check for null, but can be used as a lvalue
    (e.g. _vec_len (v) = 99). */

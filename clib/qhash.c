@@ -39,7 +39,7 @@ _qhash_resize (void * v, uword length, uword elt_bytes)
   v = _vec_resize (0, 1 << l,
 		   elt_bytes << l,
 		   sizeof (h[0]),
-		   /* align */ 0);
+		   /* align */ sizeof (uword));
 
   h = qhash_header (v);
   h->n_elts = 0;
@@ -406,7 +406,7 @@ qhash_set_overflow (void * v, uword elt_bytes,
 	  v = _vec_resize (v, dl,
 			   (l + dl) * elt_bytes,
 			   sizeof (h[0]),
-			   /* align */ 0);
+			   /* align */ sizeof (uword));
 	  memset (v + l*elt_bytes, ~0, dl * elt_bytes);
 	}
     }

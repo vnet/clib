@@ -36,7 +36,7 @@ void * vec_resize_allocate_memory (void * v,
   uword old_alloc_bytes, new_alloc_bytes;
   void * old, * new;
 
-  header_bytes = vec_header_bytes_ha (header_bytes, data_align);
+  header_bytes = vec_header_bytes (header_bytes);
 
   data_bytes += header_bytes;
 
@@ -86,8 +86,8 @@ void * vec_resize_allocate_memory (void * v,
   return v + header_bytes;
 } 
 
-uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes)
-{ return clib_mem_is_heap_object (vec_header_ha (v, header_bytes, align_bytes)); }
+uword clib_mem_is_vec_h (void * v, uword header_bytes)
+{ return clib_mem_is_heap_object (vec_header (v, header_bytes)); }
 
 /** \cond */
 

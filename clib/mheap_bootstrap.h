@@ -30,7 +30,8 @@
 #include <clib/vec_bootstrap.h>
 #include <clib/error_bootstrap.h>
 
-#ifdef CLIB_UNIX
+/* Enable to make heaps thread safe. */
+#if 0 && defined (CLIB_UNIX)
 #include <pthread.h>		/* for pthread_mutex_t */
 #define MHEAP_LOCK_PTHREAD
 #endif
@@ -115,6 +116,19 @@ typedef struct {
   (MHEAP_N_SMALL_OBJECT_BINS						\
    + (STRUCT_BITS_OF (mheap_elt_t, user_data[0]) - MHEAP_LOG2_N_SMALL_OBJECT_BINS))
 
+typedef struct {
+  struct {
+    u64 n_search_attempts;
+    u64 n_objects_searched;
+    u64 n_objects_found;
+  } free_list;
+
+  u64 n_vector_expands;
+
+  u64 n_gets, n_puts;
+  u64 n_clocks_get, n_clocks_put;
+} mheap_stats_t;
+
 /* Vec header for heaps. */
 typedef struct {
   /* User offsets for head of doubly-linked list of free objects of this size. */
@@ -123,23 +137,23 @@ typedef struct {
   /* Bitmap of non-empty free list bins. */
   uword non_empty_free_elt_heads[(MHEAP_N_BINS + BITS (uword) - 1) / BITS (uword)];
 
-  uword flags;
+  u32 flags;
 #define MHEAP_FLAG_TRACE			(1 << 0)
 #define MHEAP_FLAG_DISABLE_VM			(1 << 1)
 #define MHEAP_FLAG_THREAD_SAFE			(1 << 2)
 #define MHEAP_FLAG_VALIDATE			(1 << 3)
 
   /* Number of allocated objects. */
-  uword n_elts;
+  u64 n_elts;
 
   /* Maximum size (in bytes) this heap is allowed to grow to.
      Set to ~0 to grow heap (via vec_resize) arbitrarily. */
-  uword max_size;
+  u64 max_size;
 
   /* Each successful mheap_validate call increments this serial number.
      Used to debug heap corruption problems.  GDB breakpoints can be
      made conditional on validate_serial. */
-  uword validate_serial;
+  u64 validate_serial;
 
 #ifdef MHEAP_LOCK_PTHREAD
   /* Global per-heap lock for thread-safe operation. */
@@ -147,6 +161,8 @@ typedef struct {
 #endif
 
   mheap_trace_main_t trace_main;
+
+  mheap_stats_t stats;
 } mheap_t;
 
 always_inline mheap_t * mheap_header (u8 * v)

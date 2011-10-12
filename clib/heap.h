@@ -129,10 +129,10 @@ typedef struct {
 #define HEAP_DATA_ALIGN (CLIB_CACHE_LINE_BYTES)
 
 always_inline heap_header_t * heap_header (void * v)
-{ return vec_header_ha (v, sizeof (heap_header_t), HEAP_DATA_ALIGN); }
+{ return vec_header (v, sizeof (heap_header_t)); }
 
 always_inline uword heap_header_bytes ()
-{ return vec_header_bytes_ha (sizeof (heap_header_t), HEAP_DATA_ALIGN); }
+{ return vec_header_bytes (sizeof (heap_header_t)); }
 
 always_inline void heap_dup_header (heap_header_t * old, heap_header_t * new)
 {

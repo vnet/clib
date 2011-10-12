@@ -645,7 +645,7 @@ void * _hash_create (uword elts, hash_t * h_user)
 		   /* vec len: */      elts,
 		   /* data bytes: */   (elts << log2_pair_size) * sizeof (hash_pair_t),
 		   /* header bytes: */ sizeof (h[0]) + (elts / BITS (h->is_user[0])) * sizeof (h->is_user[0]),
-		   /* alignment */ 0);
+		   /* alignment */ sizeof (hash_pair_t));
   h = hash_header (v);
 
   if (h_user)

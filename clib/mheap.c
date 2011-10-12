@@ -26,6 +26,7 @@
 #include <clib/format.h>
 #include <clib/mheap.h>
 #include <clib/os.h>
+#include <clib/time.h>
 
 static void mheap_get_trace (void * v, uword offset, uword size);
 static void mheap_put_trace (void * v, uword offset, uword size);
@@ -243,41 +244,48 @@ mheap_get_search_free_bin (void * v,
   /* Silence compiler warning. */
   o0 = o1 = f0 = f1 = 0;
 
+  h->stats.free_list.n_search_attempts += 1;
+
   /* Find an object that is large enough with correct alignment at given alignment offset. */
   while (1)
     {
       uword this_object_n_user_data_bytes = mheap_elt_data_bytes (e);
 
       ASSERT (e->is_free);
+      if (bin < MHEAP_N_SMALL_OBJECT_BINS)
+	ASSERT (this_object_n_user_data_bytes >= search_n_user_data_bytes);
 
-      if (this_object_n_user_data_bytes >= search_n_user_data_bytes)
+      h->stats.free_list.n_objects_searched += 1;
+
+      if (this_object_n_user_data_bytes < search_n_user_data_bytes)
+	goto next;
+
+      /* Bounds of free object: from f0 to f1. */
+      f0 = ((void *) e->user_data - v);
+      f1 = f0 + this_object_n_user_data_bytes;
+
+      /* Place candidate object at end of free block and align as requested. */
+      o0 = ((f1 - search_n_user_data_bytes) &~ (align - 1)) - align_offset;
+      while (o0 < f0)
+	o0 += align;
+
+      /* Make sure that first free fragment is either empty or
+	 large enough to be valid. */
+      while (1)
 	{
-	  /* Bounds of free object: from f0 to f1. */
-	  f0 = ((void *) e->user_data - v);
-	  f1 = f0 + this_object_n_user_data_bytes;
-
-	  /* Place candidate object at end of free block and align as requested. */
-	  o0 = ((f1 - search_n_user_data_bytes) &~ (align - 1)) - align_offset;
-	  while (o0 < f0)
-	    o0 += align;
-
-	  /* Make sure that first free fragment is either empty or
-	     large enough to be valid. */
-	  while (1)
-	    {
-	      lo_free_usize = o0 != f0 ? o0 - f0 - MHEAP_ELT_OVERHEAD_BYTES : 0;
-	      if (o0 == f0 || lo_free_usize >= (word) MHEAP_MIN_USER_DATA_BYTES)
-		break;
-	      o0 += (sizeof (mheap_elt_t) + align - 1) &~ (align - 1);
-	    }
-
-	  o1 = o0 + search_n_user_data_bytes;
-
-	  /* Does it fit? */
-	  if (o0 >= f0 && o1 <= f1)
+	  lo_free_usize = o0 != f0 ? o0 - f0 - MHEAP_ELT_OVERHEAD_BYTES : 0;
+	  if (o0 <= f0 || lo_free_usize >= (word) MHEAP_MIN_USER_DATA_BYTES)
 	    break;
+	  o0 -= align;
 	}
 
+      o1 = o0 + search_n_user_data_bytes;
+
+      /* Does it fit? */
+      if (o0 >= f0 && o1 <= f1)
+	goto found;
+
+    next:
       /* Reached end of free list without finding large enough object. */
       if (e->free_elt.next_uoffset == ~0)
 	return ~0;
@@ -286,6 +294,7 @@ mheap_get_search_free_bin (void * v,
       e = mheap_elt_at_uoffset (v, e->free_elt.next_uoffset);
     }
 
+ found:
   /* Free fragment at end. */
   hi_free_usize = f1 != o1 ? f1 - o1 - MHEAP_ELT_OVERHEAD_BYTES : 0;
 
@@ -331,7 +340,7 @@ mheap_get_search_free_bin (void * v,
   remove_free_elt (v, e, bin);
 
   /* Free fragment at begining. */
-  if (o0 != f0)
+  if (lo_free_usize > 0)
     {
       ASSERT (lo_free_usize >= (word) MHEAP_MIN_USER_DATA_BYTES);
       mheap_elt_set_size (v, f0, lo_free_usize, /* is_free */ 1);
@@ -349,6 +358,8 @@ mheap_get_search_free_bin (void * v,
 
   /* Return actual size of block. */
   *n_user_data_bytes_arg = search_n_user_data_bytes;
+
+  h->stats.free_list.n_objects_found += 1;
 
   return o0;
 }
@@ -372,14 +383,14 @@ mheap_get_search_free_list (void * v,
 
   for (i = bin / BITS (uword); i < ARRAY_LEN (h->non_empty_free_elt_heads); i++)
     {
-      uword possible_bin_mask = h->non_empty_free_elt_heads[i];
+      uword non_empty_bin_mask = h->non_empty_free_elt_heads[i];
 
       /* No need to search smaller bins. */
-      if (i == 0 && bin > 0)
-	possible_bin_mask &= ~pow2_mask (bin - 1);
+      if (i == bin / BITS (uword))
+	non_empty_bin_mask &= ~pow2_mask (bin % BITS (uword));
 
       /* Search each occupied free bin which is large enough. */
-      foreach_set_bit (bi, possible_bin_mask, ({
+      foreach_set_bit (bi, non_empty_bin_mask, ({
 	r = mheap_get_search_free_bin (v, bi + i * BITS (uword), n_user_bytes_arg, align, align_offset);
 	if (r != ~0)
 	  return r;
@@ -472,6 +483,9 @@ void * mheap_get_aligned (void * v,
 {
   mheap_t * h;
   uword offset;
+  u64 cpu_times[2];
+
+  cpu_times[0] = clib_cpu_time_now ();
 
   align = clib_max (align, STRUCT_SIZE_OF (mheap_elt_t, user_data[0]));
   align = max_pow2 (align);
@@ -506,14 +520,11 @@ void * mheap_get_aligned (void * v,
   h = mheap_header (v);
 
   /* If that fails allocate object at end of heap by extending vector. */
-  if (offset == ~0)
+  if (offset == ~0 && _vec_len (v) < h->max_size)
     {
-      /* Always leave at least 4k bytes of room for free lists. */
-      if (_vec_len (v) < h->max_size)
-	{
-	  v = mheap_get_extend_vector (v, n_user_data_bytes, align, align_offset, &offset);
-	  h = mheap_header (v);
-	}
+      v = mheap_get_extend_vector (v, n_user_data_bytes, align, align_offset, &offset);
+      h = mheap_header (v);
+      h->stats.n_vector_expands += offset != ~0;
     }
 
   *offset_return = offset;
@@ -536,6 +547,10 @@ void * mheap_get_aligned (void * v,
     mheap_validate (v);
 
   mheap_maybe_unlock (v);
+
+  cpu_times[1] = clib_cpu_time_now ();
+  h->stats.n_clocks_get += cpu_times[1] - cpu_times[0];
+  h->stats.n_gets += 1;
 
   return v;
 }
@@ -572,6 +587,9 @@ void mheap_put (void * v, uword uoffset)
   mheap_t * h;
   uword b, size, n_user_data_bytes;
   mheap_elt_t * e, * n, * p;
+  u64 cpu_times[2];
+
+  cpu_times[0] = clib_cpu_time_now ();
 
   h = mheap_header (v);
 
@@ -582,6 +600,7 @@ void mheap_put (void * v, uword uoffset)
 
   ASSERT (h->n_elts > 0);
   h->n_elts--;
+  h->stats.n_puts += 1;
 
   e = mheap_elt_at_uoffset (v, uoffset);
   n = mheap_next_elt (e);
@@ -653,6 +672,9 @@ void mheap_put (void * v, uword uoffset)
     mheap_validate (v);
 
   mheap_maybe_unlock (v);
+
+  cpu_times[1] = clib_cpu_time_now ();
+  h->stats.n_clocks_put += cpu_times[1] - cpu_times[0];
 }
 
 static uword mheap_vm (void * v,
@@ -932,13 +954,39 @@ static mheap_elt_t * mheap_first_corrupt (void * v)
   return 0;
 }
 
+static u8 * format_mheap_stats (u8 * s, va_list * va)
+{
+  mheap_stats_t * st = va_arg (*va, mheap_stats_t *);
+  uword indent = format_get_indent (s);
+
+  s = format (s, "alloc. from free-list: %Ld attempts, %Ld hits (%.2f %%), %Ld considered (per-attempt %.2f)",
+	      st->free_list.n_search_attempts,
+	      st->free_list.n_objects_found,
+	      100. * (f64) st->free_list.n_objects_found / (f64) st->free_list.n_search_attempts,
+	      st->free_list.n_objects_searched,
+	      (f64) st->free_list.n_objects_searched / (f64) st->free_list.n_search_attempts);
+  s = format (s, "\n%Ualloc. from vector-expand: %Ld",
+	      format_white_space, indent,
+	      st->n_vector_expands);
+
+  s = format (s, "\n%Uallocs: %Ld %.2f clocks-per",
+	      format_white_space, indent,
+	      st->n_gets, (f64) st->n_clocks_get / (f64) st->n_gets);
+
+  s = format (s, "\n%Ufrees: %Ld %.2f clocks-per",
+	      format_white_space, indent,
+	      st->n_puts, (f64) st->n_clocks_put / (f64) st->n_puts);
+	      
+  return s;
+}
+
 u8 * format_mheap (u8 * s, va_list * va)
 {
   void * v = va_arg (*va, u8 *);
   int verbose = va_arg (*va, int);
 
   mheap_t * h;
-  uword i, o, size;
+  uword i, o, size, indent;
   clib_mem_usage_t usage;
   mheap_elt_t * first_corrupt;
 
@@ -947,6 +995,8 @@ u8 * format_mheap (u8 * s, va_list * va)
   h = mheap_header (v);
 
   mheap_usage_no_lock (v, &usage);
+
+  indent = format_get_indent (s);
 
   s = format (s, "%d objects, %U of %U used, %U free, %U reclaimed, %U overhead",
 	      usage.object_count,
@@ -958,6 +1008,11 @@ u8 * format_mheap (u8 * s, va_list * va)
 
   if (usage.bytes_max != ~0)
     s = format (s, ", %U capacity", format_mheap_byte_count, usage.bytes_max);
+
+  if (verbose)
+    s = format (s, "\n%U%U",
+		format_white_space, indent + 2,
+		format_mheap_stats, &h->stats);
 
   if ((h->flags & MHEAP_FLAG_TRACE) && vec_len (h->trace_main.traces) > 0)
     {
