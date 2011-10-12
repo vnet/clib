@@ -140,7 +140,6 @@ am__objects_2 = clib/libclibkernel_a-test_elog.$(OBJEXT) \
 	clib/libclibkernel_a-test_serialize.$(OBJEXT) \
 	clib/libclibkernel_a-test_timing_wheel.$(OBJEXT) \
 	clib/libclibkernel_a-test_vec.$(OBJEXT) \
-	clib/libclibkernel_a-test_vhash.$(OBJEXT) \
 	clib/libclibkernel_a-test_zvec.$(OBJEXT)
 am_libclibkernel_a_OBJECTS = $(am__objects_1) $(am__objects_2) \
 	clib/libclibkernel_a-linux_kernel_os.$(OBJEXT) \
@@ -194,7 +193,6 @@ am__objects_4 = clib/libclibstandalone_a-test_elog.$(OBJEXT) \
 	clib/libclibstandalone_a-test_serialize.$(OBJEXT) \
 	clib/libclibstandalone_a-test_timing_wheel.$(OBJEXT) \
 	clib/libclibstandalone_a-test_vec.$(OBJEXT) \
-	clib/libclibstandalone_a-test_vhash.$(OBJEXT) \
 	clib/libclibstandalone_a-test_zvec.$(OBJEXT)
 am_libclibstandalone_a_OBJECTS = $(am__objects_3) $(am__objects_4) \
 	clib/libclibstandalone_a-qsort.$(OBJEXT) \
@@ -620,6 +618,9 @@ test_vec_LDFLAGS = -static
 test_vhash_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
+# remove for now because its slow to compile
+# clib/test_vhash.c
+
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \
   clib/test_elog.c \
@@ -636,7 +637,6 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_serialize.c \
   clib/test_timing_wheel.c \
   clib/test_vec.c \
-  clib/test_vhash.c \
   clib/test_zvec.c \
   clib/test_vec.h \
   clib/test_standalone_string.h
@@ -953,8 +953,6 @@ clib/libclibkernel_a-test_timing_wheel.$(OBJEXT):  \
 	clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-test_vec.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
-clib/libclibkernel_a-test_vhash.$(OBJEXT): clib/$(am__dirstamp) \
-	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-test_zvec.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-linux_kernel_os.$(OBJEXT): clib/$(am__dirstamp) \
@@ -1054,8 +1052,6 @@ clib/libclibstandalone_a-test_serialize.$(OBJEXT):  \
 clib/libclibstandalone_a-test_timing_wheel.$(OBJEXT):  \
 	clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-test_vec.$(OBJEXT): clib/$(am__dirstamp) \
-	clib/$(DEPDIR)/$(am__dirstamp)
-clib/libclibstandalone_a-test_vhash.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-test_zvec.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
@@ -1330,7 +1326,6 @@ mostlyclean-compile:
 	-rm -f clib/libclibkernel_a-test_serialize.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_timing_wheel.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_vec.$(OBJEXT)
-	-rm -f clib/libclibkernel_a-test_vhash.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-test_zvec.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-time.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-timing_wheel.$(OBJEXT)
@@ -1379,7 +1374,6 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-test_serialize.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_timing_wheel.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_vec.$(OBJEXT)
-	-rm -f clib/libclibstandalone_a-test_vhash.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-test_zvec.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-time.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-timing_wheel.$(OBJEXT)
@@ -1510,7 +1504,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_serialize.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_vec.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_vhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-test_zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-time.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-timing_wheel.Po@am__quote@
@@ -1559,7 +1552,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_serialize.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_vec.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-test_zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-time.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-timing_wheel.Po@am__quote@
@@ -2290,20 +2282,6 @@ clib/libclibkernel_a-test_vec.obj: clib/test_vec.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-test_vec.obj `if test -f 'clib/test_vec.c'; then $(CYGPATH_W) 'clib/test_vec.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_vec.c'; fi`
 
-clib/libclibkernel_a-test_vhash.o: clib/test_vhash.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-test_vhash.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-test_vhash.Tpo -c -o clib/libclibkernel_a-test_vhash.o `test -f 'clib/test_vhash.c' || echo '$(srcdir)/'`clib/test_vhash.c
-@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-test_vhash.Tpo clib/$(DEPDIR)/libclibkernel_a-test_vhash.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_vhash.c' object='clib/libclibkernel_a-test_vhash.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-test_vhash.o `test -f 'clib/test_vhash.c' || echo '$(srcdir)/'`clib/test_vhash.c
-
-clib/libclibkernel_a-test_vhash.obj: clib/test_vhash.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-test_vhash.obj -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-test_vhash.Tpo -c -o clib/libclibkernel_a-test_vhash.obj `if test -f 'clib/test_vhash.c'; then $(CYGPATH_W) 'clib/test_vhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_vhash.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-test_vhash.Tpo clib/$(DEPDIR)/libclibkernel_a-test_vhash.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_vhash.c' object='clib/libclibkernel_a-test_vhash.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-test_vhash.obj `if test -f 'clib/test_vhash.c'; then $(CYGPATH_W) 'clib/test_vhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_vhash.c'; fi`
-
 clib/libclibkernel_a-test_zvec.o: clib/test_zvec.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-test_zvec.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-test_zvec.Tpo -c -o clib/libclibkernel_a-test_zvec.o `test -f 'clib/test_zvec.c' || echo '$(srcdir)/'`clib/test_zvec.c
 @am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-test_zvec.Tpo clib/$(DEPDIR)/libclibkernel_a-test_zvec.Po
@@ -2961,20 +2939,6 @@ clib/libclibstandalone_a-test_vec.obj: clib/test_vec.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_vec.c' object='clib/libclibstandalone_a-test_vec.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-test_vec.obj `if test -f 'clib/test_vec.c'; then $(CYGPATH_W) 'clib/test_vec.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_vec.c'; fi`
-
-clib/libclibstandalone_a-test_vhash.o: clib/test_vhash.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-test_vhash.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Tpo -c -o clib/libclibstandalone_a-test_vhash.o `test -f 'clib/test_vhash.c' || echo '$(srcdir)/'`clib/test_vhash.c
-@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Tpo clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_vhash.c' object='clib/libclibstandalone_a-test_vhash.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-test_vhash.o `test -f 'clib/test_vhash.c' || echo '$(srcdir)/'`clib/test_vhash.c
-
-clib/libclibstandalone_a-test_vhash.obj: clib/test_vhash.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-test_vhash.obj -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Tpo -c -o clib/libclibstandalone_a-test_vhash.obj `if test -f 'clib/test_vhash.c'; then $(CYGPATH_W) 'clib/test_vhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_vhash.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Tpo clib/$(DEPDIR)/libclibstandalone_a-test_vhash.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_vhash.c' object='clib/libclibstandalone_a-test_vhash.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-test_vhash.obj `if test -f 'clib/test_vhash.c'; then $(CYGPATH_W) 'clib/test_vhash.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_vhash.c'; fi`
 
 clib/libclibstandalone_a-test_zvec.o: clib/test_zvec.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-test_zvec.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-test_zvec.Tpo -c -o clib/libclibstandalone_a-test_zvec.o `test -f 'clib/test_zvec.c' || echo '$(srcdir)/'`clib/test_zvec.c

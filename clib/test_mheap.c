@@ -45,7 +45,7 @@ int test_mheap_main (unformat_input_t * input)
   void * h, * h_mem;
   uword * objects = 0;
   u32 objects_used, really_verbose, n_objects, max_object_size;
-  u32 check_mask, seed, trace;
+  u32 check_mask, seed, trace, use_vm;
   u32 print_every = 0;
   u32 * data;
   mheap_t * mh;
@@ -62,6 +62,7 @@ int test_mheap_main (unformat_input_t * input)
   n_objects = 1000;
   trace = 0;
   really_verbose = 0;
+  use_vm = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -76,6 +77,7 @@ int test_mheap_main (unformat_input_t * input)
 			    &check_mask, CHECK_VALIDITY)
 	  && 0 == unformat (input, "verbose %=", &really_verbose, 1)
 	  && 0 == unformat (input, "trace %=", &trace, 1)
+	  && 0 == unformat (input, "vm %=", &use_vm, 1)
 	  && 0 == unformat (input, "align %|", &check_mask, CHECK_ALIGN))
 	{
 	  clib_warning ("unknown input `%U'", format_unformat_error, input);
@@ -114,7 +116,10 @@ int test_mheap_main (unformat_input_t * input)
 
   mh = mheap_header (h);
 
-  mh->flags &= ~MHEAP_FLAG_DISABLE_VM;
+  if (use_vm)
+    mh->flags &= ~MHEAP_FLAG_DISABLE_VM;
+  else
+    mh->flags |= MHEAP_FLAG_DISABLE_VM;
 
   if (check_mask & CHECK_VALIDITY)
     mh->flags |= MHEAP_FLAG_VALIDATE;

@@ -128,6 +128,9 @@ test_vec_LDFLAGS = -static
 test_vhash_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
+# remove for now because its slow to compile
+# clib/test_vhash.c
+
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \
   clib/test_elog.c \
@@ -144,7 +147,6 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_serialize.c \
   clib/test_timing_wheel.c \
   clib/test_vec.c \
-  clib/test_vhash.c \
   clib/test_zvec.c \
   clib/test_vec.h \
   clib/test_standalone_string.h

@@ -47,22 +47,22 @@ always_inline void mheap_lock_init (mheap_t * h)
 
 always_inline void mheap_maybe_lock (void * v)
 {
+#ifdef MHEAP_LOCK_PTHREAD
   mheap_t * h = mheap_header (v);
   if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
     return;
 
-#ifdef MHEAP_LOCK_PTHREAD
   pthread_mutex_lock (&h->lock);
 #endif
 }
 
 always_inline void mheap_maybe_unlock (void * v)
 {
+#ifdef MHEAP_LOCK_PTHREAD
   mheap_t * h = mheap_header (v);
   if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
     return;
 
-#ifdef MHEAP_LOCK_PTHREAD
   pthread_mutex_unlock (&h->lock);
 #endif
 }
@@ -400,7 +400,7 @@ mheap_get_search_free_list (void * v,
   return r;
 }
 
-static void *
+static never_inline void *
 mheap_get_extend_vector (void * v,
 			 uword n_user_data_bytes,
 			 uword align,
@@ -532,7 +532,7 @@ void * mheap_get_aligned (void * v,
     {
       h->n_elts += 1;
 
-      if ((h->flags & MHEAP_FLAG_TRACE))
+      if (h->flags & MHEAP_FLAG_TRACE)
 	{
 	  /* Recursion block for case when we are traceing main clib heap. */
 	  h->flags &= ~MHEAP_FLAG_TRACE;
@@ -969,13 +969,15 @@ static u8 * format_mheap_stats (u8 * s, va_list * va)
 	      format_white_space, indent,
 	      st->n_vector_expands);
 
-  s = format (s, "\n%Uallocs: %Ld %.2f clocks-per",
+  s = format (s, "\n%Uallocs: %Ld %.2f clocks/call",
 	      format_white_space, indent,
-	      st->n_gets, (f64) st->n_clocks_get / (f64) st->n_gets);
+	      st->n_gets,
+	      (f64) st->n_clocks_get / (f64) st->n_gets);
 
-  s = format (s, "\n%Ufrees: %Ld %.2f clocks-per",
+  s = format (s, "\n%Ufrees: %Ld %.2f clocks/call",
 	      format_white_space, indent,
-	      st->n_puts, (f64) st->n_clocks_put / (f64) st->n_puts);
+	      st->n_puts,
+	      (f64) st->n_clocks_put / (f64) st->n_puts);
 	      
   return s;
 }
