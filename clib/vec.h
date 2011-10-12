@@ -106,7 +106,8 @@ _vec_resize (void * v,
     }
 
   /* Slow path: call helper function. */
-  return vec_resize_allocate_memory (v, length_increment, data_bytes, header_bytes, data_align);
+  return vec_resize_allocate_memory (v, length_increment, data_bytes, header_bytes,
+				     clib_max (sizeof (vec_header_t), data_align));
 }
 
 uword clib_mem_is_vec_ha (void * v, uword header_bytes, uword align_bytes);

@@ -123,18 +123,11 @@ always_inline uword clib_mem_is_heap_object (void * p)
   if (offset >= vec_len (heap))
     return 0;
 
-  e = mheap_elt_at_offset (heap, offset);
-  if (mheap_is_last (e) || mheap_is_first (e))
-    return 1;
-
-  n = mheap_next_elt (heap, e);
+  e = mheap_elt_at_uoffset (heap, offset);
+  n = mheap_next_elt (e);
   
   /* Check that heap forward and reverse pointers agree. */
-  if ((e->size &~ (sizeof (mheap_elt_t) - 1))
-      != (n->prev_size &~ (sizeof (mheap_elt_t) - 1)))
-    return 0;
-
-  return 1;
+  return e->n_user_data == n->prev_n_user_data;
 }
 
 always_inline void clib_mem_free (void * p)

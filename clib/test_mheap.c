@@ -42,12 +42,13 @@ static int verbose = 0;
 int test_mheap_main (unformat_input_t * input)
 {
   int i, j, k, n_iterations;
-  u8 * h, * h_mem;
+  void * h, * h_mem;
   uword * objects = 0;
   u32 objects_used, really_verbose, n_objects, max_object_size;
   u32 check_mask, seed, trace;
   u32 print_every = 0;
   u32 * data;
+  mheap_t * mh;
 
   /* Validation flags. */
   check_mask = 0;
@@ -82,8 +83,6 @@ int test_mheap_main (unformat_input_t * input)
 	}
     }
 
-  if_verbose ("who set verbose?");
-
   /* Zero seed means use default. */
   if (! seed)
     seed = random_default_seed ();
@@ -111,7 +110,14 @@ int test_mheap_main (unformat_input_t * input)
   }
 
   if (trace)
-      mheap_trace (h, trace);
+    mheap_trace (h, trace);
+
+  mh = mheap_header (h);
+
+  mh->flags &= ~MHEAP_FLAG_DISABLE_VM;
+
+  if (check_mask & CHECK_VALIDITY)
+    mh->flags |= MHEAP_FLAG_VALIDATE;
 
   for (i = 0; i < n_iterations; i++)
     {
@@ -137,7 +143,8 @@ int test_mheap_main (unformat_input_t * input)
 	  if (check_mask & CHECK_ALIGN)
 	    {
 	      align = 1 << (random_u32 (&seed) % 10);
-	      align_offset = mheap_round_size (random_u32 (&seed) & (align - 1));
+	      align_offset = round_pow2 (random_u32 (&seed) & (align - 1),
+					 sizeof (u32));
 	    }
 	  
 	  h = mheap_get_aligned (h, size, align, align_offset, &objects[j]);
@@ -153,25 +160,14 @@ int test_mheap_main (unformat_input_t * input)
 	    {
 	      uword len;
 
-	      data = mheap_data (h, objects[j]);
+	      data = (void *) h +  objects[j];
 	      len = mheap_len (h, data);
 
 	      ASSERT (size <= mheap_data_bytes (h, objects[j]));
-	      ASSERT (data == (void *) (h + objects[j]));
 
 	      data[0] = len;
 	      for (k = 1; k < len; k++)
 		data[k] = objects[j] + k;
-	    }
-	}
-
-      if (check_mask & CHECK_VALIDITY)
-	{
-	  clib_error_t * error = mheap_validate (h);
-	  if (error)
-	    {
-	      clib_error_report (error);
-	      return 1;
 	    }
 	}
 
@@ -181,7 +177,7 @@ int test_mheap_main (unformat_input_t * input)
 	  for (j = 0; j < vec_len (objects); j++)
 	    if (objects[j] != ~0)
 	      {
-		u32 * data = mheap_data (h, objects[j]);
+		u32 * data = h + objects[j];
 		uword len = data[0];
 		for (k = 1; k < len; k++)
 		  ASSERT (data[k] == objects[j] + k);

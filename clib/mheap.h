@@ -31,33 +31,33 @@
 
 /* Allocate size bytes.  New heap and offset are returned.
    offset == ~0 means allocation failed. */
-always_inline u8 * mheap_get (u8 * v, uword size, uword * offset_return)
+always_inline void * mheap_get (void * v, uword size, uword * offset_return)
 { return mheap_get_aligned (v, size, 0, 0, offset_return); }
 
 /* Create allocation heap of given size. */
-u8 * mheap_alloc (void * memory, uword memory_bytes);
-u8 * mheap_alloc_with_flags (void * memory, uword memory_bytes, uword flags);
+void * mheap_alloc (void * memory, uword memory_bytes);
+void * mheap_alloc_with_flags (void * memory, uword memory_bytes, uword flags);
 
 #define mheap_free(v) (v) = _mheap_free(v)
-u8 * _mheap_free (u8 * v);
+void * _mheap_free (void * v);
 
-void mheap_foreach (u8 * v,
-		    uword (* func) (void * arg, u8 * v, void * elt_data, uword elt_size),
+void mheap_foreach (void * v,
+		    uword (* func) (void * arg, void * v, void * elt_data, uword elt_size),
 		    void * arg);
 
 /* Format mheap data structures as string. */
 u8 * format_mheap (u8 * s, va_list * va);
 
 /* Validate internal consistency. */
-clib_error_t * mheap_validate (u8 * h);
+void mheap_validate (void * h);
 
 /* Query bytes used. */
-uword mheap_bytes (u8 * v);
+uword mheap_bytes (void * v);
 
-void mheap_usage (u8 * v, clib_mem_usage_t * usage);
+void mheap_usage (void * v, clib_mem_usage_t * usage);
 
 /* Enable disable traceing. */
-void mheap_trace (u8 * v, int enable);
+void mheap_trace (void * v, int enable);
 
 /* Test routine. */
 int test_mheap_main (unformat_input_t * input);
