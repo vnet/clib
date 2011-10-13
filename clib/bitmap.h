@@ -24,14 +24,14 @@
 #ifndef included_clib_bitmap_h
 #define included_clib_bitmap_h
 
-/** \file Bitmaps built as vectors of machine words. */
+/* Bitmaps built as vectors of machine words. */
 
 #include <clib/vec.h>
 #include <clib/random.h>
 #include <clib/error.h>
 #include <clib/bitops.h>	/* for count_set_bits */
 
-/** \brief Returns 1 if the entire bitmap is zero, 0 otherwise */
+/* Returns 1 if the entire bitmap is zero, 0 otherwise */
 always_inline uword
 clib_bitmap_is_zero (uword * ai)
 {
@@ -42,7 +42,7 @@ clib_bitmap_is_zero (uword * ai)
   return 1;
 }
 
-/** \brief Returns 1 if two bitmaps are equal, 0 otherwise */
+/* Returns 1 if two bitmaps are equal, 0 otherwise */
 always_inline uword
 clib_bitmap_is_equal (uword * a, uword * b)
 {
@@ -55,29 +55,29 @@ clib_bitmap_is_equal (uword * a, uword * b)
   return 1;
 }
 
-/** \brief Duplicate a bitmap */
+/* Duplicate a bitmap */
 #define clib_bitmap_dup(v) vec_dup(v)
 
-/** \brief Free a bitmap */
+/* Free a bitmap */
 #define clib_bitmap_free(v) vec_free(v)
 
-/** \brief Returns the number of bytes in a bitmap */
+/* Returns the number of bytes in a bitmap */
 #define clib_bitmap_bytes(v) vec_bytes(v)
 
-/** \brief Clear a bitmap */
+/* Clear a bitmap */
 #define clib_bitmap_zero(v) vec_zero(v)
 
-/** \brief Allocate bitmap with given number of bits. */
+/* Allocate bitmap with given number of bits. */
 #define clib_bitmap_alloc(v,n_bits) \
   v = vec_new (uword, ((n_bits) + BITS (uword) - 1) / BITS (uword))
 
 #define clib_bitmap_vec_validate(v,i) vec_validate_aligned((v),(i),sizeof(uword))
 
-/** \brief Make sure that a bitmap is at least n_bits in size */
+/* Make sure that a bitmap is at least n_bits in size */
 #define clib_bitmap_validate(v,n_bits) \
   clib_bitmap_vec_validate ((v), ((n_bits) - 1) / BITS (uword))
 
-/** \brief low-level routine to remove trailing zeros from a bitmap */
+/* low-level routine to remove trailing zeros from a bitmap */
 always_inline uword *
 _clib_bitmap_remove_trailing_zeros (uword * a)
 {
@@ -92,10 +92,8 @@ _clib_bitmap_remove_trailing_zeros (uword * a)
   return a;
 }
 
-/** \brief Sets the ith bit of a bitmap to new_value.  Returns old value. 
-    
-    No sanity checking. Be careful.
-*/
+/* Sets the ith bit of a bitmap to new_value.  Returns old value. 
+   No sanity checking. Be careful. */
 always_inline uword
 clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 {
@@ -105,7 +103,7 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
   uword ai, old_value;
 
   /* Removed ASSERT since uword * a may not be a vector. */
-  // ASSERT (i0 < vec_len (a));
+  /* ASSERT (i0 < vec_len (a)); */
 
   ai = a[i0];
   old_value = (ai & bit) != 0;
@@ -115,7 +113,7 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
   return old_value;
 }
 
-/** \brief Set bit I to value (either non-zero or zero). */
+/* Set bit I to value (either non-zero or zero). */
 always_inline uword *
 clib_bitmap_set (uword * ai, uword i, uword value)
 {
@@ -141,7 +139,7 @@ clib_bitmap_set (uword * ai, uword i, uword value)
   return ai;
 }
 
-/** \brief Fetch bit I. */
+/* Fetch bit I. */
 always_inline uword
 clib_bitmap_get (uword * ai, uword i)
 {
@@ -150,7 +148,7 @@ clib_bitmap_get (uword * ai, uword i)
   return i0 < vec_len (ai) && 0 != ((ai[i0] >> i1) & 1);
 }
 
-/** \brief Fetch bit I. 
+/* Fetch bit I. 
 
     No sanity checking. Be careful.
 */
@@ -162,7 +160,7 @@ clib_bitmap_get_no_check (uword * ai, uword i)
   return 0 != ((ai[i0] >> i1) & 1);
 }
 
-/** \brief I through I + N_BITS. 
+/* I through I + N_BITS. 
 
     No sanity checking. Be careful.
 */
@@ -175,7 +173,7 @@ clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
   return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
 }
 
-/** \brief Fetch bits I through I + N_BITS. */
+/* Fetch bits I through I + N_BITS. */
 always_inline uword
 clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
 {
@@ -207,7 +205,7 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
   return result;
 }
 
-/** \brief Set bits I through I + N_BITS to given value.
+/* Set bits I through I + N_BITS to given value.
 
     New bitmap will be returned. */
 always_inline uword *
@@ -252,7 +250,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
   return bitmap;
 }
 
-/** \brief For a multi-word region set all bits to given value. */
+/* For a multi-word region set all bits to given value. */
 always_inline uword *
 clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
@@ -293,7 +291,7 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
   return bitmap;
 }
 
-/** \brief Iterate through set bits. */
+/* Iterate through set bits. */
 #define clib_bitmap_foreach(i,ai,body)					\
 do {									\
   uword __bitmap_i, __bitmap_ai, __bitmap_len, __bitmap_first_set;	\
@@ -312,7 +310,7 @@ do {									\
     }									\
 } while (0)
 
-/** \brief Return lowest numbered set bit in bitmap.
+/* Return lowest numbered set bit in bitmap.
 
     Return infinity (~0) if bitmap is zero. */
 always_inline uword clib_bitmap_first_set (uword * ai)
@@ -327,7 +325,7 @@ always_inline uword clib_bitmap_first_set (uword * ai)
   return ~0;
 }
 
-/** \brief Return lowest numbered clear bit in bitmap. */
+/* Return lowest numbered clear bit in bitmap. */
 always_inline uword
 clib_bitmap_first_clear (uword * ai)
 {
@@ -341,7 +339,7 @@ clib_bitmap_first_clear (uword * ai)
   return i * BITS (ai[0]);
 }
 
-/** \brief Count number of set bits in bitmap. */
+/* Count number of set bits in bitmap. */
 always_inline uword
 clib_bitmap_count_set_bits (uword * ai)
 {
@@ -351,8 +349,6 @@ clib_bitmap_count_set_bits (uword * ai)
     n_set += count_set_bits (ai[i]);
   return n_set;
 }
-
-/** \cond */
 
 /* ALU function definition macro for functions taking two bitmaps. */
 #define _(name, body, check_zero)				\
@@ -425,9 +421,8 @@ _ (ori, a = a | b, 0)
 _ (xori, a = a ^ b, 1)
 
 #undef _
-/** \endcond */
 
-/** \brief Returns random bitmap of given length. */
+/* Returns random bitmap of given length. */
 always_inline uword *
 clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
@@ -457,7 +452,7 @@ clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
   return ai;
 }
 
-/** \brief Returns next set bit starting at bit i (~0 if not found). */
+/* Returns next set bit starting at bit i (~0 if not found). */
 always_inline uword
 clib_bitmap_next_set (uword * ai, uword i)
 {
@@ -482,7 +477,7 @@ clib_bitmap_next_set (uword * ai, uword i)
   return ~0;
 }
 
-/** \brief Returns next clear bit at position >= i */
+/* Returns next clear bit at position >= i */
 always_inline uword
 clib_bitmap_next_clear (uword * ai, uword i)
 {

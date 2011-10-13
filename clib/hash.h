@@ -36,53 +36,52 @@ typedef uword (hash_key_sum_function_t)
 typedef uword (hash_key_equal_function_t)
   (struct hash_header *, uword key1, uword key2);
 
-/** \brief Vector header for hash tables. */
+/* Vector header for hash tables. */
 typedef struct hash_header {
-  /** Number of elements in table. */
+  /* Number of elements in hash table. */
   uword elts;
 
-  /** Flags. */
+  /* Flags as follows. */
   u32 flags;
 
-  /** Set if user does not want table to auto-resize when sufficiently full. */
+  /* Set if user does not want table to auto-resize when sufficiently full. */
 #define HASH_FLAG_NO_AUTO_GROW		(1 << 0)
-  /** Set if user does not want table to auto-resize when sufficiently empty. */
+  /* Set if user does not want table to auto-resize when sufficiently empty. */
 #define HASH_FLAG_NO_AUTO_SHRINK	(1 << 1)
-
-  /** Set when hash_next is in the process of iterating through this hash table. */
+  /* Set when hash_next is in the process of iterating through this hash table. */
 #define HASH_FLAG_HASH_NEXT_IN_PROGRESS (1 << 2)
 
   u32 log2_pair_size;
 
-  /** Function to compute the "sum" of a hash key.
+  /* Function to compute the "sum" of a hash key.
      Hash function is this sum modulo the prime size of
      the hash table (vec_len (v)). */
   hash_key_sum_function_t * key_sum;
 
   /* Special values for key_sum "function". */
-#define KEY_FUNC_NONE		(0) /**< sum = key */
-#define KEY_FUNC_POINTER_UWORD	(1) /**< sum = *(uword *) key */
-#define KEY_FUNC_POINTER_U32	(2) /**< sum = *(u32 *) key */
-#define KEY_FUNC_STRING         (3) /**< sum = string_key_sum, etc. */
+#define KEY_FUNC_NONE		(0) /*< sum = key */
+#define KEY_FUNC_POINTER_UWORD	(1) /*< sum = *(uword *) key */
+#define KEY_FUNC_POINTER_U32	(2) /*< sum = *(u32 *) key */
+#define KEY_FUNC_STRING         (3) /*< sum = string_key_sum, etc. */
 
-  /** key comparison function */
+  /* key comparison function */
   hash_key_equal_function_t * key_equal;
 
-  /** Hook for user's data.  Used to parameterize sum/equal functions. */
+  /* Hook for user's data.  Used to parameterize sum/equal functions. */
   any user;
 
-  /** Format a (k,v) pair */
+  /* Format a (k,v) pair */
   format_function_t * format_pair;
 
-  /** Format function arg */
+  /* Format function arg */
   void * format_pair_arg;
 
-  /** Bit i is set if pair i is a user object (as opposed to being
+  /* Bit i is set if pair i is a user object (as opposed to being
      either zero or an indirect array of pairs). */
   uword is_user[0];
 } hash_t;
 
-/** \brief Hash header size in bytes */
+/* Hash header size in bytes */
 always_inline uword hash_header_bytes (void * v)
 {
   hash_t * h;
@@ -90,22 +89,22 @@ always_inline uword hash_header_bytes (void * v)
   return sizeof (h[0]) + is_user_bytes;
 }
 
-/** \brief Returns a pointer to the hash header given the vector pointer */
+/* Returns a pointer to the hash header given the vector pointer */
 always_inline hash_t * hash_header (void * v)
 { return vec_header (v, hash_header_bytes (v)); }
 
-/** \brief Number of elements in the hash table */
+/* Number of elements in the hash table */
 always_inline uword hash_elts (void * v)
 {
   hash_t * h = hash_header (v);
   return v ? h->elts : 0;
 }
 
-/** \brief Number of elements the hash table can hold */
+/* Number of elements the hash table can hold */
 always_inline uword hash_capacity (void * v)
 { return vec_len (v); }
 
-/** \brief Returns 1 if the hash pair contains user data */
+/* Returns 1 if the hash pair contains user data */
 always_inline uword hash_is_user (void * v, uword i)
 {
   hash_t * h = hash_header (v);
@@ -114,7 +113,7 @@ always_inline uword hash_is_user (void * v, uword i)
   return (h->is_user[i0] & ((uword) 1 << i1)) != 0;
 }
 
-/** \brief Set the format function and format argument for a hash table */
+/* Set the format function and format argument for a hash table */
 always_inline void
 hash_set_pair_format (void * v,
 		      format_function_t * format_pair,
@@ -125,34 +124,34 @@ hash_set_pair_format (void * v,
   h->format_pair_arg = format_pair_arg;
 }
 
-/** \brief Set hash table flags */
+/* Set hash table flags */
 always_inline void hash_set_flags (void * v, uword flags)
 { hash_header (v)->flags |= flags; }
 
-/** \brief Key value pairs. */
+/* Key value pairs. */
 typedef struct {
-  /** The Key */
+  /* The Key */
   uword key;
 
-  /** The Value. Length is 2^log2_pair_size - 1. */
+  /* The Value. Length is 2^log2_pair_size - 1. */
   uword value[0];
 } hash_pair_t;
 
-/** \brief The indirect pair structure
+/* The indirect pair structure
 
     If log2_pair_size > 0 we overload hash pairs
     with indirect pairs for buckets with more than one
     pair. */
 typedef struct {
-  /** pair vector */
+  /* pair vector */
   hash_pair_t * pairs;
-  /** padding */
+  /* padding */
   u8 pad[sizeof(uword) - sizeof (hash_pair_t *)];
-  /** allocated length */
+  /* allocated length */
   uword alloc_len;
 } hash_pair_indirect_t;
 
-/** \brief Direct / Indirect pair union */
+/* Direct / Indirect pair union */
 typedef union {
     hash_pair_t direct;
     hash_pair_indirect_t indirect;
@@ -161,11 +160,11 @@ typedef union {
 #define LOG2_ALLOC_BITS (5)
 #define PAIR_BITS	(BITS (uword) - LOG2_ALLOC_BITS)
 
-/** \brief Log2 number of bytes allocated in pairs array. */
+/* Log2 number of bytes allocated in pairs array. */
 always_inline uword indirect_pair_get_log2_bytes (hash_pair_indirect_t * p)
 { return p->alloc_len >> PAIR_BITS; }
 
-/** \brief Get the length of an indirect pair */
+/* Get the length of an indirect pair */
 always_inline uword
 indirect_pair_get_len (hash_pair_indirect_t * p)
 {
@@ -175,7 +174,7 @@ indirect_pair_get_len (hash_pair_indirect_t * p)
     return p->alloc_len & (((uword) 1 << PAIR_BITS) - 1);
 }
 
-/** \brief Set the length of an indirect pair */
+/* Set the length of an indirect pair */
 always_inline void
 indirect_pair_set (hash_pair_indirect_t * p,
 			       uword log2_alloc,
@@ -186,85 +185,85 @@ indirect_pair_set (hash_pair_indirect_t * p,
   p->alloc_len = (log2_alloc << PAIR_BITS) | len;
 }
 
-/** \brief internal routine to fetch value for given key */
+/* internal routine to fetch value for given key */
 uword * _hash_get (void * v, uword key);
 
-/** \brief internal routine to fetch value (key, value) pair for given key */
+/* internal routine to fetch value (key, value) pair for given key */
 hash_pair_t * _hash_get_pair (void * v, uword key);
 
-/** \brief internal routine to unset a (key, value) pair */
+/* internal routine to unset a (key, value) pair */
 void *  _hash_unset (void * v, uword key, void * old_value);
 
-/** \brief internal routine to set a (key, value) pair, return the old value */
+/* internal routine to set a (key, value) pair, return the old value */
 void * _hash_set3 (void * v, uword key, void * value, void * old_value);
 
-/** \brief Resize a hash table */
+/* Resize a hash table */
 void * hash_resize (void * old, uword new_size);
 
-/** \brief duplicate a hash table */
+/* duplicate a hash table */
 void * hash_dup (void * old);
 
-/** \brief Returns the number of bytes used by a hash table */
+/* Returns the number of bytes used by a hash table */
 uword hash_bytes (void * v);
 
-/** \brief Public macro to set a (key, value) pair, return the old value */
+/* Public macro to set a (key, value) pair, return the old value */
 #define hash_set3(h,key,value,old_value)				\
 ({									\
   uword _v = (uword) (value);						\
   (h) = _hash_set3 ((h), (uword) (key), (void *) &_v, (old_value));	\
 })
 
-/** \brief Public macro to fetch value for given key */
+/* Public macro to fetch value for given key */
 #define hash_get(h,key)		_hash_get ((h), (uword) (key))
 
-/** \brief Public macro to fetch value (key, value) pair for given key */
+/* Public macro to fetch value (key, value) pair for given key */
 #define hash_get_pair(h,key)	_hash_get_pair ((h), (uword) (key))
 
-/** \brief Public macro to set a (key, value) pair */
+/* Public macro to set a (key, value) pair */
 #define hash_set(h,key,value)	hash_set3(h,key,value,0)
 
-/** \brief Public macro to set (key, 0) pair */
+/* Public macro to set (key, 0) pair */
 #define hash_set1(h,key)	(h) = _hash_set3(h,(uword) (key),0,0)
 
-/** \brief Public macro to unset a (key, value) pair */
+/* Public macro to unset a (key, value) pair */
 #define hash_unset(h,key)	((h) = _hash_unset ((h), (uword) (key),0))
 
-/** \brief Public macro to unset a (key, value) pair, return the old value */
+/* Public macro to unset a (key, value) pair, return the old value */
 #define hash_unset3(h,key,old_value) ((h) = _hash_unset ((h), (uword) (key), (void *) (old_value)))
 
 /* get/set/unset for pointer keys. */
 
-/** \brief Public macro to fetch value for given pointer key */
+/* Public macro to fetch value for given pointer key */
 #define hash_get_mem(h,key)	_hash_get ((h), pointer_to_uword (key))
 
-/** \brief Public macro to fetch (key, value) for given pointer key */
+/* Public macro to fetch (key, value) for given pointer key */
 #define hash_get_pair_mem(h,key) _hash_get_pair ((h), pointer_to_uword (key))
 
-/** \brief Public macro to set (key, value) for pointer key */
+/* Public macro to set (key, value) for pointer key */
 #define hash_set_mem(h,key,value) hash_set3 (h, pointer_to_uword (key), (value), 0)
 
-/** \brief Public macro to set (key, 0) for pointer key */
+/* Public macro to set (key, 0) for pointer key */
 #define hash_set1_mem(h,key)     hash_set3 ((h), pointer_to_uword (key), 0, 0)
 
-/** \brief Public macro to unset (key, value) for pointer key */
+/* Public macro to unset (key, value) for pointer key */
 #define hash_unset_mem(h,key)    ((h) = _hash_unset ((h), pointer_to_uword (key),0))
 
-/** \brief internal routine to free a hash table */
+/* internal routine to free a hash table */
 extern void * _hash_free (void * v);
 
-/** \brief Public macro to free a hash table */
+/* Public macro to free a hash table */
 #define hash_free(h) (h) = _hash_free ((h))
 
 clib_error_t * hash_validate (void * v);
 
-/** \brief Public inline funcion to get the number of value bytes for a hash table */
+/* Public inline funcion to get the number of value bytes for a hash table */
 always_inline uword hash_value_bytes (hash_t * h)
 {
   hash_pair_t * p;
   return (sizeof (p->value[0]) << h->log2_pair_size) - sizeof (p->key);
 }
 
-/** \brief Public inline funcion to get log2(size of a (key,value) pair) */
+/* Public inline funcion to get log2(size of a (key,value) pair) */
 always_inline uword hash_pair_log2_bytes (hash_t * h)
 {
   uword log2_bytes = h->log2_pair_size;
@@ -277,24 +276,23 @@ always_inline uword hash_pair_log2_bytes (hash_t * h)
   return log2_bytes;
 }
 
-/** \brief Public inline funcion to get size of a (key,value) pair */
+/* Public inline funcion to get size of a (key,value) pair */
 always_inline uword hash_pair_bytes (hash_t * h)
 { return (uword) 1 << hash_pair_log2_bytes (h); }
 
-/** \brief Public inline funcion to advance a pointer past one (key,value) pair */
+/* Public inline funcion to advance a pointer past one (key,value) pair */
 always_inline void * hash_forward1 (hash_t * h, void * v)
 { return (u8 *) v + hash_pair_bytes (h); }
 
-/** \brief Public inline funcion to advance a pointer past N (key,value) pairs */
+/* Public inline funcion to advance a pointer past N (key,value) pairs */
 always_inline void * hash_forward (hash_t * h, void * v, uword n)
 { return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size); }
 
-/** \brief Iterate over hash pairs
+/* Iterate over hash pairs
     @param p the current (key,value) pair
     @param v the hash table to iterate
     @param body the operation to perform on each (key,value) pair. 
-
-    calls body with each active hash pair
+    executes body with each active hash pair
 */
 #define hash_foreach_pair(p,v,body)                                         \
 do {                                                                        \
@@ -355,7 +353,7 @@ do {                                                                        \
   ;                                                                         \
  } while (0)
 
-/** \brief Iterate over key/value pairs
+/* Iterate over key/value pairs
 
     @param key_var the current key
     @param value_var the current value
@@ -375,7 +373,7 @@ do {								\
   });								\
 } while (0)
 
-/** \brief Iterate over key/value pairs for pointer key hash tables
+/* Iterate over key/value pairs for pointer key hash tables
 
     @param key_var the current key
     @param value_var the current value
@@ -396,7 +394,7 @@ do {									\
 
 /* Support for iteration through hash table. */
 
-/** This struct saves iteration state for hash_next.
+/* This struct saves iteration state for hash_next.
    None of these fields are meant to be visible to the user.
    Hence, the cryptic short-hand names. */
 typedef struct {
