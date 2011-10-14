@@ -112,7 +112,6 @@ uword clib_mem_validate_serial = 0;
 
 void clib_mem_validate (void)
 {
-  clib_error_t * error;
   mheap_validate (clib_mem_get_heap ());
   clib_mem_validate_serial++;
 }

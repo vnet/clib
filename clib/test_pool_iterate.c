@@ -32,7 +32,6 @@
 
 int main (int argc, char * argv[])
 {
-  uword *bm = 0;
   int i;
   uword next;
   u32 *tp = 0;

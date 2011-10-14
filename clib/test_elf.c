@@ -96,7 +96,6 @@ delete_dynamic_rpath_entries_from_section (elf_main_t * em, elf_section_t * s)
 static void elf_delete_dynamic_rpath_entries (elf_main_t * em)
 {
   elf_section_t * s;
-  elf64_dynamic_entry_t * e;
 
   vec_foreach (s, em->sections)
     {
@@ -122,10 +121,12 @@ typedef struct {
 
 int main (int argc, char * argv[])
 {
-  elf_test_main_t _tm = {0}, * tm = &_tm;
+  elf_test_main_t _tm, * tm = &_tm;
   elf_main_t * em = &tm->elf_main;
   unformat_input_t i;
   clib_error_t * error = 0;
+
+  memset (tm, 0, sizeof (tm[0]));
 
   unformat_init_command_line (&i, argv);
   while (unformat_check_input (&i) != UNFORMAT_END_OF_INPUT)

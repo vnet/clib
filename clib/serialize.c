@@ -316,7 +316,7 @@ void serialize_bitmap (serialize_main_t * m, uword * b)
 uword * unserialize_bitmap (serialize_main_t * m)
 {
   uword * b = 0;
-  u32 l, i, n_u32s;
+  u32 i, n_u32s;
 
   unserialize_integer (m, &n_u32s, sizeof (n_u32s));
   if (n_u32s == 0)

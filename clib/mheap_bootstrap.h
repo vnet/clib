@@ -30,8 +30,7 @@
 #include <clib/vec_bootstrap.h>
 #include <clib/error_bootstrap.h>
 
-/* Enable to make heaps thread safe. */
-#if 0 && defined (CLIB_UNIX)
+#if defined (CLIB_UNIX)
 #include <pthread.h>		/* for pthread_mutex_t */
 #define MHEAP_LOCK_PTHREAD
 #endif

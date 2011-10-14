@@ -36,7 +36,7 @@ int test_elog_main (unformat_input_t * input)
   u32 verbose;
   f64 min_sample_time;
   char * dump_file, * load_file, * merge_file, ** merge_files;
-  char * tag, ** tags;
+  u8 * tag, ** tags;
 
   n_iter = 100;
   max_events = 100000;

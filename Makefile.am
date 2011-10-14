@@ -1,5 +1,7 @@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
+AM_CPPFLAGS = -Wall -Werror
+
 if WITH_UNIX
   lib_LTLIBRARIES = libclib.la
 endif
@@ -152,64 +154,65 @@ CORE_UNIT_TEST_SOURCES = \
   clib/test_standalone_string.h
 
 nobase_include_HEADERS = \
-    clib/asm_mips.h \
-    clib/asm_x86.h \
-    clib/bitmap.h \
-    clib/bitops.h \
-    clib/byte_order.h \
-    clib/cache.h \
-    clib/clib.h \
-    clib/elf.h \
-    clib/elog.h \
-    clib/fheap.h \
-    clib/error.h \
-    clib/error_bootstrap.h \
-    clib/fifo.h \
-    clib/format.h \
-    clib/graph.h \
-    clib/hash.h \
-    clib/heap.h \
-    clib/linux_kernel_init.h \
-    clib/longjmp.h \
-    clib/math.h \
-    clib/md5.h \
-    clib/mem.h \
-    clib/mhash.h \
-    clib/mheap.h \
-    clib/mheap_bootstrap.h \
-    clib/os.h \
-    clib/phash.h \
-    clib/pipeline.h \
-    clib/pool.h \
-    clib/qhash.h \
-    clib/random.h \
-    clib/random_buffer.h \
-    clib/random_isaac.h \
-    clib/serialize.h \
-    clib/socket.h \
-    clib/sparse_vec.h \
-    clib/standalone_stdio.h \
-    clib/standalone_string.h \
-    clib/string.h \
-    clib/time.h \
-    clib/timing_wheel.h \
-    clib/timer.h \
-    clib/types.h \
-    clib/unix.h \
-    clib/vec.h \
-    clib/vec_bootstrap.h \
-    clib/vector.h \
-    clib/vector_altivec.h \
-    clib/vector_funcs.h \
-    clib/vector_iwmmxt.h \
-    clib/vector_sse2.h \
-    clib/valgrind.h \
-    clib/vhash.h \
-    clib/vm_linux_kernel.h \
-    clib/vm_standalone.h \
-    clib/vm_unix.h \
-    clib/xy.h \
-    clib/zvec.h
+  clib/asm_mips.h \
+  clib/asm_x86.h \
+  clib/bitmap.h \
+  clib/bitops.h \
+  clib/byte_order.h \
+  clib/cache.h \
+  clib/clib.h \
+  clib/elf.h \
+  clib/elf_clib.h \
+  clib/elog.h \
+  clib/fheap.h \
+  clib/error.h \
+  clib/error_bootstrap.h \
+  clib/fifo.h \
+  clib/format.h \
+  clib/graph.h \
+  clib/hash.h \
+  clib/heap.h \
+  clib/linux_kernel_init.h \
+  clib/longjmp.h \
+  clib/math.h \
+  clib/md5.h \
+  clib/mem.h \
+  clib/mhash.h \
+  clib/mheap.h \
+  clib/mheap_bootstrap.h \
+  clib/os.h \
+  clib/phash.h \
+  clib/pipeline.h \
+  clib/pool.h \
+  clib/qhash.h \
+  clib/random.h \
+  clib/random_buffer.h \
+  clib/random_isaac.h \
+  clib/serialize.h \
+  clib/socket.h \
+  clib/sparse_vec.h \
+  clib/standalone_stdio.h \
+  clib/standalone_string.h \
+  clib/string.h \
+  clib/time.h \
+  clib/timing_wheel.h \
+  clib/timer.h \
+  clib/types.h \
+  clib/unix.h \
+  clib/vec.h \
+  clib/vec_bootstrap.h \
+  clib/vector.h \
+  clib/vector_altivec.h \
+  clib/vector_funcs.h \
+  clib/vector_iwmmxt.h \
+  clib/vector_sse2.h \
+  clib/valgrind.h \
+  clib/vhash.h \
+  clib/vm_linux_kernel.h \
+  clib/vm_standalone.h \
+  clib/vm_unix.h \
+  clib/xy.h \
+  clib/zvec.h
 
 CLIB_CORE = \
   clib/asm_x86.c \
@@ -234,6 +237,7 @@ CLIB_CORE = \
   clib/random_buffer.c \
   clib/random_isaac.c \
   clib/serialize.c \
+  clib/smp.c \
   clib/std-formats.c \
   clib/string.c \
   clib/time.c \
@@ -246,6 +250,7 @@ CLIB_CORE = \
 # Core plus Unix additions
 libclib_la_SOURCES = \
   $(CLIB_CORE) \
+  clib/elf_clib.c \
   clib/socket.c \
   clib/timer.c \
   clib/unix-formats.c \

@@ -28,6 +28,10 @@
 #include <clib/os.h>
 #include <clib/time.h>
 
+#ifdef CLIB_UNIX
+#include <clib/elf_clib.h>
+#endif
+
 static void mheap_get_trace (void * v, uword offset, uword size);
 static void mheap_put_trace (void * v, uword offset, uword size);
 static int mheap_trace_sort (const void * t1, const void * t2);
@@ -42,6 +46,9 @@ always_inline void mheap_lock_init (mheap_t * h)
   if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
     error = 1;
   pthread_mutex_init (&h->lock, error ? (pthread_mutexattr_t *) 0 : &attr);
+#else
+  /* For thread-safe version MHEAP_LOCK_PTHREAD must be enabled. */
+  ASSERT (0);
 #endif
 }
 
@@ -168,7 +175,6 @@ set_free_elt (void * v, uword uoffset, uword n_user_data_bytes)
 always_inline void
 new_free_elt (void * v, uword uoffset, uword n_user_data_bytes)
 {
-  mheap_t * h = mheap_header (v);
   mheap_elt_set_size (v, uoffset, n_user_data_bytes, /* is_free */ 1);
   set_free_elt (v, uoffset, n_user_data_bytes);
 }
@@ -585,8 +591,8 @@ static void free_last_elt (void * v, mheap_elt_t * e)
 void mheap_put (void * v, uword uoffset)
 {
   mheap_t * h;
-  uword b, size, n_user_data_bytes;
-  mheap_elt_t * e, * n, * p;
+  uword n_user_data_bytes;
+  mheap_elt_t * e, * n;
   u64 cpu_times[2];
 
   cpu_times[0] = clib_cpu_time_now ();
@@ -818,10 +824,7 @@ void mheap_foreach (void * v,
 		    uword (* func) (void * arg, void * v, void * elt_data, uword elt_size),
 		    void * arg)
 {
-  mheap_t * h = mheap_header (v);
   mheap_elt_t * e;
-  uword b;
-  void * p;
   u8 * stack_heap, * clib_mem_mheap_save;
   u8 tmp_heap_memory[16*1024];
 
@@ -988,7 +991,7 @@ u8 * format_mheap (u8 * s, va_list * va)
   int verbose = va_arg (*va, int);
 
   mheap_t * h;
-  uword i, o, size, indent;
+  uword i, size, indent;
   clib_mem_usage_t usage;
   mheap_elt_t * first_corrupt;
 
@@ -1049,7 +1052,11 @@ u8 * format_mheap (u8 * s, va_list * va)
 	  {
 	    if (i > 0)
 	      s = format (s, "%U", format_white_space, indent);
+#ifdef CLIB_UNIX
+	    s = format (s, " %U\n", format_clib_elf_symbol_with_address, t->callers[i]);
+#else
 	    s = format (s, " %p\n", t->callers[i]);
+#endif
 	  }
       }
 
@@ -1110,12 +1117,10 @@ static void mheap_validate_breakpoint ()
 void mheap_validate (void * v)
 {
   mheap_t * h = mheap_header (v);
-  uword i, o, s;
+  uword i, s;
 
   uword elt_count, elt_size;
   uword free_count_from_free_lists, free_size_from_free_lists;
-
-  clib_error_t * error = 0;
 
 #define CHECK(x) if (! (x)) { mheap_validate_breakpoint (); os_panic (); }
 

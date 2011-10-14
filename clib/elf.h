@@ -1,3 +1,26 @@
+/*
+  Copyright (c) 2001, 2002, 2003 Eliot Dresselhaus
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 #ifndef included_clib_elf_h
 #define included_clib_elf_h
 
@@ -960,11 +983,13 @@ elf_swap_u64 (elf_main_t * em, u64 x)
 #define FORMAT_ELF_MAIN_DYNAMIC (1 << 2)
 
 format_function_t format_elf_main;
+format_function_t format_elf_symbol;
 
 clib_error_t * elf_read_file (elf_main_t * em, char * file_name);
 clib_error_t * elf_write_file (elf_main_t * em, char * file_name);
 clib_error_t * elf_delete_named_section (elf_main_t * em, char * section_name);
 clib_error_t * elf_parse (elf_main_t * em, void * data, uword data_bytes);
+void elf_parse_symbols (elf_main_t * em);
 
 clib_error_t *
 elf_get_section_by_name (elf_main_t * em, char * section_name, elf_section_t ** result);
