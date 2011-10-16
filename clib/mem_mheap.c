@@ -32,6 +32,12 @@
 /* Per CPU heaps. */
 void * per_cpu_mheaps[32];
 
+clib_smp_main_t clib_smp_main = {
+  .n_cpus = 1,
+  .log2_per_cpu_stack_size = 20,
+  .log2_per_cpu_heap_size = 28,
+};
+
 void clib_mem_exit (void)
 {
   u8 * heap = clib_mem_get_per_cpu_heap ();

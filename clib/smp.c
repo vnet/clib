@@ -25,13 +25,6 @@
 #include <clib/mheap.h>
 #include <clib/os.h>
 
-/* Defaults. */
-clib_smp_main_t clib_smp_main = {
-  .n_cpus = 1,
-  .log2_per_cpu_stack_size = 20,
-  .log2_per_cpu_heap_size = 28,
-};
-
 void clib_smp_free (clib_smp_main_t * m)
 {
   clib_mem_vm_free (uword_to_pointer (m->stack_base, void *),
