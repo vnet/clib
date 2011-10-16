@@ -42,7 +42,7 @@
    space beyond A + 1 used in object. */
 #define clib_elf_section_data_next(a,extra)				\
   uword_to_pointer (round_pow2 (pointer_to_uword (a + 1) + (extra),	\
-				CLIB_SECTION_DATA_ALIGN),		\
+				CLIB_ELF_SECTION_DATA_ALIGN),		\
 		    void *)
 
 typedef struct {
