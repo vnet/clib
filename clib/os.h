@@ -65,7 +65,7 @@ typedef struct {
   void * global_heap;
 } clib_smp_main_t;
 
-clib_smp_main_t clib_smp_main;
+extern clib_smp_main_t clib_smp_main;
 
 uword os_smp_bootstrap (uword n_cpus,
 			void * bootstrap_function,
