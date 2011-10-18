@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CPPFLAGS = -Wall -Werror
+AM_CPPFLAGS = -Wall # -Werror
 
 if WITH_UNIX
   lib_LTLIBRARIES = libclib.la
@@ -86,27 +86,27 @@ test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_vhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
 
-test_elog_LDADD =	libclib.la -lpthread
-test_elf_LDADD =	libclib.la -lpthread
-test_fifo_LDADD =	libclib.la -lpthread
-test_format_LDADD =	libclib.la -lpthread
-test_hash_LDADD =	libclib.la -lpthread
-test_heap_LDADD =	libclib.la -lpthread
-test_longjmp_LDADD =	libclib.la -lpthread
-test_md5_LDADD =	libclib.la -lpthread
-test_mheap_LDADD =	libclib.la -lpthread
-test_phash_LDADD =	libclib.la -lpthread
-test_pool_iterate_LDADD =	libclib.la -lpthread
-test_qhash_LDADD =	libclib.la -lpthread
-test_random_LDADD =	libclib.la -lpthread
-test_random_isaac_LDADD =	libclib.la -lpthread
-test_serialize_LDADD =	libclib.la -lpthread
-test_socket_LDADD =	libclib.la -lpthread
-test_time_LDADD =	libclib.la -lm -lpthread
-test_timing_wheel_LDADD =	libclib.la -lm -lpthread
-test_vec_LDADD =	libclib.la -lpthread
-test_vhash_LDADD =	libclib.la -lpthread
-test_zvec_LDADD =	libclib.la -lpthread
+test_elog_LDADD =	libclib.la
+test_elf_LDADD =	libclib.la
+test_fifo_LDADD =	libclib.la
+test_format_LDADD =	libclib.la
+test_hash_LDADD =	libclib.la
+test_heap_LDADD =	libclib.la
+test_longjmp_LDADD =	libclib.la
+test_md5_LDADD =	libclib.la
+test_mheap_LDADD =	libclib.la
+test_phash_LDADD =	libclib.la
+test_pool_iterate_LDADD =	libclib.la
+test_qhash_LDADD =	libclib.la
+test_random_LDADD =	libclib.la
+test_random_isaac_LDADD =	libclib.la
+test_serialize_LDADD =	libclib.la
+test_socket_LDADD =	libclib.la
+test_time_LDADD =	libclib.la -lm
+test_timing_wheel_LDADD =	libclib.la -lm
+test_vec_LDADD =	libclib.la
+test_vhash_LDADD =	libclib.la
+test_zvec_LDADD =	libclib.la
 
 test_elog_LDFLAGS = -static
 test_elf_LDFLAGS = -static
