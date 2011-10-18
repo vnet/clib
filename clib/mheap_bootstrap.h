@@ -29,11 +29,7 @@
 
 #include <clib/vec_bootstrap.h>
 #include <clib/error_bootstrap.h>
-
-#if defined (CLIB_UNIX)
-#include <pthread.h>		/* for pthread_mutex_t */
-#define MHEAP_LOCK_PTHREAD
-#endif
+#include <clib/os.h>
 
 /* Each element in heap is immediately followed by this struct. */
 typedef struct {
@@ -142,6 +138,9 @@ typedef struct {
 #define MHEAP_FLAG_THREAD_SAFE			(1 << 2)
 #define MHEAP_FLAG_VALIDATE			(1 << 3)
 
+  /* Lock use when MHEAP_FLAG_THREAD_SAFE is set. */
+  clib_smp_lock_t smp_lock;
+
   /* Number of allocated objects. */
   u64 n_elts;
 
@@ -153,11 +152,6 @@ typedef struct {
      Used to debug heap corruption problems.  GDB breakpoints can be
      made conditional on validate_serial. */
   u64 validate_serial;
-
-#ifdef MHEAP_LOCK_PTHREAD
-  /* Global per-heap lock for thread-safe operation. */
-  pthread_mutex_t lock;
-#endif
 
   mheap_trace_main_t trace_main;
 

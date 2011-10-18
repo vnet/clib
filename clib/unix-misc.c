@@ -29,8 +29,10 @@
 #include <clib/os.h>
 #include <clib/unix.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/uio.h>		/* writev */
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -168,13 +170,24 @@ void os_puts (u8 * string, uword string_length, uword is_error)
   int cpu = os_get_cpu_number ();
   char buf[64];
   int fd = is_error ? 2 : 1;
+  struct iovec iovs[2];
+  int n_iovs = 0;
 
   if (m->n_cpus > 1)
     {
       sprintf (buf, "%d: ", cpu);
-      (void) write (fd, buf, strlen (buf));
+
+      iovs[n_iovs].iov_base = buf;
+      iovs[n_iovs].iov_len = strlen (buf);
+      n_iovs++;
     }
-  (void) write (fd, string, string_length);
+
+  iovs[n_iovs].iov_base = string;
+  iovs[n_iovs].iov_len = string_length;
+  n_iovs++;
+
+  if (writev (fd, iovs, n_iovs) < 0)
+    ;
 }
 
 void os_out_of_memory (void) __attribute__ ((weak));
@@ -222,35 +235,78 @@ typedef struct {
 
 static int linux_clone_bootstrap (void * arg)
 {
+  clib_smp_main_t * m = &clib_smp_main;
   linux_clone_bootstrap_args_t * a = arg;
+  uword result;
+
   linux_bind_to_current_cpu ();
-  exit (a->bootstrap_function (a->bootstrap_function_arg));
+  result = a->bootstrap_function (a->bootstrap_function_arg);
+  clib_smp_atomic_add (&m->n_cpus_exited, 1);
+  return result;
 }
+
+typedef struct
+{
+  u8 unused[256 * 3];
+} linux_thread_local_store_t;
 
 uword os_smp_bootstrap (uword n_cpus,
 			void * bootstrap_function,
 			uword bootstrap_function_arg)
 {
   clib_smp_main_t * m = &clib_smp_main;
-  int i;
+  clib_smp_per_cpu_main_t * cm;
+  linux_thread_local_store_t * tls = 0;
+  uword cpu, bootstrap_result;
 
   m->n_cpus = n_cpus ? n_cpus : linux_guess_n_cpus ();
 
   clib_smp_init_stacks_and_heaps (m);
 
-  for (i = 1; i < m->n_cpus; i++)
+  vec_validate (tls, m->n_cpus - 1);
+
+  /* CPUs my_cpu > 0. */
+  for (cpu = 1; cpu < m->n_cpus; cpu++)
     {
       linux_clone_bootstrap_args_t a;
+      pid_t tid;
+
       a.bootstrap_function = bootstrap_function;
       a.bootstrap_function_arg = bootstrap_function_arg;
+
       if (clone (linux_clone_bootstrap,
-		 clib_smp_stack_top_for_cpu (m, i),
-		 /* flags */ 0,
-		 &a) < 0)
-	clib_error ("clone");
+		 clib_smp_stack_top_for_cpu (m, cpu),
+		 /* flags */
+		 (CLONE_VM | CLONE_FS | CLONE_FILES
+		  | CLONE_SIGHAND | CLONE_SYSVSEM
+		  | CLONE_SETTLS | CLONE_PARENT_SETTID),
+		 &a,
+		 &tid, &tls[cpu - 1], &tid) < 0)
+	os_panic ();
+
+      cm = vec_elt_at_index (m->per_cpu_mains, cpu);
+      cm->thread_id = tid;
     }
 
-  return clib_calljmp (bootstrap_function,
-		       bootstrap_function_arg,
-		       clib_smp_stack_top_for_cpu (m, 0));
+  /* CPU 0: the master. */
+  m->per_cpu_mains[0].thread_id = getpid ();
+
+  linux_bind_to_current_cpu ();
+
+  bootstrap_result
+    = clib_calljmp (bootstrap_function,
+		    bootstrap_function_arg,
+		    clib_smp_stack_top_for_cpu (m, 0));
+
+  /* Wait for all CPUs to exit. */
+  clib_smp_atomic_add (&m->n_cpus_exited, 1);
+  while (m->n_cpus_exited < m->n_cpus)
+    sched_yield ();
+
+  /* This effectively switches to normal stack. */
+  m->n_cpus = 0;
+
+  vec_free (tls);
+
+  return bootstrap_result;
 }

@@ -36,42 +36,18 @@ static void mheap_get_trace (void * v, uword offset, uword size);
 static void mheap_put_trace (void * v, uword offset, uword size);
 static int mheap_trace_sort (const void * t1, const void * t2);
 
-always_inline void mheap_lock_init (mheap_t * h)
-{
-#ifdef MHEAP_LOCK_PTHREAD
-  pthread_mutexattr_t attr;
-  int error = 0;
-  if (pthread_mutexattr_init (&attr))
-    error = 1;
-  if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
-    error = 1;
-  pthread_mutex_init (&h->lock, error ? (pthread_mutexattr_t *) 0 : &attr);
-#else
-  /* For thread-safe version MHEAP_LOCK_PTHREAD must be enabled. */
-  ASSERT (0);
-#endif
-}
-
 always_inline void mheap_maybe_lock (void * v)
 {
-#ifdef MHEAP_LOCK_PTHREAD
   mheap_t * h = mheap_header (v);
-  if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
-    return;
-
-  pthread_mutex_lock (&h->lock);
-#endif
+  if (v && (h->flags & MHEAP_FLAG_THREAD_SAFE))
+    clib_smp_lock (&h->smp_lock);
 }
 
 always_inline void mheap_maybe_unlock (void * v)
 {
-#ifdef MHEAP_LOCK_PTHREAD
   mheap_t * h = mheap_header (v);
-  if (! v || ! (h->flags & MHEAP_FLAG_THREAD_SAFE))
-    return;
-
-  pthread_mutex_unlock (&h->lock);
-#endif
+  if (v && h->flags & MHEAP_FLAG_THREAD_SAFE)
+    clib_smp_unlock (&h->smp_lock);
 }
 
 /* Find bin for objects with size at least n_user_data_bytes. */
@@ -783,9 +759,6 @@ void * mheap_alloc_with_flags (void * memory, uword size, uword flags)
 
   /* Set flags based on those given less builtin-flags. */
   h->flags |= (flags &~ MHEAP_FLAG_TRACE);
-
-  if (h->flags & MHEAP_FLAG_THREAD_SAFE)
-    mheap_lock_init (h);
 
   /* Unmap remainder of heap until we will be ready to use it. */
   if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
