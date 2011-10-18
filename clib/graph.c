@@ -83,9 +83,9 @@ uword graph_del_node (graph_t * g, u32 src)
   graph_dir_free (&src_node->next);
   graph_dir_free (&src_node->prev);
 
-  index = n - g->nodes;
-  pool_put (g->nodes, n);
-  memset (n, ~0, sizeof (n[0]));
+  index = src_node - g->nodes;
+  pool_put (g->nodes, src_node);
+  memset (src_node, ~0, sizeof (src_node[0]));
 
   return index;
 }
