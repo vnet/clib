@@ -29,9 +29,6 @@
 #include <clib/memcheck.h>
 #include <clib/valgrind.h>
 
-/* Per CPU heaps. */
-void * per_cpu_mheaps[32];
-
 clib_smp_main_t clib_smp_main = {
   .n_cpus = 1,
   .log2_per_cpu_stack_size = 20,
