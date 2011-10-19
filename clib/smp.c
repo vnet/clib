@@ -39,7 +39,9 @@ static uword allocate_per_cpu_mheap (uword cpu)
   void * heap;
 
   ASSERT (os_get_cpu_number () == cpu);
-  heap = mheap_alloc (clib_smp_heap_for_cpu (m, cpu), (uword) 1 << m->log2_per_cpu_heap_size);
+  heap = mheap_alloc_with_flags (clib_smp_heap_for_cpu (m, cpu),
+				 (uword) 1 << m->log2_per_cpu_heap_size,
+				 /* flags */ 0);
   clib_mem_set_heap (heap);
 
   if (cpu == 0)
