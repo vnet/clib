@@ -30,6 +30,7 @@
 #include <clib/vec_bootstrap.h>
 #include <clib/error_bootstrap.h>
 #include <clib/os.h>
+#include <clib/vector.h>
 
 /* Each element in heap is immediately followed by this struct. */
 typedef struct {
@@ -120,9 +121,26 @@ typedef struct {
 
   u64 n_vector_expands;
 
+  u64 n_small_object_cache_hits;
+  u64 n_small_object_cache_attempts;
+
   u64 n_gets, n_puts;
   u64 n_clocks_get, n_clocks_put;
 } mheap_stats_t;
+
+/* For objects with align == 4 and align_offset == 0 (e.g. vector strings). */
+typedef struct {
+  union {
+    u8x16 as_u8x16[BITS (uword) / 16];
+
+    /* Store bin + 1; zero means unused. */
+    u8 as_u8[BITS (uword)];
+  } bins;
+
+  uword offsets[BITS (uword)];
+
+  u32 replacement_index;
+} mheap_small_object_cache_t;
 
 /* Vec header for heaps. */
 typedef struct {
@@ -132,11 +150,14 @@ typedef struct {
   /* Bitmap of non-empty free list bins. */
   uword non_empty_free_elt_heads[(MHEAP_N_BINS + BITS (uword) - 1) / BITS (uword)];
 
+  mheap_small_object_cache_t small_object_cache;
+
   u32 flags;
 #define MHEAP_FLAG_TRACE			(1 << 0)
 #define MHEAP_FLAG_DISABLE_VM			(1 << 1)
 #define MHEAP_FLAG_THREAD_SAFE			(1 << 2)
-#define MHEAP_FLAG_VALIDATE			(1 << 3)
+#define MHEAP_FLAG_SMALL_OBJECT_CACHE		(1 << 3)
+#define MHEAP_FLAG_VALIDATE			(1 << 4)
 
   /* Lock use when MHEAP_FLAG_THREAD_SAFE is set. */
   clib_smp_lock_t smp_lock;
@@ -147,6 +168,9 @@ typedef struct {
   /* Maximum size (in bytes) this heap is allowed to grow to.
      Set to ~0 to grow heap (via vec_resize) arbitrarily. */
   u64 max_size;
+
+  uword vm_alloc_offset_from_header;
+  uword vm_alloc_size;
 
   /* Each successful mheap_validate call increments this serial number.
      Used to debug heap corruption problems.  GDB breakpoints can be
@@ -159,15 +183,10 @@ typedef struct {
 } mheap_t;
 
 always_inline mheap_t * mheap_header (u8 * v)
-{ return vec_header (v, sizeof (mheap_t)); }
+{ return vec_aligned_header (v, sizeof (mheap_t), 16); }
 
 always_inline u8 * mheap_vector (mheap_t * h)
-{ return vec_header_end (h, sizeof (mheap_t)); }
-
-#define MHEAP_ALIGN_PAD_BYTES(size)				\
-  (((size) % sizeof (mheap_elt_t)) == 0				\
-   ? 0								\
-   : sizeof (mheap_elt_t) - ((size) % sizeof (mheap_elt_t)))
+{ return vec_aligned_header_end (h, sizeof (mheap_t), 16); }
 
 always_inline uword mheap_elt_uoffset (void * v, mheap_elt_t * e)
 { return (void *) e->user_data - v; }
