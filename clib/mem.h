@@ -33,7 +33,7 @@
 #include <clib/valgrind.h>
 
 /* Per CPU heaps. */
-void * clib_per_cpu_mheaps[32];
+extern void * clib_per_cpu_mheaps[32];
 
 always_inline void * clib_mem_get_per_cpu_heap (void)
 {
