@@ -38,15 +38,15 @@ typedef struct {
 
   /* Vector of free indices.  One element for each set bit in bitmap. */
   u32 * free_indices;
-
-  /* Pad so that sizeof (pool_header_t) + sizeof (vec_header_t)
-     is a multiple of 8 bytes. */
-  u8 pad[MHEAP_ALIGN_PAD_BYTES (sizeof(2*sizeof (void *) + sizeof (vec_header_t)))];
 } pool_header_t;
+
+/* Align pool header so that pointers are naturally aligned. */
+#define pool_aligned_header_bytes \
+  vec_aligned_header_bytes (sizeof (pool_header_t), sizeof (void *))
 
 /* Get pool header from user pool pointer */
 always_inline pool_header_t * pool_header (void * v)
-{ return vec_header (v, sizeof (pool_header_t)); }
+{ return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *)); }
 
 /* Validate a pool */
 always_inline void pool_validate (void * v)
@@ -75,7 +75,7 @@ always_inline void pool_header_validate_index (void * v, uword index)
 do {								\
   uword __pool_validate_index = (i);				\
   vec_validate_ha ((v), __pool_validate_index,			\
-		   sizeof (pool_header_t), /* align */ 0);	\
+		   pool_aligned_header_bytes, /* align */ 0);		\
   pool_header_validate_index ((v), __pool_validate_index);	\
 } while (0)
 
@@ -162,7 +162,7 @@ do {									\
       P = _vec_resize (P,						\
 		       /* length_increment */ 1,			\
 		       /* new size */ (vec_len (P) + 1) * sizeof (P[0]), \
-		       /* header bytes */ sizeof (pool_header_t),	\
+		       pool_aligned_header_bytes,				\
 		       /* align */ (A));				\
       E = vec_end (P) - 1;						\
     }									\
@@ -208,7 +208,8 @@ do {						\
 do {									\
   pool_header_t * _p;							\
   (P) = _vec_resize ((P), 0, (vec_len (P) + (N)) * sizeof (P[0]),	\
-		     sizeof (pool_header_t), (A));			\
+		     pool_aligned_header_bytes,				\
+		     (A));						\
   _p = pool_header (P);							\
   vec_resize (_p->free_indices, (N));					\
   _vec_len (_p->free_indices) -= (N);					\
