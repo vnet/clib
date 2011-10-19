@@ -24,7 +24,7 @@
 #ifndef included_vector_sse2_h
 #define included_vector_sse2_h
 
-#include <clib/error.h>		/* for ASSERT */
+#include <clib/error_bootstrap.h>		/* for ASSERT */
 
 /* 128 bit interleaves. */
 always_inline u8x16 u8x16_interleave_hi (u8x16 a, u8x16 b)

@@ -54,6 +54,20 @@ always_inline void *
 vec_header_end (void * v, uword header_bytes)
 { return v + vec_header_bytes (header_bytes); }
 
+always_inline uword
+vec_aligned_header_bytes (uword header_bytes, uword align)
+{
+  return round_pow2 (header_bytes + sizeof (vec_header_t), align);
+}
+
+always_inline void *
+vec_aligned_header (void * v, uword header_bytes, uword align)
+{ return v - vec_aligned_header_bytes (header_bytes, align); }
+
+always_inline void *
+vec_aligned_header_end (void * v, uword header_bytes, uword align)
+{ return v + vec_aligned_header_bytes (header_bytes, align); }
+
 /* Finds the user header of a vector with unspecified alignment given
    the user pointer to the vector. */
     
