@@ -122,4 +122,33 @@ clib_smp_stack_top_for_cpu (clib_smp_main_t * m, uword cpu)
   return uword_to_pointer (a, void *);
 }
 
+#define clib_atomic_exec(p,var,body)					\
+do {									\
+  typeof (v) * __clib_atomic_exec_p = &(p);				\
+  typeof (v) __clib_atomic_exec_locked = uword_to_pointer (1, void *);	\
+  typeof (v) __clib_atomic_exec_v;					\
+  void * __clib_atomic_exec_saved_heap;					\
+									\
+  /* Switch to global (thread-safe) heap. */				\
+  __clib_atomic_exec_saved_heap = clib_mem_set_heap (clib_smp_main.global_heap); \
+									\
+  /* Grab lock. */							\
+  while ((__clib_atomic_exec_v						\
+	  = clib_smp_swap (__clib_atomic_exec_p,			\
+			   __clib_atomic_exec_locked))			\
+	 == __clib_atomic_exec_locked)					\
+    ;									\
+									\
+  /* Execute body. */							\
+  (var) = __clib_atomic_exec_v;						\
+  body;									\
+  __clib_atomic_exec_v = (var);						\
+									\
+  /* Release lock. */							\
+  (void) clib_smp_swap (__clib_atomic_exec_p, __clib_atomic_exec_v);	\
+									\
+  /* Switch back to previous heap. */					\
+  clib_mem_set_heap (__clib_atomic_exec_saved_heap);			\
+} while (0)
+
 #endif /* included_clib_smp_h */

@@ -46,6 +46,9 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 #endif /* ! CLIB_LINUX_KERNEL */
 
+typedef int i128 __attribute__ ((mode (TI)));
+typedef unsigned int u128 __attribute__ ((mode (TI)));
+
 #if (defined(i386) || defined(_mips) || defined(powerpc) || defined (__SPU__) || defined(__sparc__) || defined(__arm__) || defined (__xtensa__))
 typedef int i32;
 typedef long long i64;

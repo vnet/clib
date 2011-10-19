@@ -346,7 +346,7 @@ _ (u64, 2, right, left);
 #undef _
 
 #define _(t,n,lr1,lr2)						\
-  always_inline t##x##n					\
+  always_inline t##x##n						\
   t##x##n##_word_rotate2_##lr1 (t##x##n w0, t##x##n w1, int i)	\
   {								\
     int m = sizeof (t##x##n) / sizeof (t);			\
@@ -355,7 +355,7 @@ _ (u64, 2, right, left);
 	    | t##x##n##_word_shift_##lr2 (w1, m - i));		\
   }								\
 								\
-  always_inline t##x##n					\
+  always_inline t##x##n						\
   t##x##n##_word_rotate_##lr1 (t##x##n w0, int i)		\
   { return t##x##n##_word_rotate2_##lr1 (w0, w0, i); }
 
