@@ -191,10 +191,6 @@ remove_free_elt2 (void * v, mheap_elt_t * e)
 #define MHEAP_VM_ROUND_UP	MHEAP_VM_ROUND
 #define MHEAP_VM_ROUND_DOWN	(0 << 2)
 
-static uword mheap_vm (void * v, uword flags,
-		       clib_address_t start_addr, uword size);
-static uword mheap_vm_elt (void * v, uword flags, uword offset);
-
 static uword mheap_page_size;
 
 static_always_inline uword mheap_page_round (uword addr)
@@ -202,6 +198,53 @@ static_always_inline uword mheap_page_round (uword addr)
 
 static_always_inline uword mheap_page_truncate (uword addr)
 { return addr &~ (mheap_page_size - 1); }
+
+static_always_inline uword
+mheap_vm (void * v,
+	  uword flags,
+	  clib_address_t start_addr,
+	  uword size)
+{
+  mheap_t * h = mheap_header (v);
+  clib_address_t start_page, end_page, end_addr;
+  uword mapped_bytes;
+
+  ASSERT (! (h->flags & MHEAP_FLAG_DISABLE_VM));
+
+  end_addr = start_addr + size;
+
+  /* Round start/end address up to page boundary. */
+  start_page = mheap_page_round (start_addr);
+
+  if ((flags & MHEAP_VM_ROUND) == MHEAP_VM_ROUND_UP)
+    end_page = mheap_page_round (end_addr);
+  else
+    end_page = mheap_page_truncate (end_addr);
+
+  mapped_bytes = 0;
+  if (end_page > start_page)
+    {
+      mapped_bytes = end_page - start_page;
+      if (flags & MHEAP_VM_MAP)
+	clib_mem_vm_map ((void *) start_page, end_page - start_page);
+      else if (flags & MHEAP_VM_UNMAP)
+	clib_mem_vm_unmap ((void *) start_page, end_page - start_page);
+    }
+
+  return mapped_bytes;
+}
+
+static_always_inline uword
+mheap_vm_elt (void * v, uword flags, uword offset)
+{
+  mheap_elt_t * e;
+  clib_address_t start_addr, end_addr;
+
+  e = mheap_elt_at_uoffset (v, offset);
+  start_addr = (clib_address_t) ((void *) e->user_data);
+  end_addr = (clib_address_t) mheap_next_elt (e);
+  return mheap_vm (v, flags, start_addr, end_addr - start_addr);
+}
 
 static uword
 mheap_get_search_free_bin (void * v,
@@ -290,8 +333,7 @@ mheap_get_search_free_bin (void * v,
     }
 
   /* Need to make sure that relevant memory areas are mapped. */
-  if (! (h->flags & MHEAP_FLAG_DISABLE_VM)
-      && mheap_vm_elt (v, MHEAP_VM_NOMAP, f0))
+  if (! (h->flags & MHEAP_FLAG_DISABLE_VM))
     {
       mheap_elt_t * f0_elt = mheap_elt_at_uoffset (v, f0);
       mheap_elt_t * f1_elt = mheap_elt_at_uoffset (v, f1);
@@ -657,51 +699,6 @@ void mheap_put (void * v, uword uoffset)
 
   cpu_times[1] = clib_cpu_time_now ();
   h->stats.n_clocks_put += cpu_times[1] - cpu_times[0];
-}
-
-static uword mheap_vm (void * v,
-		       uword flags,
-		       clib_address_t start_addr,
-		       uword size)
-{
-  mheap_t * h = mheap_header (v);
-  clib_address_t start_page, end_page, end_addr;
-  uword mapped_bytes;
-
-  ASSERT (! (h->flags & MHEAP_FLAG_DISABLE_VM));
-
-  end_addr = start_addr + size;
-
-  /* Round start/end address up to page boundary. */
-  start_page = mheap_page_round (start_addr);
-
-  if ((flags & MHEAP_VM_ROUND) == MHEAP_VM_ROUND_UP)
-    end_page = mheap_page_round (end_addr);
-  else
-    end_page = mheap_page_truncate (end_addr);
-
-  mapped_bytes = 0;
-  if (end_page > start_page)
-    {
-      mapped_bytes = end_page - start_page;
-      if (flags & MHEAP_VM_MAP)
-	clib_mem_vm_map ((void *) start_page, end_page - start_page);
-      else if (flags & MHEAP_VM_UNMAP)
-	clib_mem_vm_unmap ((void *) start_page, end_page - start_page);
-    }
-
-  return mapped_bytes;
-}
-
-static uword mheap_vm_elt (void * v, uword flags, uword offset)
-{
-  mheap_elt_t * e;
-  clib_address_t start_addr, end_addr;
-
-  e = mheap_elt_at_uoffset (v, offset);
-  start_addr = (clib_address_t) ((void *) e->user_data);
-  end_addr = (clib_address_t) mheap_next_elt (e);
-  return mheap_vm (v, flags, start_addr, end_addr - start_addr);
 }
 
 always_inline uword
