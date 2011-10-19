@@ -217,11 +217,9 @@ static uword linux_guess_n_cpus ()
   return i;
 }
 
-static void linux_bind_to_current_cpu (void)
+static void linux_bind_to_cpu (uword cpu)
 {
   cpu_set_t s;
-  uword cpu = os_get_cpu_number ();
-
   memset (&s, 0, sizeof (s));
   s.__bits[cpu / BITS (s.__bits[0])] = (uword) 1 << (cpu % BITS (s.__bits[0]));
   if (sched_setaffinity (/* pid */ 0, sizeof (s), &s) < 0)
@@ -239,16 +237,11 @@ static int linux_clone_bootstrap (void * arg)
   linux_clone_bootstrap_args_t * a = arg;
   uword result;
 
-  linux_bind_to_current_cpu ();
+  linux_bind_to_cpu (os_get_cpu_number ());
   result = a->bootstrap_function (a->bootstrap_function_arg);
   clib_smp_atomic_add (&m->n_cpus_exited, 1);
   return result;
 }
-
-typedef struct
-{
-  u8 unused[256 * 3];
-} linux_thread_local_store_t;
 
 uword os_smp_bootstrap (uword n_cpus,
 			void * bootstrap_function,
@@ -256,47 +249,59 @@ uword os_smp_bootstrap (uword n_cpus,
 {
   clib_smp_main_t * m = &clib_smp_main;
   clib_smp_per_cpu_main_t * cm;
-  linux_thread_local_store_t * tls = 0;
   uword cpu, bootstrap_result;
+  void * stack_top_for_cpu0 = 0;
 
   m->n_cpus = n_cpus ? n_cpus : linux_guess_n_cpus ();
 
   clib_smp_init_stacks_and_heaps (m);
 
-  vec_validate (tls, m->n_cpus - 1);
-
-  /* CPUs my_cpu > 0. */
-  for (cpu = 1; cpu < m->n_cpus; cpu++)
+  for (cpu = 0; cpu < m->n_cpus; cpu++)
     {
-      linux_clone_bootstrap_args_t a;
       pid_t tid;
+      void * tls;
 
-      a.bootstrap_function = bootstrap_function;
-      a.bootstrap_function_arg = bootstrap_function_arg;
+      /* Allocate TLS at top of stack. */
+      tls = clib_smp_stack_top_for_cpu (m, cpu);
+      tls -= m->n_tls_4k_pages << 12;
+      memset (tls, 0, m->n_tls_4k_pages << 12);
 
-      if (clone (linux_clone_bootstrap,
-		 clib_smp_stack_top_for_cpu (m, cpu),
-		 /* flags */
-		 (CLONE_VM | CLONE_FS | CLONE_FILES
-		  | CLONE_SIGHAND | CLONE_SYSVSEM
-		  | CLONE_SETTLS | CLONE_PARENT_SETTID),
-		 &a,
-		 &tid, &tls[cpu - 1], &tid) < 0)
-	os_panic ();
+      if (cpu != 0)
+	{
+	  linux_clone_bootstrap_args_t a;
 
+	  a.bootstrap_function = bootstrap_function;
+	  a.bootstrap_function_arg = bootstrap_function_arg;
+
+	  if (clone (linux_clone_bootstrap,
+		     /* Stack top ends with TLS and extends towards lower addresses. */
+		     (void *) tls,
+		     (CLONE_VM | CLONE_FS | CLONE_FILES
+		      | CLONE_SIGHAND | CLONE_SYSVSEM
+		      | CLONE_SETTLS | CLONE_PARENT_SETTID),
+		     &a,
+		     &tid, tls, &tid) < 0)
+	    os_panic ();
+	}
+      else
+	{
+	  tid = getpid ();
+
+	  linux_bind_to_cpu (cpu);
+
+	  stack_top_for_cpu0 = tls;
+	}
+
+      /* Record thread ID. */
       cm = vec_elt_at_index (m->per_cpu_mains, cpu);
       cm->thread_id = tid;
     }
 
-  /* CPU 0: the master. */
-  m->per_cpu_mains[0].thread_id = getpid ();
-
-  linux_bind_to_current_cpu ();
-
+  /* For CPU 0, no need for new thread. */
   bootstrap_result
     = clib_calljmp (bootstrap_function,
 		    bootstrap_function_arg,
-		    clib_smp_stack_top_for_cpu (m, 0));
+		    stack_top_for_cpu0);
 
   /* Wait for all CPUs to exit. */
   clib_smp_atomic_add (&m->n_cpus_exited, 1);
@@ -305,8 +310,7 @@ uword os_smp_bootstrap (uword n_cpus,
 
   /* This effectively switches to normal stack. */
   m->n_cpus = 0;
-
-  vec_free (tls);
+  m->n_cpus_exited = 0;
 
   return bootstrap_result;
 }
