@@ -189,6 +189,7 @@ nobase_include_HEADERS = \
   clib/random_buffer.h \
   clib/random_isaac.h \
   clib/serialize.h \
+  clib/smp.h \
   clib/socket.h \
   clib/sparse_vec.h \
   clib/standalone_stdio.h \
