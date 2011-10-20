@@ -397,6 +397,7 @@ void elog_init (elog_main_t * em, u32 n_events)
 
   /* Save / restore string table, otherwise enumerated events break */
   old_string_table = em->string_table;
+  vec_free (em->event_ring);
   memset (em, 0, sizeof (em[0]));
   em->string_table = old_string_table;
 

@@ -231,10 +231,9 @@ typedef struct {
   uword bootstrap_function_arg;
 } linux_clone_bootstrap_args_t;
 
-static int linux_clone_bootstrap (void * arg)
+static int linux_clone_bootstrap (linux_clone_bootstrap_args_t * a)
 {
   clib_smp_main_t * m = &clib_smp_main;
-  linux_clone_bootstrap_args_t * a = arg;
   uword result;
 
   linux_bind_to_cpu (os_get_cpu_number ());
@@ -254,7 +253,7 @@ uword os_smp_bootstrap (uword n_cpus,
 
   m->n_cpus = n_cpus ? n_cpus : linux_guess_n_cpus ();
 
-  clib_smp_init_stacks_and_heaps (m);
+  clib_smp_init ();
 
   for (cpu = 0; cpu < m->n_cpus; cpu++)
     {
@@ -273,7 +272,7 @@ uword os_smp_bootstrap (uword n_cpus,
 	  a.bootstrap_function = bootstrap_function;
 	  a.bootstrap_function_arg = bootstrap_function_arg;
 
-	  if (clone (linux_clone_bootstrap,
+	  if (clone ((void *) linux_clone_bootstrap,
 		     /* Stack top ends with TLS and extends towards lower addresses. */
 		     (void *) tls,
 		     (CLONE_VM | CLONE_FS | CLONE_FILES

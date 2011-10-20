@@ -27,20 +27,23 @@
 
 void clib_smp_free (clib_smp_main_t * m)
 {
-  clib_mem_vm_free (uword_to_pointer (m->stack_base, void *),
-		    m->stack_base_alloc_size);
-  clib_mem_vm_free (uword_to_pointer (m->heap_base, void *),
-		    m->heap_base_alloc_size);
+  clib_mem_vm_free (m->vm_base, (uword) ((1 + m->n_cpus) << m->log2_n_per_cpu_vm_bytes));
 }
 
 static uword allocate_per_cpu_mheap (uword cpu)
 {
   clib_smp_main_t * m = &clib_smp_main;
   void * heap;
+  uword vm_size, stack_size;
 
   ASSERT (os_get_cpu_number () == cpu);
-  heap = mheap_alloc_with_flags (clib_smp_heap_for_cpu (m, cpu),
-				 (uword) 1 << m->log2_per_cpu_heap_size,
+
+  vm_size = (uword) 1 << m->log2_n_per_cpu_vm_bytes;
+  stack_size = (uword) 1 << m->log2_n_per_cpu_stack_bytes;
+
+  /* Heap extends up to start of stack. */
+  heap = mheap_alloc_with_flags (clib_smp_vm_base_for_cpu (m, cpu),
+				 vm_size - stack_size,
 				 /* flags */ 0);
   clib_mem_set_heap (heap);
 
@@ -50,43 +53,27 @@ static uword allocate_per_cpu_mheap (uword cpu)
       vec_resize (m->per_cpu_mains, m->n_cpus);
 
       /* Allocate shared global heap (thread safe). */
-      m->global_heap = mheap_alloc_with_flags (clib_smp_heap_for_cpu (m, m->n_cpus),
-					       /* size */ (uword) 1 << m->log2_per_cpu_heap_size,
-					       /* flags */ MHEAP_FLAG_THREAD_SAFE);
+      m->global_heap =
+	mheap_alloc_with_flags (clib_smp_vm_base_for_cpu (m, cpu + m->n_cpus),
+				vm_size,
+				/* flags */ MHEAP_FLAG_THREAD_SAFE);
     }
 
   m->per_cpu_mains[cpu].heap = heap;
   return 0;
 }
 
-void clib_smp_init_stacks_and_heaps (clib_smp_main_t * m)
+void clib_smp_init (void)
 {
-  if (! m->n_cpus)
-    m->n_cpus = 1;
+  clib_smp_main_t * m = &clib_smp_main;
+  uword cpu;
 
-  if (! m->log2_per_cpu_stack_size)
-    m->log2_per_cpu_stack_size = 18;
+  m->vm_base = clib_mem_vm_alloc ((uword) (m->n_cpus + 1) << m->log2_n_per_cpu_vm_bytes);
+  if (! m->vm_base)
+    clib_error ("error allocating virtual memory");
 
-  if (! m->log2_per_cpu_heap_size)
-    m->log2_per_cpu_heap_size = 28;
-
-  m->stack_base_alloc_size = (uword) m->n_cpus << m->log2_per_cpu_stack_size;
-  m->heap_base_alloc_size = (uword) (1 + m->n_cpus) << m->log2_per_cpu_heap_size;
-
-  m->stack_base = pointer_to_uword (clib_mem_vm_alloc (m->stack_base_alloc_size));
-  if (! m->stack_base)
-    clib_error ("error allocating stack");
-
-  m->heap_base = pointer_to_uword (clib_mem_vm_alloc (m->heap_base_alloc_size));
-  if (! m->heap_base)
-    clib_error ("error allocating heap");
-
-  {
-    uword i;
-
-    for (i = 0; i < m->n_cpus; i++)
-      clib_calljmp (allocate_per_cpu_mheap, i,
-		    clib_smp_stack_top_for_cpu (m, i));
-  }
+  for (cpu = 0; cpu < m->n_cpus; cpu++)
+    clib_calljmp (allocate_per_cpu_mheap, cpu,
+		  clib_smp_stack_top_for_cpu (m, cpu));
 }
 

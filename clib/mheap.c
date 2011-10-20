@@ -1090,6 +1090,45 @@ u8 * format_mheap (u8 * s, va_list * va)
   if (usage.bytes_max != ~0)
     s = format (s, ", %U capacity", format_mheap_byte_count, usage.bytes_max);
 
+  /* Show histogram of sizes. */
+  if (verbose > 1)
+    {
+      uword hist[MHEAP_N_BINS];
+      mheap_elt_t * e;
+      uword i, n_hist;
+
+      memset (hist, 0, sizeof (hist));
+
+      n_hist = 0;
+      for (e = v;
+	   e->n_user_data != MHEAP_N_USER_DATA_INVALID;
+	   e = mheap_next_elt (e))
+	{
+	  uword n_user_data_bytes = mheap_elt_data_bytes (e);
+	  uword bin = user_data_size_to_bin_index (n_user_data_bytes);
+	  if (! e->is_free)
+	    {
+	      hist[bin] += 1;
+	      n_hist += 1;
+	    }
+	}
+
+      s = format (s, "\n%U%=12s%=12s%=16s",
+		  format_white_space, indent + 2,
+		  "Size", "Count", "Fraction");
+
+      for (i = 0; i < ARRAY_LEN (hist); i++)
+	{
+	  if (hist[i] == 0)
+	    continue;
+	  s = format (s, "\n%U%12d%12wd%16.4f",
+		      format_white_space, indent + 2,
+		      MHEAP_MIN_USER_DATA_BYTES + i * MHEAP_USER_DATA_WORD_BYTES,
+		      hist[i],
+		      (f64) hist[i] / (f64) n_hist);
+	}
+    }
+
   if (verbose)
     s = format (s, "\n%U%U",
 		format_white_space, indent + 2,

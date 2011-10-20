@@ -31,8 +31,8 @@
 
 clib_smp_main_t clib_smp_main = {
   .n_cpus = 0,
-  .log2_per_cpu_stack_size = 20,
-  .log2_per_cpu_heap_size = 28,
+  .log2_n_per_cpu_stack_bytes = 20,
+  .log2_n_per_cpu_vm_bytes = 28,
   .n_tls_4k_pages = 1,
 };
 
