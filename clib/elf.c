@@ -1628,7 +1628,7 @@ static void layout_sections (elf_main_t * em)
 
     vec_foreach (g, em->segments)
       {
-	u64 s_lo, s_hi, f_lo;
+	u64 s_lo, s_hi, f_lo = 0;
 	u32 n_sections = 0;
 
 	if (g->header.memory_size == 0)
