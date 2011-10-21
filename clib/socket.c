@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -133,7 +134,8 @@ socket_config (char * config,
 	  if (! strcmp (host_name, "localhost"))
 	    sa->sin_addr.s_addr = htonl (INADDR_LOOPBACK);
 
-	  else if (inet_aton (host_name, &sa->sin_addr.s_addr))
+	  else if (inet_aton (host_name, 
+               (struct in_addr *) &sa->sin_addr.s_addr))
 	    ;
 
 	  else if (host_name && strlen (host_name) > 0)

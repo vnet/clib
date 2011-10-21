@@ -396,9 +396,9 @@ void elog_init (elog_main_t * em, u32 n_events)
   u8 *old_string_table;
 
   /* Save / restore string table, otherwise enumerated events break */
-  old_string_table = em->string_table;
+  old_string_table = (u8 *) em->string_table;
   memset (em, 0, sizeof (em[0]));
-  em->string_table = old_string_table;
+  em->string_table = (char *)old_string_table;
 
   if (n_events > 0)
     elog_alloc (em, n_events);
@@ -555,7 +555,7 @@ void elog_merge (elog_main_t * dst, u8 * dst_tag,
 
           new_name = format (0, "%s:%s%c", dst_tag, t->name, 0);
           vec_free (t->name);
-          t->name = new_name;
+          t->name = (char *)new_name;
         }
     }
   
@@ -566,9 +566,9 @@ void elog_merge (elog_main_t * dst, u8 * dst_tag,
     {
       elog_track_t * t = vec_elt_at_index (src->tracks, i);
       if (src_tag)
-        newt.name = format (0, "%s:%s%c", src_tag, t->name, 0);
+        newt.name = (char *) format (0, "%s:%s%c", src_tag, t->name, 0);
       else
-        newt.name = format (0, "%s%c", t->name, 0);
+        newt.name = (char *) format (0, "%s%c", t->name, 0);
       (void) elog_track_register (dst, &newt);
       vec_free (newt.name);
     }
