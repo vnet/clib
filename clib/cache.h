@@ -24,7 +24,7 @@
 #ifndef included_clib_cache_h
 #define included_clib_cache_h
 
-#include <clib/error.h>
+#include <clib/error_bootstrap.h>
 
 #ifdef __x86_64__
 #define CLIB_LOG2_CACHE_LINE_BYTES 6
