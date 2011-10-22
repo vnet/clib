@@ -27,6 +27,8 @@
 /* Bootstrap include so that #include <clib/mem.h> can include e.g.
    <clib/mheap.h> which depends on <clib/vec.h>. */
 
+#include <clib/clib.h>		/* for uword */
+
 enum {
   CLIB_ERROR_FATAL	= 1 << 0,
   CLIB_ERROR_ABORT	= 1 << 1,
