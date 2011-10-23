@@ -24,6 +24,8 @@
 #ifndef included_clib_smp_h
 #define included_clib_smp_h
 
+#include <clib/cache.h>
+
 /* Per-CPU state. */
 typedef struct {
   /* Per-cpu local heap. */
@@ -57,27 +59,6 @@ typedef struct {
 
 extern clib_smp_main_t clib_smp_main;
 
-#define clib_smp_compare_and_swap(addr,new,old) __sync_val_compare_and_swap(addr,old,new)
-#define clib_smp_swap(addr,new) __sync_lock_test_and_set(addr,new)
-#define clib_smp_atomic_add(addr,increment) __sync_fetch_and_add(addr,increment)
-
-typedef struct {
-  u32 is_locked;
-} clib_smp_lock_t;
-
-always_inline void
-clib_smp_lock (clib_smp_lock_t * l)
-{
-  while (clib_smp_compare_and_swap (&l->is_locked, /* new */ 1, /* old */ 0) != 0)
-    ;
-}
-
-always_inline void
-clib_smp_unlock (clib_smp_lock_t * l)
-{
-  clib_smp_swap (&l->is_locked, 0);
-}
-
 always_inline void *
 clib_smp_vm_base_for_cpu (clib_smp_main_t * m, uword cpu)
 {
@@ -107,6 +88,125 @@ os_get_cpu_number (void)
     os_panic ();
 
   return n < m->n_cpus ? n : 0;
+}
+
+#define clib_smp_compare_and_swap(addr,new,old) __sync_val_compare_and_swap(addr,old,new)
+#define clib_smp_swap(addr,new) __sync_lock_test_and_set(addr,new)
+#define clib_smp_atomic_add(addr,increment) __sync_fetch_and_add(addr,increment)
+
+typedef union {
+  struct {
+    /* Waiting fifo can hold up to 2^16 - 1 entries.
+       head == tail => empty.  tail == head - 1 => full. */
+    struct {
+      u16 head_index, tail_index;
+    } waiting_fifo;
+
+    /* Requesting thread id (cpu).  Used to make "requests" for header.as_u64 unique. */
+    u32 request_cpu;
+  };
+
+  u64 as_u64;
+} clib_smp_lock_header_t;
+
+always_inline uword
+clib_smp_lock_header_is_locked (clib_smp_lock_header_t h)
+{ return h.request_cpu != ~0; }
+
+always_inline clib_smp_lock_header_t
+clib_smp_lock_header_unlock (clib_smp_lock_header_t h)
+{ h.request_cpu = ~0; return h; }
+
+always_inline uword
+clib_smp_lock_header_is_equal (clib_smp_lock_header_t h0, clib_smp_lock_header_t h1)
+{ return h0.as_u64 == h1.as_u64; }
+
+always_inline uword
+clib_smp_lock_header_waiting_fifo_is_empty (clib_smp_lock_header_t h)
+{ return h.waiting_fifo.head_index == h.waiting_fifo.tail_index; }
+
+/* Cache aligned. */
+typedef struct {
+  clib_smp_lock_header_t header;
+
+  volatile u32 lock_granted;
+
+  u8 pad[CLIB_CACHE_LINE_BYTES - sizeof (clib_smp_lock_header_t) - 1 * sizeof (u32)];
+} clib_smp_lock_t;
+
+always_inline clib_smp_lock_header_t
+clib_smp_lock_set_header (clib_smp_lock_t * l, clib_smp_lock_header_t new, clib_smp_lock_header_t old)
+{
+  clib_smp_lock_header_t cmp;
+  cmp.as_u64 = clib_smp_compare_and_swap (&l->header.as_u64, new.as_u64, old.as_u64);
+  return cmp;
+}
+
+void clib_smp_lock_init (clib_smp_lock_t ** l);
+void clib_smp_lock_free (clib_smp_lock_t ** l);
+void clib_smp_lock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_header_t h);
+void clib_smp_unlock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_header_t h);
+
+always_inline void
+clib_smp_lock (clib_smp_lock_t * l)
+{
+  clib_smp_lock_header_t h0, h1, h2;
+  uword my_cpu;
+
+  /* Null lock means n_cpus <= 1: nothing to lock. */
+  if (! l)
+    return;
+
+  my_cpu = os_get_cpu_number ();
+  h0 = l->header;
+  while (! clib_smp_lock_header_is_locked (h0))
+    {
+      h1.as_u64 = 0;		/* head = tail = 0 */
+      h1.request_cpu = my_cpu;
+
+      /* Try to set head and tail to zero and thereby get the lock. */
+      h2 = clib_smp_lock_set_header (l, h1, h0);
+
+      /* Compare and swap succeeded?  If so, we got the lock. */
+      if (clib_smp_lock_header_is_equal (h2, h0))
+	return;
+
+      /* Header for slow path. */
+      h0 = h2;
+    }
+
+  clib_smp_lock_slow_path (l, my_cpu, h0);
+}
+
+always_inline void
+clib_smp_unlock (clib_smp_lock_t * l)
+{
+  clib_smp_lock_header_t h0, h1;
+  uword my_cpu;
+  
+  /* Null means no locking is necessary. */
+  if (! l)
+    return;
+
+  my_cpu = os_get_cpu_number ();
+  h0 = l->header;
+
+  /* Should be locked. */
+  ASSERT_AND_PANIC (clib_smp_lock_header_is_locked (h0));
+
+  /* Locked but empty waiting fifo? */
+  if (clib_smp_lock_header_waiting_fifo_is_empty (h0))
+    {
+      /* Try to mark it unlocked. */
+      h1 = clib_smp_lock_header_unlock (h0);
+      h1 = clib_smp_lock_set_header (l, h1, h0);
+      if (clib_smp_lock_header_is_equal (h1, h0))
+	return;
+      h0 = h1;
+    }
+
+  /* Other cpus are waiting. */
+  clib_smp_unlock_slow_path (l, my_cpu, h0);
 }
 
 #define clib_atomic_exec(p,var,body)					\
