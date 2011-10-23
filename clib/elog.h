@@ -101,8 +101,7 @@ typedef struct {
 } elog_time_stamp_t;
 
 typedef struct {
-  /* Total number of events in buffer (long/short form both count
-     as 1 event). */
+  /* Total number of events in buffer. */
   u64 n_total_events;
 
   /* When count reaches limit logging is disabled.  This is
@@ -112,15 +111,12 @@ typedef struct {
   /* Dummy event to use when logger is disabled. */
   elog_event_t dummy_event;
 
+  /* Power of 2 number of elements in ring. */
+  uword event_ring_size;
+
   /* Vector of events (circular buffer).  Power of 2 size.
      Used when events are being collected. */
   elog_event_t * event_ring;
-
-  /* Power of 2 number of elements in ring. */
-  u32 event_ring_size;
-
-  /* Set/unset to globally enable/disable logging of events. */
-  u32 is_enabled;
 
   /* Vector of event types. */
   elog_event_type_t * event_types;
@@ -142,6 +138,8 @@ typedef struct {
 
   elog_time_stamp_t init_time, serialize_time;
 
+  clib_smp_lock_t * smp_lock;
+
   /* Use serialize_time and init_time to give estimate for
      cpu clock frequency. */
   f64 nsec_per_cpu_clock;
@@ -159,14 +157,17 @@ elog_buffer_capacity (elog_main_t * em)
 { return em->event_ring_size; }
 
 always_inline void
-elog_enable_disable (elog_main_t * em, int is_enabled)
-{ em->is_enabled = is_enabled; }
-
-always_inline void
 elog_reset_buffer (elog_main_t * em)
 {
   em->n_total_events = 0;
   em->n_total_events_disable_limit = ~0ULL;
+}
+
+always_inline void
+elog_enable_disable (elog_main_t * em, int is_enabled)
+{
+  em->n_total_events = 0;
+  em->n_total_events_disable_limit = is_enabled ? ~0ULL : 0ULL;
 }
 
 /* Disable logging after specified number of ievents have been logged.
@@ -187,6 +188,10 @@ elog_disable_trigger (elog_main_t * em)
 word elog_event_type_register (elog_main_t * em, elog_event_type_t * t);
 word elog_track_register (elog_main_t * em, elog_track_t * t);
 
+always_inline uword
+elog_is_enabled (elog_main_t * em)
+{ return em->n_total_events < em->n_total_events_disable_limit; }
+
 /* Add an event to the log.  Returns a pointer to the
    data for caller to write into. */
 always_inline void *
@@ -196,10 +201,11 @@ elog_event_data_inline (elog_main_t * em,
 			u64 cpu_time)
 {
   elog_event_t * e;
+  uword ei;
   word type_index, track_index;
 
   /* Return the user dummy memory to scribble data into. */
-  if (PREDICT_FALSE (! em->is_enabled))
+  if (PREDICT_FALSE (! elog_is_enabled (em)))
     return em->dummy_event.data;
 
   type_index = (word) type->type_index_plus_one - 1;
@@ -216,18 +222,17 @@ elog_event_data_inline (elog_main_t * em,
   ASSERT (track_index < vec_len (em->tracks));
   ASSERT (is_pow2 (vec_len (em->event_ring)));
 
-  e = vec_elt_at_index (em->event_ring,
-			em->n_total_events & (em->event_ring_size - 1));
+  if (em->smp_lock)
+    ei = clib_smp_atomic_add (&em->n_total_events, 1);
+  else
+    ei = em->n_total_events++;
+
+  ei &= em->event_ring_size - 1;
+  e = vec_elt_at_index (em->event_ring, ei);
 
   e->time_cycles = cpu_time;
   e->type = type_index;
   e->track = track_index;
-
-  em->n_total_events += 1;
-
-  /* Keep logging enabled as long as we are below trigger limit. */
-  ASSERT (em->n_total_events_disable_limit != 0);
-  em->is_enabled &= em->n_total_events < em->n_total_events_disable_limit;
 
   /* Return user data for caller to fill in. */
   return e->data;
@@ -248,7 +253,7 @@ elog_event_data_not_inline (elog_main_t * em,
 			    u64 cpu_time)
 {
   /* Return the user dummy memory to scribble data into. */
-  if (PREDICT_FALSE (! em->is_enabled))
+  if (PREDICT_FALSE (! elog_is_enabled (em)))
     return em->dummy_event.data;
   return elog_event_data (em, type, track, cpu_time);
 }
@@ -352,7 +357,7 @@ elog_event_t * elog_get_events (elog_main_t * em);
 /* Convert ievents to events and return them as a vector with no side effects. */
 elog_event_t * elog_peek_events (elog_main_t * em);
 
-/* Merge two logs, add suplied track tags. */
+/* Merge two logs, add supplied track tags. */
 void elog_merge (elog_main_t * dst, u8 * dst_tag, 
                  elog_main_t * src, u8 * src_tag);
 
@@ -363,7 +368,7 @@ u8 * format_elog_track (u8 * s, va_list * va);
 void serialize_elog_main (serialize_main_t * m, va_list * va);
 void unserialize_elog_main (serialize_main_t * m, va_list * va);
 
-void elog_init (elog_main_t * em, u32 n_ievents);
+void elog_init (elog_main_t * em, u32 n_events);
 
 #ifdef CLIB_UNIX
 always_inline clib_error_t *

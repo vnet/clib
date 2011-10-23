@@ -68,7 +68,11 @@ find_or_create_type (elog_main_t * em, elog_event_type_t * t)
 word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 {
   elog_event_type_t * static_type = t;
-  word l = vec_len (em->event_types);
+  word l;
+
+  clib_smp_lock (em->smp_lock);
+
+  l = vec_len (em->event_types);
 
   t->type_index_plus_one = 1 + l;
 
@@ -138,12 +142,18 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 
   new_event_type (em, l);
 
+  clib_smp_unlock (em->smp_lock);
+
  return l;
 }
 
 word elog_track_register (elog_main_t * em, elog_track_t * t)
 {
-  word l = vec_len (em->tracks);
+  word l;
+
+  clib_smp_lock (em->smp_lock);
+
+  l = vec_len (em->tracks);
 
   t->track_index_plus_one = 1 + l;
 
@@ -155,7 +165,9 @@ word elog_track_register (elog_main_t * em, elog_track_t * t)
 
   t->name = (char *) format (0, "%s%c", t->name, 0);
 
- return l;
+  clib_smp_unlock (em->smp_lock);
+
+  return l;
 }
 
 static uword parse_2digit_decimal (char * p, uword * number)
@@ -393,13 +405,9 @@ static void elog_alloc (elog_main_t * em, u32 n_events)
 
 void elog_init (elog_main_t * em, u32 n_events)
 {
-  char * old_string_table;
-
-  /* Save / restore string table, otherwise enumerated events break */
-  old_string_table = em->string_table;
-  vec_free (em->event_ring);
   memset (em, 0, sizeof (em[0]));
-  em->string_table = old_string_table;
+
+  clib_smp_lock_init (&em->smp_lock);
 
   if (n_events > 0)
     elog_alloc (em, n_events);
