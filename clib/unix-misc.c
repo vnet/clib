@@ -28,6 +28,7 @@
 #include <clib/longjmp.h>
 #include <clib/os.h>
 #include <clib/unix.h>
+#include "clib_thread_db.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -229,16 +230,40 @@ static void linux_bind_to_cpu (uword cpu)
 typedef struct {
   uword (* bootstrap_function) (uword);
   uword bootstrap_function_arg;
+  pid_t tid;
 } linux_clone_bootstrap_args_t;
+
+static clib_thread_db_event_t thread_db_event;
+
+static never_inline void
+thread_db_breakpoint (void)
+{
+}
 
 static int linux_clone_bootstrap (linux_clone_bootstrap_args_t * a)
 {
   clib_smp_main_t * m = &clib_smp_main;
-  uword result;
+  uword result, my_cpu;
 
-  linux_bind_to_cpu (os_get_cpu_number ());
+  my_cpu = os_get_cpu_number ();
+
+  thread_db_event.event = TD_CREATE;
+  thread_db_event.data = a->tid;
+  thread_db_breakpoint ();
+
+  linux_bind_to_cpu (my_cpu);
+
   result = a->bootstrap_function (a->bootstrap_function_arg);
+
+  thread_db_event.event = TD_DEATH;
+  thread_db_event.data = a->tid;
+  thread_db_breakpoint ();
+
   clib_smp_atomic_add (&m->n_cpus_exited, 1);
+
+  while (1)
+    sched_yield ();
+
   return result;
 }
 
@@ -257,13 +282,14 @@ uword os_smp_bootstrap (uword n_cpus,
 
   for (cpu = 0; cpu < m->n_cpus; cpu++)
     {
-      pid_t tid;
       void * tls;
 
       /* Allocate TLS at top of stack. */
       tls = clib_smp_stack_top_for_cpu (m, cpu);
       tls -= m->n_tls_4k_pages << 12;
       memset (tls, 0, m->n_tls_4k_pages << 12);
+
+      cm = vec_elt_at_index (m->per_cpu_mains, cpu);
 
       if (cpu != 0)
 	{
@@ -276,24 +302,22 @@ uword os_smp_bootstrap (uword n_cpus,
 		     /* Stack top ends with TLS and extends towards lower addresses. */
 		     (void *) tls,
 		     (CLONE_VM | CLONE_FS | CLONE_FILES
-		      | CLONE_SIGHAND | CLONE_SYSVSEM
+		      | CLONE_SIGHAND | CLONE_SYSVSEM | CLONE_THREAD
 		      | CLONE_SETTLS | CLONE_PARENT_SETTID),
 		     &a,
-		     &tid, tls, &tid) < 0)
+		     &a.tid, tls, &a.tid) < 0)
 	    os_panic ();
+
+	  cm->thread_id = a.tid;
 	}
       else
 	{
-	  tid = getpid ();
-
 	  linux_bind_to_cpu (cpu);
 
 	  stack_top_for_cpu0 = tls;
-	}
 
-      /* Record thread ID. */
-      cm = vec_elt_at_index (m->per_cpu_mains, cpu);
-      cm->thread_id = tid;
+	  cm->thread_id = getpid ();
+	}
     }
 
   /* For CPU 0, no need for new thread. */
