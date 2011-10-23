@@ -4,6 +4,7 @@ AM_CPPFLAGS = -Wall # -Werror
 
 if WITH_UNIX
   lib_LTLIBRARIES = libclib.la
+  pkglib_LTLIBRARIES = libthread_db.la
 endif
 
 lib_LIBRARIES =
@@ -297,3 +298,6 @@ libclibstandalone_a_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_STANDALONE
 libclibstandalone_a_CPPFLAGS += @STANDALONE_CFLAGS@
 
 libclibstandalone_a_CCASFLAGS = $(libclibstandalone_a_CPPFLAGS)
+
+libthread_db_la_SOURCES = clib/thread_db.c
+libthread_db_la_LDFLAGS = -version-info 1:0:0

@@ -90,7 +90,7 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libdir)" \
-	"$(DESTDIR)$(includedir)"
+	"$(DESTDIR)$(pkglibdir)" "$(DESTDIR)$(includedir)"
 LIBRARIES = $(lib_LIBRARIES)
 ARFLAGS = cru
 libclibkernel_a_AR = $(AR) $(ARFLAGS)
@@ -201,7 +201,7 @@ am_libclibstandalone_a_OBJECTS = $(am__objects_3) $(am__objects_4) \
 	clib/libclibstandalone_a-standalone_main.$(OBJEXT) \
 	clib/libclibstandalone_a-standalone_string.$(OBJEXT)
 libclibstandalone_a_OBJECTS = $(am_libclibstandalone_a_OBJECTS)
-LTLIBRARIES = $(lib_LTLIBRARIES)
+LTLIBRARIES = $(lib_LTLIBRARIES) $(pkglib_LTLIBRARIES)
 libclib_la_LIBADD =
 am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
 	clib/elog.lo clib/error.lo clib/fifo.lo clib/fheap.lo \
@@ -217,6 +217,13 @@ am_libclib_la_OBJECTS = $(am__objects_5) clib/elf_clib.lo \
 	clib/unix-misc.lo
 libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
 @WITH_UNIX_TRUE@am_libclib_la_rpath = -rpath $(libdir)
+libthread_db_la_LIBADD =
+am_libthread_db_la_OBJECTS = clib/thread_db.lo
+libthread_db_la_OBJECTS = $(am_libthread_db_la_OBJECTS)
+libthread_db_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(libthread_db_la_LDFLAGS) $(LDFLAGS) -o $@
+@WITH_UNIX_TRUE@am_libthread_db_la_rpath = -rpath $(pkglibdir)
 am__EXEEXT_1 = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
 	test_format$(EXEEXT) test_hash$(EXEEXT) test_heap$(EXEEXT) \
 	test_longjmp$(EXEEXT) test_md5$(EXEEXT) test_mheap$(EXEEXT) \
@@ -376,19 +383,21 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
-	$(libclib_la_SOURCES) $(test_elf_SOURCES) $(test_elog_SOURCES) \
-	$(test_fifo_SOURCES) $(test_format_SOURCES) \
-	$(test_hash_SOURCES) $(test_heap_SOURCES) \
-	$(test_longjmp_SOURCES) $(test_md5_SOURCES) \
-	$(test_mheap_SOURCES) $(test_phash_SOURCES) \
-	$(test_pool_iterate_SOURCES) $(test_qhash_SOURCES) \
-	$(test_random_SOURCES) $(test_random_isaac_SOURCES) \
-	$(test_serialize_SOURCES) $(test_socket_SOURCES) \
-	$(test_time_SOURCES) $(test_timing_wheel_SOURCES) \
-	$(test_vec_SOURCES) $(test_vhash_SOURCES) $(test_zvec_SOURCES)
+	$(libclib_la_SOURCES) $(libthread_db_la_SOURCES) \
+	$(test_elf_SOURCES) $(test_elog_SOURCES) $(test_fifo_SOURCES) \
+	$(test_format_SOURCES) $(test_hash_SOURCES) \
+	$(test_heap_SOURCES) $(test_longjmp_SOURCES) \
+	$(test_md5_SOURCES) $(test_mheap_SOURCES) \
+	$(test_phash_SOURCES) $(test_pool_iterate_SOURCES) \
+	$(test_qhash_SOURCES) $(test_random_SOURCES) \
+	$(test_random_isaac_SOURCES) $(test_serialize_SOURCES) \
+	$(test_socket_SOURCES) $(test_time_SOURCES) \
+	$(test_timing_wheel_SOURCES) $(test_vec_SOURCES) \
+	$(test_vhash_SOURCES) $(test_zvec_SOURCES)
 DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(libclibstandalone_a_SOURCES) $(libclib_la_SOURCES) \
-	$(test_elf_SOURCES) $(test_elog_SOURCES) $(test_fifo_SOURCES) \
+	$(libthread_db_la_SOURCES) $(test_elf_SOURCES) \
+	$(test_elog_SOURCES) $(test_fifo_SOURCES) \
 	$(test_format_SOURCES) $(test_hash_SOURCES) \
 	$(test_heap_SOURCES) $(test_longjmp_SOURCES) \
 	$(test_md5_SOURCES) $(test_mheap_SOURCES) \
@@ -533,6 +542,7 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 AM_CPPFLAGS = -Wall # -Werror
 @WITH_UNIX_TRUE@lib_LTLIBRARIES = libclib.la
+@WITH_UNIX_TRUE@pkglib_LTLIBRARIES = libthread_db.la
 lib_LIBRARIES = $(am__append_1) $(am__append_2)
 test_elog_SOURCES = clib/test_elog.c
 test_elf_SOURCES = clib/test_elf.c
@@ -780,6 +790,8 @@ libclibstandalone_a_SOURCES = \
 libclibstandalone_a_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_STANDALONE \
 	@STANDALONE_CFLAGS@ $(am__empty)
 libclibstandalone_a_CCASFLAGS = $(libclibstandalone_a_CPPFLAGS)
+libthread_db_la_SOURCES = clib/thread_db.c
+libthread_db_la_LDFLAGS = -version-info 1:0:0
 all: all-am
 
 .SUFFIXES:
@@ -1108,6 +1120,37 @@ clean-libLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
+install-pkglibLTLIBRARIES: $(pkglib_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	test -z "$(pkglibdir)" || $(MKDIR_P) "$(DESTDIR)$(pkglibdir)"
+	@list='$(pkglib_LTLIBRARIES)'; test -n "$(pkglibdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(pkglibdir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(pkglibdir)"; \
+	}
+
+uninstall-pkglibLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(pkglib_LTLIBRARIES)'; test -n "$(pkglibdir)" || list=; \
+	for p in $$list; do \
+	  $(am__strip_dir) \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(pkglibdir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(pkglibdir)/$$f"; \
+	done
+
+clean-pkglibLTLIBRARIES:
+	-test -z "$(pkglib_LTLIBRARIES)" || rm -f $(pkglib_LTLIBRARIES)
+	@list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
 clib/asm_x86.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/backtrace.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/elf.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
@@ -1151,6 +1194,9 @@ clib/unix-formats.lo: clib/$(am__dirstamp) \
 clib/unix-misc.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 libclib.la: $(libclib_la_OBJECTS) $(libclib_la_DEPENDENCIES) 
 	$(LINK) $(am_libclib_la_rpath) $(libclib_la_OBJECTS) $(libclib_la_LIBADD) $(LIBS)
+clib/thread_db.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+libthread_db.la: $(libthread_db_la_OBJECTS) $(libthread_db_la_DEPENDENCIES) 
+	$(libthread_db_la_LINK) $(am_libthread_db_la_rpath) $(libthread_db_la_OBJECTS) $(libthread_db_la_LIBADD) $(LIBS)
 
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
@@ -1450,6 +1496,8 @@ mostlyclean-compile:
 	-rm -f clib/test_vec-test_vec.$(OBJEXT)
 	-rm -f clib/test_vhash-test_vhash.$(OBJEXT)
 	-rm -f clib/test_zvec-test_zvec.$(OBJEXT)
+	-rm -f clib/thread_db.$(OBJEXT)
+	-rm -f clib/thread_db.lo
 	-rm -f clib/time.$(OBJEXT)
 	-rm -f clib/time.lo
 	-rm -f clib/timer.$(OBJEXT)
@@ -1618,6 +1666,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_vec-test_vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_vhash-test_vhash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_zvec-test_zvec.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/thread_db.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/time.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/timing_wheel.Plo@am__quote@
@@ -3671,7 +3720,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(LIBRARIES) $(LTLIBRARIES) $(PROGRAMS) $(HEADERS)
 installdirs:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"; do \
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(libdir)" "$(DESTDIR)$(pkglibdir)" "$(DESTDIR)$(includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -3705,7 +3754,7 @@ clean: clean-am
 
 clean-am: clean-checkPROGRAMS clean-generic clean-libLIBRARIES \
 	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS \
-	mostlyclean-am
+	clean-pkglibLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
@@ -3732,7 +3781,8 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-libLIBRARIES install-libLTLIBRARIES
+install-exec-am: install-libLIBRARIES install-libLTLIBRARIES \
+	install-pkglibLTLIBRARIES
 
 install-html: install-html-am
 
@@ -3775,29 +3825,30 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-libLIBRARIES uninstall-libLTLIBRARIES \
-	uninstall-nobase_includeHEADERS
+	uninstall-nobase_includeHEADERS uninstall-pkglibLTLIBRARIES
 
 .MAKE: check-am install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-TESTS check-am \
 	clean clean-checkPROGRAMS clean-generic clean-libLIBRARIES \
-	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS ctags \
-	dist dist-all dist-bzip2 dist-gzip dist-lzma dist-shar \
-	dist-tarZ dist-xz dist-zip distcheck distclean \
-	distclean-compile distclean-generic distclean-hdr \
-	distclean-libtool distclean-tags distcleancheck distdir \
-	distuninstallcheck dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am \
+	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS \
+	clean-pkglibLTLIBRARIES ctags dist dist-all dist-bzip2 \
+	dist-gzip dist-lzma dist-shar dist-tarZ dist-xz dist-zip \
+	distcheck distclean distclean-compile distclean-generic \
+	distclean-hdr distclean-libtool distclean-tags distcleancheck \
+	distdir distuninstallcheck dvi dvi-am html html-am info \
+	info-am install install-am install-data install-data-am \
+	install-dvi install-dvi-am install-exec install-exec-am \
+	install-html install-html-am install-info install-info-am \
 	install-libLIBRARIES install-libLTLIBRARIES install-man \
 	install-nobase_includeHEADERS install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-libLIBRARIES \
-	uninstall-libLTLIBRARIES uninstall-nobase_includeHEADERS
+	install-pkglibLTLIBRARIES install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am \
+	uninstall-libLIBRARIES uninstall-libLTLIBRARIES \
+	uninstall-nobase_includeHEADERS uninstall-pkglibLTLIBRARIES
 
 
 %.kernel.o: %.c
