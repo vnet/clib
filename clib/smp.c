@@ -89,6 +89,7 @@ void clib_smp_lock_init (clib_smp_lock_t ** pl)
 {
   clib_smp_lock_t * l;
   uword n_cpus = clib_smp_main.n_cpus;
+  uword n_bytes;
 
   /* No locking necessary if n_cpus <= 1.
      Null means no locking is necessary. */
@@ -98,9 +99,10 @@ void clib_smp_lock_init (clib_smp_lock_t ** pl)
       return;
     }
 
-  l = clib_mem_alloc_aligned (n_cpus * sizeof (l[0]), CLIB_CACHE_LINE_BYTES);
-
-  memset (l, 0, n_cpus * sizeof (l[0]));
+  n_bytes = sizeof (l[0]) + n_cpus * sizeof (l->waiting_fifo[0]);
+  ASSERT_AND_PANIC (n_bytes % CLIB_CACHE_LINE_BYTES == 0);
+  l = clib_mem_alloc_aligned (n_bytes, CLIB_CACHE_LINE_BYTES);
+  memset (l, 0, n_bytes);
 
   /* Unlock it. */
   l->header = clib_smp_lock_header_unlock (l->header);
@@ -162,11 +164,11 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_h
     }
 
   /* Wait until CPU holding the lock grants us the lock. */
-  while (! l[my_tail].lock_granted)
+  while (! l->waiting_fifo[my_tail].lock_granted)
     clib_smp_pause ();
 
   /* Clear it for next time. */
-  l[my_tail].lock_granted = 0;
+  l->waiting_fifo[my_tail].lock_granted = 0;
 }
 
 void clib_smp_unlock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_header_t h0)
@@ -188,5 +190,5 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock
     }
 
   /* Shift lock to first thread waiting in fifo. */
-  l[my_head].lock_granted = 1;
+  l->waiting_fifo[my_head].lock_granted = 1;
 }

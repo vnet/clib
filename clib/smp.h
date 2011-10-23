@@ -129,9 +129,12 @@ clib_smp_lock_header_waiting_fifo_is_empty (clib_smp_lock_header_t h)
 typedef struct {
   clib_smp_lock_header_t header;
 
-  volatile u32 lock_granted;
+  u8 pad[CLIB_CACHE_LINE_BYTES - sizeof (clib_smp_lock_header_t)];
 
-  u8 pad[CLIB_CACHE_LINE_BYTES - sizeof (clib_smp_lock_header_t) - 1 * sizeof (u32)];
+  struct {
+    volatile u32 lock_granted;
+    u8 pad[CLIB_CACHE_LINE_BYTES - sizeof (u32)];
+  } waiting_fifo[0];
 } clib_smp_lock_t;
 
 always_inline clib_smp_lock_header_t
