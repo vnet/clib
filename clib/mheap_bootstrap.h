@@ -160,7 +160,7 @@ typedef struct {
 #define MHEAP_FLAG_VALIDATE			(1 << 4)
 
   /* Lock use when MHEAP_FLAG_THREAD_SAFE is set. */
-  clib_smp_lock_t smp_lock;
+  clib_smp_lock_t * smp_lock;
 
   /* Number of allocated objects. */
   u64 n_elts;

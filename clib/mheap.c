@@ -40,14 +40,14 @@ always_inline void mheap_maybe_lock (void * v)
 {
   mheap_t * h = mheap_header (v);
   if (v && (h->flags & MHEAP_FLAG_THREAD_SAFE))
-    clib_smp_lock (&h->smp_lock);
+    clib_smp_lock (h->smp_lock);
 }
 
 always_inline void mheap_maybe_unlock (void * v)
 {
   mheap_t * h = mheap_header (v);
   if (v && h->flags & MHEAP_FLAG_THREAD_SAFE)
-    clib_smp_unlock (&h->smp_lock);
+    clib_smp_unlock (h->smp_lock);
 }
 
 /* Find bin for objects with size at least n_user_data_bytes. */
@@ -852,6 +852,15 @@ void * mheap_alloc_with_flags (void * memory, uword memory_size, uword flags)
 
   /* Initialize free list heads to empty. */
   memset (h->first_free_elt_uoffset_by_bin, ~0, sizeof (h->first_free_elt_uoffset_by_bin));
+
+  if (h->flags & MHEAP_FLAG_THREAD_SAFE)
+    {
+      clib_smp_lock_init (&h->smp_lock);
+
+      /* Clear thread safe flag if no lock is needed (e.g. n_cpus <= 1). */
+      if (! h->smp_lock)
+	h->flags &= ~MHEAP_FLAG_THREAD_SAFE;
+    }
 
   return v;
 }
