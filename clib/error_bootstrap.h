@@ -65,4 +65,11 @@ do {							\
     }							\
 } while (0)
 
+/* Assert without allocating memory. */
+#define ASSERT_AND_PANIC(truth)			\
+do {						\
+  if (CLIB_ASSERT_ENABLE && ! (truth))		\
+    os_panic ();				\
+} while (0)
+
 #endif /* included_error_bootstrap_h */
