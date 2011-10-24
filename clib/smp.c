@@ -88,22 +88,30 @@ void clib_smp_init (void)
 void clib_smp_lock_init (clib_smp_lock_t ** pl)
 {
   clib_smp_lock_t * l;
-  uword n_cpus = clib_smp_main.n_cpus;
-  uword n_bytes;
+  uword i, n_bytes, n_fifo_elts;
 
   /* No locking necessary if n_cpus <= 1.
      Null means no locking is necessary. */
-  if (n_cpus < 2)
+  if (clib_smp_main.n_cpus < 2)
     {
       *pl = 0;
       return;
     }
 
-  n_bytes = sizeof (l[0]) + n_cpus * sizeof (l->waiting_fifo[0]);
+  /* Need n_cpus - 1 elts in waiting fifo.  One CPU holds lock
+     and others could potentially be waiting. */
+  n_fifo_elts = clib_smp_main.n_cpus - 1;
+
+  n_bytes = sizeof (l[0]) + n_fifo_elts * sizeof (l->waiting_fifo[0]);
   ASSERT_AND_PANIC (n_bytes % CLIB_CACHE_LINE_BYTES == 0);
 
   l = clib_mem_alloc_aligned (n_bytes, CLIB_CACHE_LINE_BYTES);
+
   memset (l, 0, n_bytes);
+  l->n_waiting_fifo_elts = n_fifo_elts;
+
+  for (i = 0; i < l->n_waiting_fifo_elts; i++)
+    l->waiting_fifo[i].wait_type = CLIB_SMP_LOCK_WAIT_EMPTY;
 
   *pl = l;
 }
@@ -122,7 +130,7 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
 {
   clib_smp_lock_header_t h1, h2, h3;
   uword is_reader = type == CLIB_SMP_LOCK_TYPE_READER;
-  uword n_cpus = clib_smp_main.n_cpus;
+  uword n_fifo_elts = l->n_waiting_fifo_elts;
   uword my_tail;
 
   /* Atomically advance waiting FIFO tail pointer; my_tail will point
@@ -130,12 +138,13 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
   while (1)
     {
       h1 = h0;
-      my_tail = h1.waiting_fifo.tail_index;
-      h1.waiting_fifo.tail_index = my_tail == n_cpus - 1 ? 0 : my_tail + 1;
+      my_tail = h1.waiting_fifo.head_index + h1.waiting_fifo.n_elts;
+      my_tail = my_tail >= n_fifo_elts ? my_tail - n_fifo_elts : my_tail;
+      h1.waiting_fifo.n_elts += 1;
       h1.request_cpu = my_cpu;
 
-      /* FIFO should never be full since there is always one cpu that has the lock. */
-      ASSERT_AND_PANIC (h1.waiting_fifo.tail_index != h1.waiting_fifo.head_index);
+      ASSERT_AND_PANIC (h1.waiting_fifo.n_elts <= n_fifo_elts);
+      ASSERT_AND_PANIC (my_tail >= 0 && my_tail < n_fifo_elts);
 
       h2 = clib_smp_lock_set_header (l, h1, h0);
 
@@ -172,7 +181,8 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
 
     w = l->waiting_fifo + my_tail;
 
-    ASSERT_AND_PANIC (w->wait_type == CLIB_SMP_LOCK_WAIT_DONE);
+    while (w->wait_type != CLIB_SMP_LOCK_WAIT_EMPTY)
+      clib_smp_pause ();
 
     w->wait_type = (is_reader
 		    ? CLIB_SMP_LOCK_WAIT_READER
@@ -181,6 +191,8 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
     /* Wait until CPU holding the lock grants us the lock. */
     while (w->wait_type != CLIB_SMP_LOCK_WAIT_DONE)
       clib_smp_pause ();
+
+    w->wait_type = CLIB_SMP_LOCK_WAIT_EMPTY;
   }
 }
 
@@ -193,7 +205,7 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
   clib_smp_lock_waiting_fifo_elt_t * head;
   clib_smp_lock_wait_type_t head_wait_type;
   uword is_reader = type == CLIB_SMP_LOCK_TYPE_READER;
-  uword n_cpus = clib_smp_main.n_cpus;
+  uword n_fifo_elts = l->n_waiting_fifo_elts;
   uword head_index, must_wait_for_readers;
   
   while (1)
@@ -218,7 +230,7 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	      ASSERT_AND_PANIC (h1.writer_has_lock);
 	    }
 
-	  while ((head_wait_type = head->wait_type) == CLIB_SMP_LOCK_WAIT_DONE)
+	  while ((head_wait_type = head->wait_type) == CLIB_SMP_LOCK_WAIT_EMPTY)
 	    clib_smp_pause ();
 
 	  /* Don't advance FIFO to writer unless all readers have unlocked. */
@@ -227,7 +239,12 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	     && head_wait_type == CLIB_SMP_LOCK_WAIT_WRITER
 	     && h1.n_readers_with_lock != 0);
 	  head_index += ! must_wait_for_readers;
-	  h1.waiting_fifo.head_index = head_index == n_cpus ? 0 : head_index;
+	  h1.waiting_fifo.n_elts -= ! must_wait_for_readers;
+	  h1.waiting_fifo.head_index = head_index == n_fifo_elts ? 0 : head_index;
+	  h1.request_cpu = my_cpu;
+
+	  ASSERT_AND_PANIC (h1.waiting_fifo.head_index >= 0 && h1.waiting_fifo.head_index < n_fifo_elts);
+	  ASSERT_AND_PANIC (h1.waiting_fifo.n_elts >= 0 && h1.waiting_fifo.n_elts <= n_fifo_elts);
 
 	  h2 = clib_smp_lock_set_header (l, h1, h0);
 
@@ -252,8 +269,8 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	if (head_wait_type == CLIB_SMP_LOCK_WAIT_READER)
 	  {
 	    uword hi = h0.waiting_fifo.head_index;
-	    uword ti = h0.waiting_fifo.tail_index;
-	    if (hi != ti && l->waiting_fifo[hi].wait_type == CLIB_SMP_LOCK_WAIT_READER)
+	    if (h0.waiting_fifo.n_elts != 0
+		&& l->waiting_fifo[hi].wait_type == CLIB_SMP_LOCK_WAIT_READER)
 	      done_waking = 0;
 	  }
 

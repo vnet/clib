@@ -101,6 +101,7 @@ typedef enum {
 } clib_smp_lock_type_t;
 
 typedef enum {
+  CLIB_SMP_LOCK_WAIT_EMPTY,
   CLIB_SMP_LOCK_WAIT_DONE,
   CLIB_SMP_LOCK_WAIT_READER,
   CLIB_SMP_LOCK_WAIT_WRITER,
@@ -108,10 +109,8 @@ typedef enum {
 
 typedef union {
   struct {
-    /* Waiting fifo can hold up to 2^16 - 1 entries.
-       head == tail => empty.  tail == head - 1 => full. */
     struct {
-      u16 head_index, tail_index;
+      u16 head_index, n_elts;
     } waiting_fifo;
 
     u16 request_cpu;
@@ -133,7 +132,7 @@ clib_smp_lock_header_is_equal (clib_smp_lock_header_t h0, clib_smp_lock_header_t
 
 always_inline uword
 clib_smp_lock_header_waiting_fifo_is_empty (clib_smp_lock_header_t h)
-{ return h.waiting_fifo.head_index == h.waiting_fifo.tail_index; }
+{ return h.waiting_fifo.n_elts == 0; }
 
 typedef struct {
   volatile clib_smp_lock_wait_type_t wait_type;
@@ -144,7 +143,10 @@ typedef struct {
 typedef struct {
   clib_smp_lock_header_t header;
 
-  u8 pad[CLIB_CACHE_LINE_BYTES - sizeof (clib_smp_lock_header_t)];
+  /* Size of waiting FIFO; equal to max number of threads less one. */
+  u32 n_waiting_fifo_elts;
+
+  u8 pad[CLIB_CACHE_LINE_BYTES - sizeof (clib_smp_lock_header_t) - sizeof (u32)];
 
   clib_smp_lock_waiting_fifo_elt_t waiting_fifo[0];
 } clib_smp_lock_t;
