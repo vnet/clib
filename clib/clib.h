@@ -59,8 +59,8 @@
 #define STRUCT_OFFSET_OF_VAR(v,f) ((uword) (&(v)->f) - (uword) (v))
 
 /* Used to pack structure elements. */
-#define PACKED(x)	x __attribute__ ((packed))
-#define UNUSED(x)	x __attribute__ ((unused)) 
+#define CLIB_PACKED(x)	x __attribute__ ((packed))
+#define CLIB_UNUSED(x)	x __attribute__ ((unused)) 
 
 #define never_inline __attribute__ ((__noinline__))
 

@@ -136,7 +136,7 @@ typedef f64 fword;
      clib_mem_unaligned (p, u64) += 99 */
 
 #define clib_mem_unaligned(pointer,type) \
-  (((struct { PACKED (type _data); } *) (pointer))->_data)
+  (((struct { CLIB_PACKED (type _data); } *) (pointer))->_data)
 
 /* Access memory with specified alignment depending on align argument.
    As with clib_mem_unaligned, may be used as {r,l}value. */

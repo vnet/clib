@@ -245,8 +245,24 @@ clib_smp_lock (clib_smp_lock_t * l)
 { clib_smp_lock_inline (l, CLIB_SMP_LOCK_TYPE_SPIN); }
 
 always_inline void
+clib_smp_lock_for_writer (clib_smp_lock_t * l)
+{ clib_smp_lock_inline (l, CLIB_SMP_LOCK_TYPE_WRITER); }
+
+always_inline void
+clib_smp_lock_for_reader (clib_smp_lock_t * l)
+{ clib_smp_lock_inline (l, CLIB_SMP_LOCK_TYPE_READER); }
+
+always_inline void
 clib_smp_unlock (clib_smp_lock_t * l)
 { clib_smp_unlock_inline (l, CLIB_SMP_LOCK_TYPE_SPIN); }
+
+always_inline void
+clib_smp_unlock_for_writer (clib_smp_lock_t * l)
+{ clib_smp_unlock_inline (l, CLIB_SMP_LOCK_TYPE_WRITER); }
+
+always_inline void
+clib_smp_unlock_for_reader (clib_smp_lock_t * l)
+{ clib_smp_unlock_inline (l, CLIB_SMP_LOCK_TYPE_READER); }
 
 #define clib_atomic_exec(p,var,body)					\
 do {									\
