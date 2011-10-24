@@ -101,11 +101,9 @@ void clib_smp_lock_init (clib_smp_lock_t ** pl)
 
   n_bytes = sizeof (l[0]) + n_cpus * sizeof (l->waiting_fifo[0]);
   ASSERT_AND_PANIC (n_bytes % CLIB_CACHE_LINE_BYTES == 0);
+
   l = clib_mem_alloc_aligned (n_bytes, CLIB_CACHE_LINE_BYTES);
   memset (l, 0, n_bytes);
-
-  /* Unlock it. */
-  l->header = clib_smp_lock_header_unlock (l->header);
 
   *pl = l;
 }
@@ -117,9 +115,13 @@ void clib_smp_lock_free (clib_smp_lock_t ** pl)
   *pl = 0;
 }
 
-void clib_smp_lock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_header_t h0)
+void clib_smp_lock_slow_path (clib_smp_lock_t * l,
+			      uword my_cpu,
+			      clib_smp_lock_header_t h0,
+			      clib_smp_lock_type_t type)
 {
   clib_smp_lock_header_t h1, h2, h3;
+  uword is_reader = type == CLIB_SMP_LOCK_TYPE_READER;
   uword n_cpus = clib_smp_main.n_cpus;
   uword my_tail;
 
@@ -142,53 +144,121 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_h
 	break;
 
       /* It is possible that if head and tail are both zero, CPU with lock would have unlocked lock. */
-      else if (! clib_smp_lock_header_is_locked (h2))
+      else if (type == CLIB_SMP_LOCK_TYPE_SPIN)
 	{
-	  do {
-	    h0 = h2;
-	    h0.request_cpu = my_cpu;
+	  while (! h2.writer_has_lock)
+	    {
+	      ASSERT_AND_PANIC (clib_smp_lock_header_waiting_fifo_is_empty (h2));
+	      h1 = h2;
+	      h1.request_cpu = my_cpu;
+	      h1.writer_has_lock = 1;
 
-	    /* Try to set head and tail to zero and thereby get the lock. */
-	    h3 = clib_smp_lock_set_header (l, h0, h2);
+	      h3 = clib_smp_lock_set_header (l, h1, h2);
 
-	    /* Got it? */
-	    if (clib_smp_lock_header_is_equal (h2, h3))
-	      return;
+	      /* Got it? */
+	      if (clib_smp_lock_header_is_equal (h2, h3))
+		return;
 
-	    h2 = h3;
-	  } while (! clib_smp_lock_header_is_locked (h2));
+	      h2 = h3;
+	    }
 	}
 
       /* Try to advance tail again. */
       h0 = h2;
     }
 
-  /* Wait until CPU holding the lock grants us the lock. */
-  while (! l->waiting_fifo[my_tail].lock_granted)
-    clib_smp_pause ();
+  {
+    clib_smp_lock_waiting_fifo_elt_t * w;
 
-  /* Clear it for next time. */
-  l->waiting_fifo[my_tail].lock_granted = 0;
+    w = l->waiting_fifo + my_tail;
+
+    ASSERT_AND_PANIC (w->wait_type == CLIB_SMP_LOCK_WAIT_DONE);
+
+    w->wait_type = (is_reader
+		    ? CLIB_SMP_LOCK_WAIT_READER
+		    : CLIB_SMP_LOCK_WAIT_WRITER);
+
+    /* Wait until CPU holding the lock grants us the lock. */
+    while (w->wait_type != CLIB_SMP_LOCK_WAIT_DONE)
+      clib_smp_pause ();
+  }
 }
 
-void clib_smp_unlock_slow_path (clib_smp_lock_t * l, uword my_cpu, clib_smp_lock_header_t h0)
+void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
+				uword my_cpu,
+				clib_smp_lock_header_t h0,
+				clib_smp_lock_type_t type)
 {
   clib_smp_lock_header_t h1, h2;
+  clib_smp_lock_waiting_fifo_elt_t * head;
+  clib_smp_lock_wait_type_t head_wait_type;
+  uword is_reader = type == CLIB_SMP_LOCK_TYPE_READER;
   uword n_cpus = clib_smp_main.n_cpus;
-  uword my_head;
+  uword head_index, must_wait_for_readers;
   
-  /* Some other cpu is on waiting fifo. */
   while (1)
     {
-      h1 = h0;
-      my_head = h1.waiting_fifo.head_index;
-      h1.waiting_fifo.head_index = my_head == n_cpus - 1 ? 0 : my_head + 1;
-      h2 = clib_smp_lock_set_header (l, h1, h0);
-      if (clib_smp_lock_header_is_equal (h2, h0))
-	break;
-      h0 = h2;
-    }
+      /* Advance waiting fifo giving lock to first waiter. */
+      while (1)
+	{
+	  ASSERT_AND_PANIC (! clib_smp_lock_header_waiting_fifo_is_empty (h0));
 
-  /* Shift lock to first thread waiting in fifo. */
-  l->waiting_fifo[my_head].lock_granted = 1;
+	  h1 = h0;
+
+	  head_index = h1.waiting_fifo.head_index;
+	  head = l->waiting_fifo + head_index;
+	  if (is_reader)
+	    {
+	      ASSERT_AND_PANIC (h1.n_readers_with_lock > 0);
+	      h1.n_readers_with_lock -= 1;
+	    }
+	  else
+	    {
+	      /* Writer will already have lock. */
+	      ASSERT_AND_PANIC (h1.writer_has_lock);
+	    }
+
+	  while ((head_wait_type = head->wait_type) == CLIB_SMP_LOCK_WAIT_DONE)
+	    clib_smp_pause ();
+
+	  /* Don't advance FIFO to writer unless all readers have unlocked. */
+	  must_wait_for_readers =
+	    (type != CLIB_SMP_LOCK_TYPE_SPIN
+	     && head_wait_type == CLIB_SMP_LOCK_WAIT_WRITER
+	     && h1.n_readers_with_lock != 0);
+	  head_index += ! must_wait_for_readers;
+	  h1.waiting_fifo.head_index = head_index == n_cpus ? 0 : head_index;
+
+	  h2 = clib_smp_lock_set_header (l, h1, h0);
+
+	  if (clib_smp_lock_header_is_equal (h2, h0))
+	    break;
+
+	  h0 = h2;
+	}
+
+      if (must_wait_for_readers)
+	return;
+
+      /* Wake up head of waiting fifo. */
+      {
+	uword done_waking;
+
+	/* Shift lock to first thread waiting in fifo. */
+	head->wait_type = CLIB_SMP_LOCK_WAIT_DONE;
+
+	/* For read locks we may be able to wake multiple readers. */
+	done_waking = 1;
+	if (head_wait_type == CLIB_SMP_LOCK_WAIT_READER)
+	  {
+	    uword hi = h0.waiting_fifo.head_index;
+	    uword ti = h0.waiting_fifo.tail_index;
+	    if (hi != ti && l->waiting_fifo[hi].wait_type == CLIB_SMP_LOCK_WAIT_READER)
+	      done_waking = 0;
+	  }
+
+	if (done_waking)
+	  break;
+      }
+    }
 }
