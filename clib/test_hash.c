@@ -85,7 +85,7 @@ static clib_error_t * hash_next_test (word * h)
 
 static u8 * test1_format (u8 * s, va_list * args)
 {
-  void * UNUSED (user_arg) = va_arg (*args, void *);
+  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void * v = va_arg (*args, void *);
   hash_pair_t * p = va_arg (*args, hash_pair_t *);
   hash_t * h = hash_header (v);
@@ -226,7 +226,7 @@ static clib_error_t * test_word_key (hash_test_t * ht)
 
 static u8 * test2_format (u8 * s, va_list * args)
 {
-  void * UNUSED (user_arg) = va_arg (*args, void *);
+  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void * v = va_arg (*args, void *);
   hash_pair_t * p = va_arg (*args, hash_pair_t *);
   hash_t * h = hash_header (v);

@@ -973,7 +973,7 @@ static void byte_swap_verneed (elf_main_t * em,
   clib_bitmap_free (entries_swapped);
 }
 
-UNUSED(static void
+CLIB_UNUSED(static void
 set_dynamic_versym (elf_main_t * em));
 
 static void

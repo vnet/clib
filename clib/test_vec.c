@@ -114,12 +114,12 @@ uword g_call_stats[OP_MAX];
 
 typedef struct {
   u8 field1[4];
-  PACKED (u32 field2);
+  CLIB_PACKED (u32 field2);
 } hdr_t;
 
 typedef struct {
   u8 field1[3];
-  PACKED (u32 field2);
+  CLIB_PACKED (u32 field2);
 } elt_t;
 
 

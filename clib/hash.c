@@ -757,7 +757,7 @@ uword vec_key_equal (hash_t * h, uword key1, uword key2)
 
 u8 * vec_key_format_pair (u8 * s, va_list * args)
 {
-  void * UNUSED (user_arg) = va_arg (*args, void *);
+  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void * v = va_arg (*args, void *);
   hash_pair_t * p = va_arg (*args, hash_pair_t *);
   hash_t * h = hash_header (v);
@@ -832,7 +832,7 @@ uword string_key_equal (hash_t * h, uword key1, uword key2)
 
 u8 * string_key_format_pair (u8 * s, va_list * args)
 {
-  void * UNUSED (user_arg) = va_arg (*args, void *);
+  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void * v = va_arg (*args, void *);
   hash_pair_t * p = va_arg (*args, hash_pair_t *);
   hash_t * h = hash_header (v);
@@ -848,7 +848,7 @@ u8 * string_key_format_pair (u8 * s, va_list * args)
 
 static u8 * hash_format_pair_default (u8 * s, va_list * args)
 {
-  void * UNUSED (user_arg) = va_arg (*args, void *);
+  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void * v = va_arg (*args, void *);
   hash_pair_t * p = va_arg (*args, hash_pair_t *);
   hash_t * h = hash_header (v);
