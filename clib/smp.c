@@ -157,7 +157,7 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
 	{
 	  while (! h2.writer_has_lock)
 	    {
-	      ASSERT_AND_PANIC (clib_smp_lock_header_waiting_fifo_is_empty (h2));
+	      ASSERT_AND_PANIC (h2.waiting_fifo.n_elts == 0);
 	      h1 = h2;
 	      h1.request_cpu = my_cpu;
 	      h1.writer_has_lock = 1;
@@ -213,7 +213,7 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
       /* Advance waiting fifo giving lock to first waiter. */
       while (1)
 	{
-	  ASSERT_AND_PANIC (! clib_smp_lock_header_waiting_fifo_is_empty (h0));
+	  ASSERT_AND_PANIC (h0.waiting_fifo.n_elts != 0);
 
 	  h1 = h0;
 
@@ -238,8 +238,23 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	    (type != CLIB_SMP_LOCK_TYPE_SPIN
 	     && head_wait_type == CLIB_SMP_LOCK_WAIT_WRITER
 	     && h1.n_readers_with_lock != 0);
-	  head_index += ! must_wait_for_readers;
-	  h1.waiting_fifo.n_elts -= ! must_wait_for_readers;
+
+	  if (! must_wait_for_readers)
+	    {
+	      head_index += 1;
+	      h1.waiting_fifo.n_elts -= 1;
+	      if (type != CLIB_SMP_LOCK_TYPE_SPIN)
+		{
+		  if (head_wait_type == CLIB_SMP_LOCK_WAIT_WRITER)
+		    h1.writer_has_lock = h1.n_readers_with_lock == 0;
+		  else
+		    {
+		      h1.writer_has_lock = 0;
+		      h1.n_readers_with_lock += 1;
+		    }
+		}
+	    }
+
 	  h1.waiting_fifo.head_index = head_index == n_fifo_elts ? 0 : head_index;
 	  h1.request_cpu = my_cpu;
 
@@ -252,6 +267,9 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	    break;
 
 	  h0 = h2;
+
+	  if (h0.waiting_fifo.n_elts == 0)
+	    return clib_smp_unlock_inline (l, type);
 	}
 
       if (must_wait_for_readers)

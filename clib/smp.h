@@ -130,10 +130,6 @@ always_inline uword
 clib_smp_lock_header_is_equal (clib_smp_lock_header_t h0, clib_smp_lock_header_t h1)
 { return h0.as_u64 == h1.as_u64; }
 
-always_inline uword
-clib_smp_lock_header_waiting_fifo_is_empty (clib_smp_lock_header_t h)
-{ return h.waiting_fifo.n_elts == 0; }
-
 typedef struct {
   volatile clib_smp_lock_wait_type_t wait_type;
   u8 pad[CLIB_CACHE_LINE_BYTES - 1 * sizeof (clib_smp_lock_wait_type_t)];
@@ -177,10 +173,19 @@ clib_smp_lock_inline (clib_smp_lock_t * l, clib_smp_lock_type_t type)
 
   my_cpu = os_get_cpu_number ();
   h0 = l->header;
-  while (! h0.writer_has_lock
-	 && !(type == CLIB_SMP_LOCK_TYPE_WRITER && h0.n_readers_with_lock != 0))
+  while (! h0.writer_has_lock)
     {
-      ASSERT_AND_PANIC (clib_smp_lock_header_waiting_fifo_is_empty (h0));
+      /* Want to write but there are still readers with lock? */
+      if (type == CLIB_SMP_LOCK_TYPE_WRITER && h0.n_readers_with_lock != 0)
+	break;
+
+      if (type == CLIB_SMP_LOCK_TYPE_SPIN)
+	ASSERT_AND_PANIC (h0.waiting_fifo.n_elts == 0);
+
+      /* Read/write can't proceed when waiting fifo is non-empty. */
+      else if (h0.waiting_fifo.n_elts != 0)
+	break;
+
       h1 = h0;
       h1.request_cpu = my_cpu;
       h1.writer_has_lock = ! is_reader;
@@ -216,12 +221,18 @@ clib_smp_unlock_inline (clib_smp_lock_t * l, clib_smp_lock_type_t type)
 
   /* Should be locked. */
   if (is_reader)
-    ASSERT_AND_PANIC (h0.n_readers_with_lock != 0);
+    {
+      ASSERT_AND_PANIC (h0.n_readers_with_lock != 0);
+      ASSERT_AND_PANIC (h0.writer_has_lock == 0);
+    }
   else
-    ASSERT_AND_PANIC (h0.writer_has_lock);
+    {
+      ASSERT_AND_PANIC (h0.n_readers_with_lock == 0);
+      ASSERT_AND_PANIC (h0.writer_has_lock);
+    }
 
   /* Locked but empty waiting fifo? */
-  while (clib_smp_lock_header_waiting_fifo_is_empty (h0))
+  while (h0.waiting_fifo.n_elts == 0)
     {
       /* Try to mark it unlocked. */
       h1 = h0;
