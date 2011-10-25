@@ -240,21 +240,22 @@ CLIB_CORE = \
   clib/zvec.c
 
 # Core plus Unix additions
-libclib_la_SOURCES = \
-  $(CLIB_CORE) \
-  clib/elf_clib.c \
-  clib/socket.c \
-  clib/timer.c \
-  clib/unix-formats.c \
-  clib/unix-misc.c
+libclib_la_SOURCES =				\
+  $(CLIB_CORE)					\
+  clib/elf_clib.c				\
+  clib/socket.c					\
+  clib/timer.c					\
+  clib/unix-formats.c				\
+  clib/unix-misc.c				\
+  clib/linux-smp.c
 
 # Core plus kernel additions
-libclibkernel_a_SOURCES = \
-  $(CLIB_CORE) \
-  $(CORE_UNIT_TEST_SOURCES) \
-  clib/linux_kernel_os.c \
-  clib/mem_mheap.c \
-  clib/qsort.c \
+libclibkernel_a_SOURCES =			\
+  $(CLIB_CORE)					\
+  $(CORE_UNIT_TEST_SOURCES)			\
+  clib/linux_kernel_os.c			\
+  clib/mem_mheap.c				\
+  clib/qsort.c					\
   clib/standalone_string.c
 
 libclibkernel_a_CPPFLAGS = $(AM_CPPFLAGS)

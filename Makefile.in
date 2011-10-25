@@ -211,7 +211,7 @@ am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
 	clib/timing_wheel.lo clib/unformat.lo clib/vec.lo clib/zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) clib/elf_clib.lo \
 	clib/socket.lo clib/timer.lo clib/unix-formats.lo \
-	clib/unix-misc.lo
+	clib/unix-misc.lo clib/linux-smp.lo
 libclib_la_OBJECTS = $(am_libclib_la_OBJECTS)
 @WITH_UNIX_TRUE@am_libclib_la_rpath = -rpath $(libdir)
 libthread_db_la_LIBADD =
@@ -735,21 +735,22 @@ CLIB_CORE = \
 
 # Core plus Unix additions
 libclib_la_SOURCES = \
-  $(CLIB_CORE) \
-  clib/elf_clib.c \
-  clib/socket.c \
-  clib/timer.c \
-  clib/unix-formats.c \
-  clib/unix-misc.c
+  $(CLIB_CORE)					\
+  clib/elf_clib.c				\
+  clib/socket.c					\
+  clib/timer.c					\
+  clib/unix-formats.c				\
+  clib/unix-misc.c				\
+  clib/linux-smp.c
 
 
 # Core plus kernel additions
 libclibkernel_a_SOURCES = \
-  $(CLIB_CORE) \
-  $(CORE_UNIT_TEST_SOURCES) \
-  clib/linux_kernel_os.c \
-  clib/mem_mheap.c \
-  clib/qsort.c \
+  $(CLIB_CORE)					\
+  $(CORE_UNIT_TEST_SOURCES)			\
+  clib/linux_kernel_os.c			\
+  clib/mem_mheap.c				\
+  clib/qsort.c					\
   clib/standalone_string.c
 
 libclibkernel_a_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_LINUX_KERNEL \
@@ -1169,6 +1170,7 @@ clib/timer.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/unix-formats.lo: clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/unix-misc.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+clib/linux-smp.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 libclib.la: $(libclib_la_OBJECTS) $(libclib_la_DEPENDENCIES) 
 	$(LINK) $(am_libclib_la_rpath) $(libclib_la_OBJECTS) $(libclib_la_LIBADD) $(LIBS)
 clib/thread_db.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
@@ -1415,6 +1417,8 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-unformat.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-vec.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-zvec.$(OBJEXT)
+	-rm -f clib/linux-smp.$(OBJEXT)
+	-rm -f clib/linux-smp.lo
 	-rm -f clib/longjmp.$(OBJEXT)
 	-rm -f clib/longjmp.lo
 	-rm -f clib/md5.$(OBJEXT)
@@ -1595,6 +1599,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-unformat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-vec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-zvec.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/linux-smp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/longjmp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/md5.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/mem_mheap.Plo@am__quote@
