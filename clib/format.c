@@ -584,8 +584,9 @@ static f64 times_power_of_ten (f64 x, int n)
 /* Write x = y * 10^expon with 1 < y < 10. */
 static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
 {
-  word sign, expon2, expon10;
-  u64 fraction;
+  word expon2, expon10;
+  CLIB_UNUSED (u64 fraction);
+  CLIB_UNUSED (word sign);
   f64 prec;
 
   f64_down (x, sign, expon2, fraction);
