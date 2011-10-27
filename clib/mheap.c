@@ -249,8 +249,12 @@ mheap_vm_elt (void * v, uword flags, uword offset)
 always_inline uword
 mheap_small_object_cache_mask (mheap_small_object_cache_t * c, uword bin)
 {
-  u8x16 b = u8x16_splat (bin);
   uword mask;
+
+#ifndef CLIB_HAVE_VEC128
+  mask = 0;
+#else
+  u8x16 b = u8x16_splat (bin);
 
   ASSERT (bin < 256);
 
@@ -260,6 +264,7 @@ mheap_small_object_cache_mask (mheap_small_object_cache_t * c, uword bin)
     mask |= _ (2) | _ (3);
 #undef _
 
+#endif
   return mask;
 }
 
@@ -308,7 +313,27 @@ mheap_put_small_object (mheap_t * h, uword bin, uword offset)
       old_offset = c->offsets[i];
       c->offsets[i] = offset;
 
+      /* Return old offset so it can be freed. */
       return old_offset;
+    }
+}
+
+static void
+mheap_flush_small_objects (void * v)
+{
+  mheap_t * h = mheap_header (v);
+  mheap_small_object_cache_t * c = &h->small_object_cache;
+  uword i;
+
+  if (! v || ! MHEAP_HAVE_SMALL_OBJECT_CACHE)
+    return;
+
+  for (i = 0; i < ARRAY_LEN (c->offsets); i++)
+    {
+      if (c->bins.as_u8[i] == 0)
+	continue;
+      mheap_put (v, c->offsets[i]);
+      c->bins.as_u8[i] = 0;
     }
 }
 
@@ -467,7 +492,7 @@ mheap_get_search_free_list (void * v,
   n_user_bytes = *n_user_bytes_arg;
   bin = user_data_size_to_bin_index (n_user_bytes);
 
-  if (0
+  if (MHEAP_HAVE_SMALL_OBJECT_CACHE
       && (h->flags & MHEAP_FLAG_SMALL_OBJECT_CACHE)
       && bin < 255
       && align == STRUCT_SIZE_OF (mheap_elt_t, user_data[0])
@@ -688,6 +713,7 @@ void mheap_put (void * v, uword uoffset)
   mheap_t * h;
   uword n_user_data_bytes, bin;
   mheap_elt_t * e, * n;
+  uword trace_uoffset, trace_n_user_data_bytes;
   u64 cpu_times[2];
 
   cpu_times[0] = clib_cpu_time_now ();
@@ -707,8 +733,13 @@ void mheap_put (void * v, uword uoffset)
   n = mheap_next_elt (e);
   n_user_data_bytes = mheap_elt_data_bytes (e);
 
+  trace_uoffset = uoffset;
+  trace_n_user_data_bytes = n_user_data_bytes;
+
   bin = user_data_size_to_bin_index (n_user_data_bytes);
-  if (0 && bin < 255 && (h->flags & MHEAP_FLAG_SMALL_OBJECT_CACHE))
+  if (MHEAP_HAVE_SMALL_OBJECT_CACHE
+      && bin < 255
+      && (h->flags & MHEAP_FLAG_SMALL_OBJECT_CACHE))
     {
       uoffset = mheap_put_small_object (h, bin, uoffset);
       if (uoffset == 0)      
@@ -777,7 +808,7 @@ void mheap_put (void * v, uword uoffset)
       /* Recursion block for case when we are traceing main clib heap. */
       h->flags &= ~MHEAP_FLAG_TRACE;
 
-      mheap_put_trace (v, uoffset, n_user_data_bytes);
+      mheap_put_trace (v, trace_uoffset, trace_n_user_data_bytes);
 
       h->flags |= MHEAP_FLAG_TRACE;
     }
@@ -1033,7 +1064,7 @@ static u8 * format_mheap_stats (u8 * s, va_list * va)
   mheap_stats_t * st = &h->stats;
   uword indent = format_get_indent (s);
 
-  s = format (s, "alloc. from small object cache: %Ld hits %Ld attempts (%.2f%%) repl %d",
+  s = format (s, "alloc. from small object cache: %Ld hits %Ld attempts (%.2f%%) replacements %d",
 	      st->n_small_object_cache_hits,
 	      st->n_small_object_cache_attempts,
 	      (st->n_small_object_cache_attempts != 0
@@ -1252,6 +1283,8 @@ void mheap_validate (void * v)
     return;
 
   mheap_maybe_lock (v);
+
+  mheap_flush_small_objects (v);
 
   /* Validate number of elements and size. */
   free_size_from_free_lists = free_count_from_free_lists = 0;
