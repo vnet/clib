@@ -88,12 +88,10 @@ typedef struct {
   pid_t tid;
 } linux_clone_bootstrap_args_t;
 
-static clib_thread_db_event_t thread_db_event;
+clib_thread_db_event_t thread_db_event;
 
-static never_inline void
-thread_db_breakpoint (void)
-{
-}
+void thread_db_breakpoint (void)
+{ }
 
 static int linux_clone_bootstrap (linux_clone_bootstrap_args_t * a)
 {
