@@ -34,17 +34,19 @@ static uword allocate_per_cpu_mheap (uword cpu)
 {
   clib_smp_main_t * m = &clib_smp_main;
   void * heap;
-  uword vm_size, stack_size;
+  uword vm_size, stack_size, mheap_flags;
 
   ASSERT (os_get_cpu_number () == cpu);
 
   vm_size = (uword) 1 << m->log2_n_per_cpu_vm_bytes;
   stack_size = (uword) 1 << m->log2_n_per_cpu_stack_bytes;
 
+  mheap_flags = MHEAP_FLAG_SMALL_OBJECT_CACHE;
+
   /* Heap extends up to start of stack. */
   heap = mheap_alloc_with_flags (clib_smp_vm_base_for_cpu (m, cpu),
 				 vm_size - stack_size,
-				 /* flags */ 0);
+				 mheap_flags);
   clib_mem_set_heap (heap);
 
   if (cpu == 0)
@@ -56,7 +58,7 @@ static uword allocate_per_cpu_mheap (uword cpu)
       m->global_heap =
 	mheap_alloc_with_flags (clib_smp_vm_base_for_cpu (m, cpu + m->n_cpus),
 				vm_size,
-				/* flags */ MHEAP_FLAG_THREAD_SAFE);
+				mheap_flags | MHEAP_FLAG_THREAD_SAFE);
     }
 
   m->per_cpu_mains[cpu].heap = heap;
