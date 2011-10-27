@@ -254,7 +254,7 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 always_inline uword *
 clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
-  uword a0, a1, b0, b1;
+  uword a0, a1, b0;
   uword i_end, mask;
 
   a0 = i / BITS (bitmap[0]);
@@ -262,7 +262,6 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 
   i_end = i + n_bits;
   b0 = i_end / BITS (bitmap[0]);
-  b1 = i_end % BITS (bitmap[0]);
 
   clib_bitmap_vec_validate (bitmap, b0);
 
