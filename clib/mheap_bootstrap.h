@@ -128,10 +128,19 @@ typedef struct {
   u64 n_clocks_get, n_clocks_put;
 } mheap_stats_t;
 
+/* Without vector instructions don't bother with small object cache. */
+#ifdef CLIB_HAVE_VEC128
+#define MHEAP_HAVE_SMALL_OBJECT_CACHE 1
+#else
+#define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
+#endif
+
 /* For objects with align == 4 and align_offset == 0 (e.g. vector strings). */
 typedef struct {
   union {
+#ifdef CLIB_HAVE_VEC128
     u8x16 as_u8x16[BITS (uword) / 16];
+#endif
 
     /* Store bin + 1; zero means unused. */
     u8 as_u8[BITS (uword)];
