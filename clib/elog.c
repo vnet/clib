@@ -734,7 +734,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   elog_main_t * em = va_arg (*va, elog_main_t *);
   elog_event_t * e = va_arg (*va, elog_event_t *);
   elog_event_type_t * t;
-  u8 * p, * d, * d_end;
+  u8 * p, * d;
 
   {
     u16 tmp[2];
@@ -755,7 +755,6 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
   unserialize (m, unserialize_f64, &e->time);
 
   d = e->data;
-  d_end = d + sizeof (e->data);
   p = (u8 *) t->format_args;
 
   while (*p)
