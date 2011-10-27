@@ -596,12 +596,10 @@ format_elf_main (u8 * s, va_list * args)
       elf_relocation_table_t * t;
       elf_relocation_with_addend_t * r;
       elf_section_t * es;
-      elf64_section_header_t * h;
 
       vec_foreach (t, em->relocation_tables)
 	{
 	  es = vec_elt_at_index (em->sections, t->section_index);
-	  h = &es->header;
 	  r = t->relocations;
 	  s = format (s, "\nRelocations for section %s:\n",
 		      elf_section_name (em, es));
@@ -1607,7 +1605,7 @@ static void layout_sections (elf_main_t * em)
 
     vec_foreach (g, em->segments)
       {
-	u64 s_lo, s_hi, f_lo;
+	u64 s_lo, s_hi, f_lo = 0;
 	u32 n_sections = 0;
 
 	if (g->header.memory_size == 0)
