@@ -598,9 +598,9 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time, u32 * expired_us
 
   if (PREDICT_TRUE (level_index < vec_len (w->levels)))
     {
-      uword wi, wi0;
+      uword wi;
       level = vec_elt_at_index (w->levels, level_index);
-      wi0 = wi = current_time_wheel_index (w, level_index);
+       wi = current_time_wheel_index (w, level_index);
       if (level->occupancy_bitmap)
 	while (1)
 	  {
