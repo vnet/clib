@@ -269,6 +269,8 @@ do {								\
 
 #undef _
 
+  (void) mend1;			/* compiler warning */
+
   while (m0 < mend0)
     {
       rngstep64 (~(a0^(a0<<21)), a0, b0, mm0, m0, m20, r0, x0, y0);

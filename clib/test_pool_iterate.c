@@ -40,6 +40,8 @@ int main (int argc, char * argv[])
   for (i = 0; i < 70; i++)
     pool_get (tp, junk);
   
+  (void) junk;			/* compiler warning */
+
   pool_put_index (tp, 1);
   pool_put_index (tp, 65);
 

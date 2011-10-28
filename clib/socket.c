@@ -94,12 +94,10 @@ socket_config (char * config,
     {
       char * host_name;
       int port = -1;
-      int got_port = 0;
       struct sockaddr_in * sa = addr;
 
       host_name = 0;
       port = -1;
-      got_port = 0;
       if (config[0] != 0)
 	{
 	  unformat_input_t i;
@@ -107,9 +105,7 @@ socket_config (char * config,
 	  unformat_init_string (&i, config, strlen (config));
 	  if (unformat (&i, "%s:%d", &host_name, &port)
 	      || unformat (&i, "%s:0x%x", &host_name, &port))
-	    {
-	      got_port = 1;
-	    }
+	    ;
 	  else if (unformat (&i, "%s", &host_name))
 	    ;
 	  else
