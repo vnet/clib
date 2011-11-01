@@ -109,13 +109,17 @@ typedef enum {
 
 typedef union {
   struct {
+    /* FIFO of CPUs (threads) waiting for lock. */
     struct {
       u16 head_index, n_elts;
     } waiting_fifo;
 
+    /* Requesting CPU for atomic compare_and_swap instructions.
+       This makes CPUs requesting same header change unique. */
     u16 request_cpu;
 
-    /* Count of readers who have been given read lock. */
+    /* Count of readers who have been given read lock.
+       Not applicable for spin locks. */
     u16 n_readers_with_lock : 15;
 
     /* Set when writer has been given write lock.  Only one of
