@@ -375,6 +375,18 @@ _signed_binop (8, 16, is_equal, pcmpeqb128)
 _signed_binop (16, 8, is_equal, pcmpeqw128)
 _signed_binop (32, 4, is_equal, pcmpeqd128)
 
+always_inline u8x16
+i8x16_is_greater (i8x16 x, i8x16 y)
+{ return (u8x16) __builtin_ia32_pcmpgtb128 (x, y); }
+
+always_inline u16x8
+i16x8_is_greater (i16x8 x, i16x8 y)
+{ return (u16x8) __builtin_ia32_pcmpgtw128 (x, y); }
+
+always_inline u32x4
+i32x4_is_greater (i32x4 x, i32x4 y)
+{ return (u32x4) __builtin_ia32_pcmpgtd128 (x, y); }
+
 always_inline u8x16 u8x16_is_zero (u8x16 x)
 {
   u8x16 zero = {0};
@@ -434,9 +446,26 @@ u32x4_set0 (u32 x)
   return result;
 }
 
+always_inline i32x4
+i32x4_set0 (i32 x)
+{ return (i32x4) u32x4_set0 ((u32) x); }
+
+always_inline i32
+i32x4_get0 (i32x4 x)
+{ return (i32) u32x4_get0 ((u32x4) x); }
+
 /* Converts all ones/zeros compare mask to bitmap. */
 always_inline u32 u8x16_compare_byte_mask (u8x16 x)
 { return __builtin_ia32_pmovmskb128 ((i8x16) x); }
+
+u8 u32x4_compare_word_mask_table[256];
+
+always_inline u32 u32x4_compare_word_mask (u32x4 x)
+{
+  u32 m = u8x16_compare_byte_mask ((u8x16) x);
+  return (u32x4_compare_word_mask_table[(m >> 0) & 0xff]
+	  | (u32x4_compare_word_mask_table[(m >> 8) & 0xff] << 2));
+}
 
 always_inline u32 u8x16_zero_byte_mask (u8x16 x)
 {
