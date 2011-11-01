@@ -125,6 +125,7 @@ am__objects_1 = clib/libclibkernel_a-asm_x86.$(OBJEXT) \
 	clib/libclibkernel_a-timing_wheel.$(OBJEXT) \
 	clib/libclibkernel_a-unformat.$(OBJEXT) \
 	clib/libclibkernel_a-vec.$(OBJEXT) \
+	clib/libclibkernel_a-vector.$(OBJEXT) \
 	clib/libclibkernel_a-zvec.$(OBJEXT)
 am__objects_2 = clib/libclibkernel_a-test_elog.$(OBJEXT) \
 	clib/libclibkernel_a-test_fifo.$(OBJEXT) \
@@ -178,6 +179,7 @@ am__objects_3 = clib/libclibstandalone_a-asm_x86.$(OBJEXT) \
 	clib/libclibstandalone_a-timing_wheel.$(OBJEXT) \
 	clib/libclibstandalone_a-unformat.$(OBJEXT) \
 	clib/libclibstandalone_a-vec.$(OBJEXT) \
+	clib/libclibstandalone_a-vector.$(OBJEXT) \
 	clib/libclibstandalone_a-zvec.$(OBJEXT)
 am__objects_4 = clib/libclibstandalone_a-test_elog.$(OBJEXT) \
 	clib/libclibstandalone_a-test_fifo.$(OBJEXT) \
@@ -208,7 +210,8 @@ am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
 	clib/mem_mheap.lo clib/phash.lo clib/qhash.lo clib/random.lo \
 	clib/random_buffer.lo clib/random_isaac.lo clib/serialize.lo \
 	clib/smp.lo clib/std-formats.lo clib/string.lo clib/time.lo \
-	clib/timing_wheel.lo clib/unformat.lo clib/vec.lo clib/zvec.lo
+	clib/timing_wheel.lo clib/unformat.lo clib/vec.lo \
+	clib/vector.lo clib/zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) clib/elf_clib.lo \
 	clib/socket.lo clib/timer.lo clib/unix-formats.lo \
 	clib/unix-misc.lo clib/linux-smp.lo
@@ -432,6 +435,7 @@ CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -457,6 +461,7 @@ LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
@@ -469,6 +474,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 RANLIB = @RANLIB@
@@ -482,6 +488,7 @@ abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
+ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
@@ -514,7 +521,6 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
-lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -558,26 +564,26 @@ test_zvec_SOURCES = clib/test_zvec.c
 
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
-test_elog_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_elf_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_fifo_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_format_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_hash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_heap_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_longjmp_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_md5_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_mheap_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_phash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_pool_iterate_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_qhash_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_random_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_socket_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_time_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_vec_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_zvec_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
+test_elog_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_elf_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_fifo_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_format_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_hash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_heap_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_longjmp_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_md5_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_mheap_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_phash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_pool_iterate_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_qhash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_socket_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_time_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_vec_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_zvec_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_elog_LDADD = libclib.la
 test_elf_LDADD = libclib.la
 test_fifo_LDADD = libclib.la
@@ -618,6 +624,12 @@ test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
+
+# noinst_PROGRAMS += test_vhash
+# test_vhash_SOURCES = clib/test_vhash.c clib/vhash.c
+# test_vhash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+# test_vhash_LDADD = libclib.la
+# test_vhash_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \
@@ -730,6 +742,7 @@ CLIB_CORE = \
   clib/timing_wheel.c \
   clib/unformat.c \
   clib/vec.c \
+  clib/vector.c \
   clib/zvec.c
 
 
@@ -926,6 +939,8 @@ clib/libclibkernel_a-unformat.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-vec.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibkernel_a-vector.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-zvec.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-test_elog.$(OBJEXT): clib/$(am__dirstamp) \
@@ -1025,6 +1040,8 @@ clib/libclibstandalone_a-timing_wheel.$(OBJEXT): clib/$(am__dirstamp) \
 clib/libclibstandalone_a-unformat.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-vec.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibstandalone_a-vector.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-zvec.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
@@ -1163,6 +1180,7 @@ clib/timing_wheel.lo: clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/unformat.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/vec.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+clib/vector.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/zvec.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/elf_clib.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/socket.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
@@ -1368,6 +1386,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibkernel_a-timing_wheel.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-unformat.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-vec.$(OBJEXT)
+	-rm -f clib/libclibkernel_a-vector.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-zvec.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-asm_x86.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-backtrace.$(OBJEXT)
@@ -1416,6 +1435,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-timing_wheel.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-unformat.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-vec.$(OBJEXT)
+	-rm -f clib/libclibstandalone_a-vector.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-zvec.$(OBJEXT)
 	-rm -f clib/linux-smp.$(OBJEXT)
 	-rm -f clib/linux-smp.lo
@@ -1485,6 +1505,8 @@ mostlyclean-compile:
 	-rm -f clib/unix-misc.lo
 	-rm -f clib/vec.$(OBJEXT)
 	-rm -f clib/vec.lo
+	-rm -f clib/vector.$(OBJEXT)
+	-rm -f clib/vector.lo
 	-rm -f clib/zvec.$(OBJEXT)
 	-rm -f clib/zvec.lo
 
@@ -1550,6 +1572,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-unformat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-vec.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-asm_x86.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-backtrace.Po@am__quote@
@@ -1598,6 +1621,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-timing_wheel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-unformat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-vec.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-zvec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/linux-smp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/longjmp.Plo@am__quote@
@@ -1643,6 +1667,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/unix-formats.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/unix-misc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/vec.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/vector.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/zvec.Plo@am__quote@
 
 .S.o:
@@ -2112,6 +2137,20 @@ clib/libclibkernel_a-vec.obj: clib/vec.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/vec.c' object='clib/libclibkernel_a-vec.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-vec.obj `if test -f 'clib/vec.c'; then $(CYGPATH_W) 'clib/vec.c'; else $(CYGPATH_W) '$(srcdir)/clib/vec.c'; fi`
+
+clib/libclibkernel_a-vector.o: clib/vector.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-vector.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-vector.Tpo -c -o clib/libclibkernel_a-vector.o `test -f 'clib/vector.c' || echo '$(srcdir)/'`clib/vector.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-vector.Tpo clib/$(DEPDIR)/libclibkernel_a-vector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/vector.c' object='clib/libclibkernel_a-vector.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-vector.o `test -f 'clib/vector.c' || echo '$(srcdir)/'`clib/vector.c
+
+clib/libclibkernel_a-vector.obj: clib/vector.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-vector.obj -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-vector.Tpo -c -o clib/libclibkernel_a-vector.obj `if test -f 'clib/vector.c'; then $(CYGPATH_W) 'clib/vector.c'; else $(CYGPATH_W) '$(srcdir)/clib/vector.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-vector.Tpo clib/$(DEPDIR)/libclibkernel_a-vector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/vector.c' object='clib/libclibkernel_a-vector.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-vector.obj `if test -f 'clib/vector.c'; then $(CYGPATH_W) 'clib/vector.c'; else $(CYGPATH_W) '$(srcdir)/clib/vector.c'; fi`
 
 clib/libclibkernel_a-zvec.o: clib/zvec.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-zvec.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-zvec.Tpo -c -o clib/libclibkernel_a-zvec.o `test -f 'clib/zvec.c' || echo '$(srcdir)/'`clib/zvec.c
@@ -2770,6 +2809,20 @@ clib/libclibstandalone_a-vec.obj: clib/vec.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/vec.c' object='clib/libclibstandalone_a-vec.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-vec.obj `if test -f 'clib/vec.c'; then $(CYGPATH_W) 'clib/vec.c'; else $(CYGPATH_W) '$(srcdir)/clib/vec.c'; fi`
+
+clib/libclibstandalone_a-vector.o: clib/vector.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-vector.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-vector.Tpo -c -o clib/libclibstandalone_a-vector.o `test -f 'clib/vector.c' || echo '$(srcdir)/'`clib/vector.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-vector.Tpo clib/$(DEPDIR)/libclibstandalone_a-vector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/vector.c' object='clib/libclibstandalone_a-vector.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-vector.o `test -f 'clib/vector.c' || echo '$(srcdir)/'`clib/vector.c
+
+clib/libclibstandalone_a-vector.obj: clib/vector.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-vector.obj -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-vector.Tpo -c -o clib/libclibstandalone_a-vector.obj `if test -f 'clib/vector.c'; then $(CYGPATH_W) 'clib/vector.c'; else $(CYGPATH_W) '$(srcdir)/clib/vector.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-vector.Tpo clib/$(DEPDIR)/libclibstandalone_a-vector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/vector.c' object='clib/libclibstandalone_a-vector.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-vector.obj `if test -f 'clib/vector.c'; then $(CYGPATH_W) 'clib/vector.c'; else $(CYGPATH_W) '$(srcdir)/clib/vector.c'; fi`
 
 clib/libclibstandalone_a-zvec.o: clib/zvec.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-zvec.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-zvec.Tpo -c -o clib/libclibstandalone_a-zvec.o `test -f 'clib/zvec.c' || echo '$(srcdir)/'`clib/zvec.c

@@ -63,26 +63,26 @@ test_zvec_SOURCES = clib/test_zvec.c
 
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
-test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_format_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_hash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_heap_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_random_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DDEBUG
-test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
-test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DDEBUG
+test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_format_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_hash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_heap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_elog_LDADD =	libclib.la
 test_elf_LDADD =	libclib.la
@@ -125,6 +125,12 @@ test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
+
+# noinst_PROGRAMS += test_vhash
+# test_vhash_SOURCES = clib/test_vhash.c clib/vhash.c
+# test_vhash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+# test_vhash_LDADD = libclib.la
+# test_vhash_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \
@@ -237,6 +243,7 @@ CLIB_CORE = \
   clib/timing_wheel.c \
   clib/unformat.c \
   clib/vec.c \
+  clib/vector.c \
   clib/zvec.c
 
 # Core plus Unix additions
