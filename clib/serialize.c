@@ -120,28 +120,33 @@ void unserialize_f32 (serialize_main_t * m, va_list * va)
 
 void serialize_cstring (serialize_main_t * m, char * s)
 {
-  u32 len = strlen (s);
+  u32 len = s ? strlen (s) : 0;
   void * p;
 
-  serialize_integer (m, len, sizeof (len));
-  p = serialize_get (m, len);
-  memcpy (p, s, len);
+  serialize_likely_small_unsigned_integer (m, len);
+  if (len > 0) 
+    {
+      p = serialize_get (m, len);
+      memcpy (p, s, len);
+    }
 }
 
 void unserialize_cstring (serialize_main_t * m, char ** s)
 {
-  char * p, * r;
+  char * p, * r = 0;
   u32 len;
 
-  unserialize_integer (m, &len, sizeof (len));
+  len = unserialize_likely_small_unsigned_integer (m);
 
-  r = vec_new (char, len + 1);
-  p = unserialize_get (m, len);
-  memcpy (r, p, len);
-
-  /* Null terminate. */
-  r[len] = 0;
-
+  if (len > 0)
+    {
+      r = vec_new (char, len + 1);
+      p = unserialize_get (m, len);
+      memcpy (r, p, len);
+      
+      /* Null terminate. */
+      r[len] = 0;
+    }
   *s = r;
 }
 
