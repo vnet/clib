@@ -564,7 +564,7 @@ void unserialize_check_magic (serialize_main_t * m, void * magic,
   u32 l;
   void * d;
 
-  unserialize_integer (m, &l, sizeof (l));
+  l = unserialize_likely_small_unsigned_integer (m);
   if (l != magic_bytes)
     {
     bad:
