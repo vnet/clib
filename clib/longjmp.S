@@ -535,6 +535,27 @@ clib_longjmp:
 clib_calljmp:	
 1:	j 1b
 	
+#elif defined(__TMS320C6X__)
+	
+	/* FIXME implement if needed. */
+	.global clib_setjmp
+	.align 4
+	.type clib_setjmp, %function
+clib_setjmp:
+1:	B	.S1     1b
+
+	.global clib_longjmp
+	.align 4
+	.type clib_longjmp, @function
+clib_longjmp:	
+1:	B	.S1     1b
+	
+	.global clib_calljmp
+	.align 4
+	.type clib_calljmp, %function
+clib_calljmp:	
+1:	B	.S1     1b
+	
 #else
 #error "unknown machine"
 #endif	

@@ -414,7 +414,7 @@ void elog_init (elog_main_t * em, u32 n_events)
 
   clib_time_init (&em->cpu_timer);
 
-  em->n_total_events_disable_limit = ~0ULL;
+  em->n_total_events_disable_limit = ~0;
 
   /* Make track 0. */
   em->default_track.name = "default";

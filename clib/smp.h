@@ -107,32 +107,34 @@ typedef enum {
   CLIB_SMP_LOCK_WAIT_WRITER,
 } clib_smp_lock_wait_type_t;
 
+typedef u16 clib_smp_quarter_word_t;
+
 typedef union {
   struct {
     /* FIFO of CPUs (threads) waiting for lock. */
     struct {
-      u16 head_index, n_elts;
+      clib_smp_quarter_word_t head_index, n_elts;
     } waiting_fifo;
 
     /* Requesting CPU for atomic compare_and_swap instructions.
        This makes CPUs requesting same header change unique. */
-    u16 request_cpu;
+    clib_smp_quarter_word_t request_cpu;
 
     /* Count of readers who have been given read lock.
        Not applicable for spin locks. */
-    u16 n_readers_with_lock : 15;
+    clib_smp_quarter_word_t n_readers_with_lock : BITS (clib_smp_quarter_word_t) - 1;
 
     /* Set when writer has been given write lock.  Only one of
        these can happen at a time. */
-    u16 writer_has_lock : 1;
+    clib_smp_quarter_word_t writer_has_lock : 1;
   };
 
-  u64 as_u64;
+  uword as_uword;
 } clib_smp_lock_header_t;
 
 always_inline uword
 clib_smp_lock_header_is_equal (clib_smp_lock_header_t h0, clib_smp_lock_header_t h1)
-{ return h0.as_u64 == h1.as_u64; }
+{ return h0.as_uword == h1.as_uword; }
 
 typedef struct {
   volatile clib_smp_lock_wait_type_t wait_type;
@@ -155,7 +157,7 @@ always_inline clib_smp_lock_header_t
 clib_smp_lock_set_header (clib_smp_lock_t * l, clib_smp_lock_header_t new, clib_smp_lock_header_t old)
 {
   clib_smp_lock_header_t cmp;
-  cmp.as_u64 = clib_smp_compare_and_swap (&l->header.as_u64, new.as_u64, old.as_u64);
+  cmp.as_uword = clib_smp_compare_and_swap (&l->header.as_uword, new.as_uword, old.as_uword);
   return cmp;
 }
 

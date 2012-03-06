@@ -102,11 +102,11 @@ typedef struct {
 
 typedef struct {
   /* Total number of events in buffer. */
-  u64 n_total_events;
+  u32 n_total_events;
 
   /* When count reaches limit logging is disabled.  This is
      used for event triggers. */
-  u64 n_total_events_disable_limit;
+  u32 n_total_events_disable_limit;
 
   /* Dummy event to use when logger is disabled. */
   elog_event_t dummy_event;
@@ -160,7 +160,7 @@ always_inline void
 elog_reset_buffer (elog_main_t * em)
 {
   em->n_total_events = 0;
-  em->n_total_events_disable_limit = ~0ULL;
+  em->n_total_events_disable_limit = ~0;
 }
 
 always_inline void

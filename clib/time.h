@@ -114,6 +114,21 @@ always_inline u64 clib_cpu_time_now (void)
 always_inline u64 clib_cpu_time_now (void)
 { return 0; }
 
+#elif defined (__TMS320C6X__)
+
+always_inline u64 clib_cpu_time_now (void)
+{
+  u32 l, h;
+
+  asm volatile (" dint\n"
+		" mvc .s2 TSCL,%0\n"
+		" mvc .s2 TSCH,%1\n"
+		" rint\n"
+		: "=b" (l), "=b" (h));
+
+  return ((u64)h << 32) | l;
+}
+
 #else
 
 #error "don't know how to read CPU time stamp"

@@ -72,6 +72,11 @@
 /* setjmp/longjmp not supported for the moment. */
 #define CLIB_ARCH_LONGJMP_REGS 0
 
+#elif defined(__TMS320C6X__)
+
+/* setjmp/longjmp not supported for the moment. */
+#define CLIB_ARCH_LONGJMP_REGS 0
+
 #else
 #error "unknown machine"
 #endif
