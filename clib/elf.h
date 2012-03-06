@@ -27,6 +27,7 @@
 #include <clib/format.h>
 #include <clib/hash.h>
 #include <clib/vec.h>
+#include <clib/byte_order.h>
 
 #define foreach_elf_file_class \
   _ (CLASS_NONE) _ (32BIT) _ (64BIT)
