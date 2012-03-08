@@ -489,6 +489,45 @@ do {							\
   (c) ^= (b); (c) -= hash32_rotate_left ((b), 24);	\
 } while (0)
 
+/* 32 bit mixing/finalize in steps. */
+
+#define hash_v3_mix32_step1(a,b,c)				\
+do {								\
+  (a) -= (c); (a) ^= hash32_rotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= hash32_rotate_left ((a), 6); (a) += (c);	\
+} while (0)
+
+#define hash_v3_mix32_step2(a,b,c)				\
+do {								\
+  (c) -= (b); (c) ^= hash32_rotate_left ((b), 8); (b) += (a);	\
+  (a) -= (c); (a) ^= hash32_rotate_left ((c),16); (c) += (b);	\
+} while (0)
+
+#define hash_v3_mix32_step3(a,b,c)				\
+do {								\
+  (b) -= (a); (b) ^= hash32_rotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= hash32_rotate_left ((b), 4); (b) += (a);	\
+} while (0)
+
+#define hash_v3_finalize32_step1(a,b,c)			\
+do {							\
+  (c) ^= (b); (c) -= hash32_rotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= hash32_rotate_left ((c), 11);	\
+} while (0)
+
+#define hash_v3_finalize32_step2(a,b,c)			\
+do {							\
+  (b) ^= (a); (b) -= hash32_rotate_left ((a), 25);	\
+  (c) ^= (b); (c) -= hash32_rotate_left ((b), 16);	\
+} while (0)
+
+#define hash_v3_finalize32_step3(a,b,c)			\
+do {							\
+  (a) ^= (c); (a) -= hash32_rotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= hash32_rotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= hash32_rotate_left ((b), 24);	\
+} while (0)
+
 /* Vector v3 mixing/finalize. */
 #define hash_v3_mix_step_1_u32x(a,b,c)				\
 do {								\
