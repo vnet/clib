@@ -28,6 +28,9 @@ uword _unformat_fill_input (unformat_input_t * i)
 {
   uword l, first_mark;
 
+  if (i->index == UNFORMAT_END_OF_INPUT)
+    return i->index;
+
   first_mark = l = vec_len (i->buffer);
   if (vec_len (i->buffer_marks) > 0)
     first_mark = i->buffer_marks[0];
@@ -790,7 +793,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
   uword last_non_white_space_match_percent;
   uword last_non_white_space_match_format;
 
-  vec_add1 (input->buffer_marks, input->index);
+  vec_add1_aligned (input->buffer_marks, input->index, sizeof (input->buffer_marks[0]));
 
   f = fmt;
   default_skip_input_white_space = 1;
@@ -936,7 +939,7 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
 
   /* Save place in input buffer in case parse fails. */
   l = vec_len (input->buffer_marks);
-  vec_add1 (input->buffer_marks, input->index);
+  vec_add1_aligned (input->buffer_marks, input->index, sizeof (input->buffer_marks[0]));
 
   va_start (va, func);
   result = func (input, &va);
