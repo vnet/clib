@@ -220,6 +220,10 @@ unformat_string (unformat_input_t * input,
  done:
   if (string_return)
     {
+      /* Match the string { END-OF-INPUT as a single brace. */
+      if (c == UNFORMAT_END_OF_INPUT && vec_len (s) == 0 && paren == 1)
+	vec_add1 (s, '{');
+
       /* Don't match null string. */
       if (c == UNFORMAT_END_OF_INPUT && vec_len (s) == 0)
 	return 0;
