@@ -413,6 +413,9 @@ clib_calljmp:
 	mflr 0
 	stw 0, 4(5)
 	
+	/* account for (sp, lr) tuple, and keep aligned */
+	addi 5, 5, -16
+	
 	/* Switch stacks. */
 	mr 1, 5
 	
@@ -422,6 +425,9 @@ clib_calljmp:
 	
 	/* Away we go. */
 	bctrl
+	
+	/* back to our synthetic frame */
+	addi 1,1,16
 	
 	/* Switch back to old stack. */
 	lwz 0, 4(1)
