@@ -70,6 +70,7 @@
 # include <netinet/if_ether.h>
 #endif /* __KERNEL__ */
 
+#include <clib/bitops.h> /* foreach_set_bit */
 #include <clib/format.h>
 #include <clib/error.h>
 
@@ -441,6 +442,132 @@ u8 * format_ip4_packet (u8 * s, va_list * args)
 	      format_network_address, AF_INET,  &ip->saddr,
 	      format_network_address, AF_INET,  &ip->daddr);
 
+  return s;
+}
+
+#define foreach_unix_arphrd_type		\
+  _ (NETROM, 0)					\
+  _ (ETHER, 1)					\
+  _ (EETHER, 2)					\
+  _ (AX25, 3)					\
+  _ (PRONET, 4)					\
+  _ (CHAOS, 5)					\
+  _ (IEEE802, 6)				\
+  _ (ARCNET, 7)					\
+  _ (APPLETLK, 8)				\
+  _ (DLCI, 15)					\
+  _ (ATM, 19)					\
+  _ (METRICOM, 23)				\
+  _ (IEEE1394, 24)				\
+  _ (EUI64, 27)					\
+  _ (INFINIBAND, 32)				\
+  _ (SLIP, 256)					\
+  _ (CSLIP, 257)				\
+  _ (SLIP6, 258)				\
+  _ (CSLIP6, 259)				\
+  _ (RSRVD, 260)				\
+  _ (ADAPT, 264)				\
+  _ (ROSE, 270)					\
+  _ (X25, 271)					\
+  _ (HWX25, 272)				\
+  _ (PPP, 512)					\
+  _ (HDLC, 513)					\
+  _ (LAPB, 516)					\
+  _ (DDCMP, 517)				\
+  _ (RAWHDLC, 518)				\
+  _ (TUNNEL, 768)				\
+  _ (TUNNEL6, 769)				\
+  _ (FRAD, 770)					\
+  _ (SKIP, 771)					\
+  _ (LOOPBACK, 772)				\
+  _ (LOCALTLK, 773)				\
+  _ (FDDI, 774)					\
+  _ (BIF, 775)					\
+  _ (SIT, 776)					\
+  _ (IPDDP, 777)				\
+  _ (IPGRE, 778)				\
+  _ (PIMREG, 779)				\
+  _ (HIPPI, 780)				\
+  _ (ASH, 781)					\
+  _ (ECONET, 782)				\
+  _ (IRDA, 783)					\
+  _ (FCPP, 784)					\
+  _ (FCAL, 785)					\
+  _ (FCPL, 786)					\
+  _ (FCFABRIC, 787)				\
+  _ (IEEE802_TR, 800)				\
+  _ (IEEE80211, 801)				\
+  _ (IEEE80211_PRISM, 802)			\
+  _ (IEEE80211_RADIOTAP, 803)			\
+  _ (IEEE802154, 804)				\
+  _ (IEEE802154_PHY, 805)			\
+  _ (VOID, 0xFFFF)				\
+  _ (NONE, 0xFFFE)
+
+u8 * format_unix_arphrd (u8 * s, va_list * args)
+{
+  u32 x = va_arg (*args, u32);
+  char * t;
+  switch (x)
+    {
+#define _(f,n) case ARPHRD_##f: t = #f; break;
+      foreach_unix_arphrd_type
+#undef _
+    default:
+      t = 0;
+      break;
+    }
+
+  if (t)
+    s = format (s, "%s", t);
+  else
+    s = format (s, "unknown 0x%x", x);
+
+  return s;
+}
+
+#define foreach_unix_interface_flag		\
+  _ (up)					\
+  _ (broadcast)					\
+  _ (debug)					\
+  _ (loopback)					\
+  _ (pointopoint)				\
+  _ (notrailers)				\
+  _ (running)					\
+  _ (noarp)					\
+  _ (promisc)					\
+  _ (allmulti)					\
+  _ (master)					\
+  _ (slave)					\
+  _ (multicast)					\
+  _ (portsel)					\
+  _ (automedia)					\
+  _ (dynamic)					\
+  _ (lower_up)					\
+  _ (dormant)					\
+  _ (echo)
+
+static char * unix_interface_flag_names[] = {
+#define _(f) #f,
+  foreach_unix_interface_flag
+#undef _
+};
+
+u8 * format_unix_interface_flags (u8 * s, va_list * args)
+{
+  u32 x = va_arg (*args, u32);
+  u32 i;
+
+  if (x == 0)
+    s = format (s, "none");
+  else foreach_set_bit (i, x, ({
+    if (i < ARRAY_LEN (unix_interface_flag_names))
+      s = format (s, "%s", unix_interface_flag_names[i]);
+    else
+      s = format (s, "unknown %d", i);
+    if (x >> (i + 1))
+      s = format (s, ", ");
+  }));
   return s;
 }
 
