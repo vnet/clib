@@ -45,7 +45,7 @@ TESTS = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
 	test_phash$(EXEEXT) test_pool_iterate$(EXEEXT) \
 	test_qhash$(EXEEXT) test_random$(EXEEXT) \
 	test_random_isaac$(EXEEXT) test_serialize$(EXEEXT) \
-	test_socket$(EXEEXT) test_time$(EXEEXT) \
+	test_socket$(EXEEXT) test_smp$(EXEEXT) test_time$(EXEEXT) \
 	test_timing_wheel$(EXEEXT) test_vec$(EXEEXT) \
 	test_zvec$(EXEEXT)
 noinst_PROGRAMS = $(am__EXEEXT_1)
@@ -125,6 +125,7 @@ am__objects_1 = clib/libclibkernel_a-asm_x86.$(OBJEXT) \
 	clib/libclibkernel_a-random_isaac.$(OBJEXT) \
 	clib/libclibkernel_a-serialize.$(OBJEXT) \
 	clib/libclibkernel_a-smp.$(OBJEXT) \
+	clib/libclibkernel_a-smp_fifo.$(OBJEXT) \
 	clib/libclibkernel_a-std-formats.$(OBJEXT) \
 	clib/libclibkernel_a-string.$(OBJEXT) \
 	clib/libclibkernel_a-time.$(OBJEXT) \
@@ -179,6 +180,7 @@ am__objects_3 = clib/libclibstandalone_a-asm_x86.$(OBJEXT) \
 	clib/libclibstandalone_a-random_isaac.$(OBJEXT) \
 	clib/libclibstandalone_a-serialize.$(OBJEXT) \
 	clib/libclibstandalone_a-smp.$(OBJEXT) \
+	clib/libclibstandalone_a-smp_fifo.$(OBJEXT) \
 	clib/libclibstandalone_a-std-formats.$(OBJEXT) \
 	clib/libclibstandalone_a-string.$(OBJEXT) \
 	clib/libclibstandalone_a-time.$(OBJEXT) \
@@ -215,9 +217,9 @@ am__objects_5 = clib/asm_x86.lo clib/backtrace.lo clib/elf.lo \
 	clib/longjmp.lo clib/mhash.lo clib/mheap.lo clib/md5.lo \
 	clib/mem_mheap.lo clib/phash.lo clib/qhash.lo clib/random.lo \
 	clib/random_buffer.lo clib/random_isaac.lo clib/serialize.lo \
-	clib/smp.lo clib/std-formats.lo clib/string.lo clib/time.lo \
-	clib/timing_wheel.lo clib/unformat.lo clib/vec.lo \
-	clib/vector.lo clib/zvec.lo
+	clib/smp.lo clib/smp_fifo.lo clib/std-formats.lo \
+	clib/string.lo clib/time.lo clib/timing_wheel.lo \
+	clib/unformat.lo clib/vec.lo clib/vector.lo clib/zvec.lo
 am_libclib_la_OBJECTS = $(am__objects_5) clib/elf_clib.lo \
 	clib/socket.lo clib/timer.lo clib/unix-formats.lo \
 	clib/unix-misc.lo clib/linux-smp.lo
@@ -236,7 +238,7 @@ am__EXEEXT_1 = test_elog$(EXEEXT) test_elf$(EXEEXT) test_fifo$(EXEEXT) \
 	test_phash$(EXEEXT) test_pool_iterate$(EXEEXT) \
 	test_qhash$(EXEEXT) test_random$(EXEEXT) \
 	test_random_isaac$(EXEEXT) test_serialize$(EXEEXT) \
-	test_socket$(EXEEXT) test_time$(EXEEXT) \
+	test_socket$(EXEEXT) test_smp$(EXEEXT) test_time$(EXEEXT) \
 	test_timing_wheel$(EXEEXT) test_vec$(EXEEXT) \
 	test_zvec$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
@@ -333,6 +335,12 @@ test_serialize_DEPENDENCIES = libclib.la
 test_serialize_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(test_serialize_LDFLAGS) $(LDFLAGS) -o $@
+am_test_smp_OBJECTS = clib/test_smp-test_smp.$(OBJEXT)
+test_smp_OBJECTS = $(am_test_smp_OBJECTS)
+test_smp_DEPENDENCIES = libclib.la
+test_smp_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(test_smp_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_test_socket_OBJECTS = clib/test_socket-test_socket.$(OBJEXT)
 test_socket_OBJECTS = $(am_test_socket_OBJECTS)
 test_socket_DEPENDENCIES = libclib.la
@@ -391,9 +399,9 @@ SOURCES = $(libclibkernel_a_SOURCES) $(libclibstandalone_a_SOURCES) \
 	$(test_phash_SOURCES) $(test_pool_iterate_SOURCES) \
 	$(test_qhash_SOURCES) $(test_random_SOURCES) \
 	$(test_random_isaac_SOURCES) $(test_serialize_SOURCES) \
-	$(test_socket_SOURCES) $(test_time_SOURCES) \
-	$(test_timing_wheel_SOURCES) $(test_vec_SOURCES) \
-	$(test_zvec_SOURCES)
+	$(test_smp_SOURCES) $(test_socket_SOURCES) \
+	$(test_time_SOURCES) $(test_timing_wheel_SOURCES) \
+	$(test_vec_SOURCES) $(test_zvec_SOURCES)
 DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(libclibstandalone_a_SOURCES) $(libclib_la_SOURCES) \
 	$(libthread_db_la_SOURCES) $(test_elf_SOURCES) \
@@ -404,9 +412,9 @@ DIST_SOURCES = $(libclibkernel_a_SOURCES) \
 	$(test_phash_SOURCES) $(test_pool_iterate_SOURCES) \
 	$(test_qhash_SOURCES) $(test_random_SOURCES) \
 	$(test_random_isaac_SOURCES) $(test_serialize_SOURCES) \
-	$(test_socket_SOURCES) $(test_time_SOURCES) \
-	$(test_timing_wheel_SOURCES) $(test_vec_SOURCES) \
-	$(test_zvec_SOURCES)
+	$(test_smp_SOURCES) $(test_socket_SOURCES) \
+	$(test_time_SOURCES) $(test_timing_wheel_SOURCES) \
+	$(test_vec_SOURCES) $(test_zvec_SOURCES)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -567,6 +575,7 @@ test_random_SOURCES = clib/test_random.c
 test_random_isaac_SOURCES = clib/test_random_isaac.c
 test_serialize_SOURCES = clib/test_serialize.c
 test_socket_SOURCES = clib/test_socket.c
+test_smp_SOURCES = clib/test_smp.c
 test_time_SOURCES = clib/test_time.c
 test_timing_wheel_SOURCES = clib/test_timing_wheel.c
 test_vec_SOURCES = clib/test_vec.c
@@ -589,6 +598,7 @@ test_qhash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_socket_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_smp_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_time_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -610,6 +620,7 @@ test_random_LDADD = libclib.la
 test_random_isaac_LDADD = libclib.la
 test_serialize_LDADD = libclib.la
 test_socket_LDADD = libclib.la
+test_smp_LDADD = libclib.la
 test_time_LDADD = libclib.la -lm
 test_timing_wheel_LDADD = libclib.la -lm
 test_vec_LDADD = libclib.la
@@ -630,6 +641,7 @@ test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
 test_serialize_LDFLAGS = -static
 test_socket_LDFLAGS = -static
+test_smp_LDFLAGS = -static
 test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
@@ -698,6 +710,7 @@ nobase_include_HEADERS = \
   clib/random_isaac.h \
   clib/serialize.h \
   clib/smp.h \
+  clib/smp_fifo.h \
   clib/socket.h \
   clib/sparse_vec.h \
   clib/standalone_stdio.h \
@@ -746,6 +759,7 @@ CLIB_CORE = \
   clib/random_isaac.c \
   clib/serialize.c \
   clib/smp.c \
+  clib/smp_fifo.c \
   clib/std-formats.c \
   clib/string.c \
   clib/time.c \
@@ -933,6 +947,8 @@ clib/libclibkernel_a-serialize.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-smp.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibkernel_a-smp_fifo.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-std-formats.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibkernel_a-string.$(OBJEXT): clib/$(am__dirstamp) \
@@ -1034,6 +1050,8 @@ clib/libclibstandalone_a-random_isaac.$(OBJEXT): clib/$(am__dirstamp) \
 clib/libclibstandalone_a-serialize.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-smp.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
+clib/libclibstandalone_a-smp_fifo.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/libclibstandalone_a-std-formats.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
@@ -1178,6 +1196,7 @@ clib/random_isaac.lo: clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/serialize.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/smp.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
+clib/smp_fifo.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
 clib/std-formats.lo: clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 clib/string.lo: clib/$(am__dirstamp) clib/$(DEPDIR)/$(am__dirstamp)
@@ -1293,6 +1312,11 @@ clib/test_serialize-test_serialize.$(OBJEXT): clib/$(am__dirstamp) \
 test_serialize$(EXEEXT): $(test_serialize_OBJECTS) $(test_serialize_DEPENDENCIES) $(EXTRA_test_serialize_DEPENDENCIES) 
 	@rm -f test_serialize$(EXEEXT)
 	$(test_serialize_LINK) $(test_serialize_OBJECTS) $(test_serialize_LDADD) $(LIBS)
+clib/test_smp-test_smp.$(OBJEXT): clib/$(am__dirstamp) \
+	clib/$(DEPDIR)/$(am__dirstamp)
+test_smp$(EXEEXT): $(test_smp_OBJECTS) $(test_smp_DEPENDENCIES) $(EXTRA_test_smp_DEPENDENCIES) 
+	@rm -f test_smp$(EXEEXT)
+	$(test_smp_LINK) $(test_smp_OBJECTS) $(test_smp_LDADD) $(LIBS)
 clib/test_socket-test_socket.$(OBJEXT): clib/$(am__dirstamp) \
 	clib/$(DEPDIR)/$(am__dirstamp)
 test_socket$(EXEEXT): $(test_socket_OBJECTS) $(test_socket_DEPENDENCIES) $(EXTRA_test_socket_DEPENDENCIES) 
@@ -1370,6 +1394,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibkernel_a-random_isaac.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-serialize.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-smp.$(OBJEXT)
+	-rm -f clib/libclibkernel_a-smp_fifo.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-standalone_string.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-std-formats.$(OBJEXT)
 	-rm -f clib/libclibkernel_a-string.$(OBJEXT)
@@ -1418,6 +1443,7 @@ mostlyclean-compile:
 	-rm -f clib/libclibstandalone_a-random_isaac.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-serialize.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-smp.$(OBJEXT)
+	-rm -f clib/libclibstandalone_a-smp_fifo.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-standalone_main.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-standalone_string.$(OBJEXT)
 	-rm -f clib/libclibstandalone_a-std-formats.$(OBJEXT)
@@ -1469,6 +1495,8 @@ mostlyclean-compile:
 	-rm -f clib/serialize.lo
 	-rm -f clib/smp.$(OBJEXT)
 	-rm -f clib/smp.lo
+	-rm -f clib/smp_fifo.$(OBJEXT)
+	-rm -f clib/smp_fifo.lo
 	-rm -f clib/socket.$(OBJEXT)
 	-rm -f clib/socket.lo
 	-rm -f clib/std-formats.$(OBJEXT)
@@ -1490,6 +1518,7 @@ mostlyclean-compile:
 	-rm -f clib/test_random-test_random.$(OBJEXT)
 	-rm -f clib/test_random_isaac-test_random_isaac.$(OBJEXT)
 	-rm -f clib/test_serialize-test_serialize.$(OBJEXT)
+	-rm -f clib/test_smp-test_smp.$(OBJEXT)
 	-rm -f clib/test_socket-test_socket.$(OBJEXT)
 	-rm -f clib/test_time-test_time.$(OBJEXT)
 	-rm -f clib/test_timing_wheel-test_timing_wheel.$(OBJEXT)
@@ -1556,6 +1585,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-serialize.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-smp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-standalone_string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-std-formats.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibkernel_a-string.Po@am__quote@
@@ -1604,6 +1634,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-serialize.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-smp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-standalone_main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-standalone_string.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/libclibstandalone_a-std-formats.Po@am__quote@
@@ -1642,6 +1673,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/random_isaac.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/serialize.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/smp.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/smp_fifo.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/socket.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/std-formats.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/string.Plo@am__quote@
@@ -1660,6 +1692,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_random-test_random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_random_isaac-test_random_isaac.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_serialize-test_serialize.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_smp-test_smp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_socket-test_socket.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_time-test_time.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@clib/$(DEPDIR)/test_timing_wheel-test_timing_wheel.Po@am__quote@
@@ -2059,6 +2092,20 @@ clib/libclibkernel_a-smp.obj: clib/smp.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/smp.c' object='clib/libclibkernel_a-smp.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-smp.obj `if test -f 'clib/smp.c'; then $(CYGPATH_W) 'clib/smp.c'; else $(CYGPATH_W) '$(srcdir)/clib/smp.c'; fi`
+
+clib/libclibkernel_a-smp_fifo.o: clib/smp_fifo.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-smp_fifo.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Tpo -c -o clib/libclibkernel_a-smp_fifo.o `test -f 'clib/smp_fifo.c' || echo '$(srcdir)/'`clib/smp_fifo.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Tpo clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/smp_fifo.c' object='clib/libclibkernel_a-smp_fifo.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-smp_fifo.o `test -f 'clib/smp_fifo.c' || echo '$(srcdir)/'`clib/smp_fifo.c
+
+clib/libclibkernel_a-smp_fifo.obj: clib/smp_fifo.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-smp_fifo.obj -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Tpo -c -o clib/libclibkernel_a-smp_fifo.obj `if test -f 'clib/smp_fifo.c'; then $(CYGPATH_W) 'clib/smp_fifo.c'; else $(CYGPATH_W) '$(srcdir)/clib/smp_fifo.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Tpo clib/$(DEPDIR)/libclibkernel_a-smp_fifo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/smp_fifo.c' object='clib/libclibkernel_a-smp_fifo.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibkernel_a-smp_fifo.obj `if test -f 'clib/smp_fifo.c'; then $(CYGPATH_W) 'clib/smp_fifo.c'; else $(CYGPATH_W) '$(srcdir)/clib/smp_fifo.c'; fi`
 
 clib/libclibkernel_a-std-formats.o: clib/std-formats.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibkernel_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibkernel_a-std-formats.o -MD -MP -MF clib/$(DEPDIR)/libclibkernel_a-std-formats.Tpo -c -o clib/libclibkernel_a-std-formats.o `test -f 'clib/std-formats.c' || echo '$(srcdir)/'`clib/std-formats.c
@@ -2732,6 +2779,20 @@ clib/libclibstandalone_a-smp.obj: clib/smp.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-smp.obj `if test -f 'clib/smp.c'; then $(CYGPATH_W) 'clib/smp.c'; else $(CYGPATH_W) '$(srcdir)/clib/smp.c'; fi`
 
+clib/libclibstandalone_a-smp_fifo.o: clib/smp_fifo.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-smp_fifo.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Tpo -c -o clib/libclibstandalone_a-smp_fifo.o `test -f 'clib/smp_fifo.c' || echo '$(srcdir)/'`clib/smp_fifo.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Tpo clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/smp_fifo.c' object='clib/libclibstandalone_a-smp_fifo.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-smp_fifo.o `test -f 'clib/smp_fifo.c' || echo '$(srcdir)/'`clib/smp_fifo.c
+
+clib/libclibstandalone_a-smp_fifo.obj: clib/smp_fifo.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-smp_fifo.obj -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Tpo -c -o clib/libclibstandalone_a-smp_fifo.obj `if test -f 'clib/smp_fifo.c'; then $(CYGPATH_W) 'clib/smp_fifo.c'; else $(CYGPATH_W) '$(srcdir)/clib/smp_fifo.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Tpo clib/$(DEPDIR)/libclibstandalone_a-smp_fifo.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/smp_fifo.c' object='clib/libclibstandalone_a-smp_fifo.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/libclibstandalone_a-smp_fifo.obj `if test -f 'clib/smp_fifo.c'; then $(CYGPATH_W) 'clib/smp_fifo.c'; else $(CYGPATH_W) '$(srcdir)/clib/smp_fifo.c'; fi`
+
 clib/libclibstandalone_a-std-formats.o: clib/std-formats.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libclibstandalone_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/libclibstandalone_a-std-formats.o -MD -MP -MF clib/$(DEPDIR)/libclibstandalone_a-std-formats.Tpo -c -o clib/libclibstandalone_a-std-formats.o `test -f 'clib/std-formats.c' || echo '$(srcdir)/'`clib/std-formats.c
 @am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/libclibstandalone_a-std-formats.Tpo clib/$(DEPDIR)/libclibstandalone_a-std-formats.Po
@@ -3305,6 +3366,20 @@ clib/test_serialize-test_serialize.obj: clib/test_serialize.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_serialize.c' object='clib/test_serialize-test_serialize.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_serialize_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_serialize-test_serialize.obj `if test -f 'clib/test_serialize.c'; then $(CYGPATH_W) 'clib/test_serialize.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_serialize.c'; fi`
+
+clib/test_smp-test_smp.o: clib/test_smp.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_smp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_smp-test_smp.o -MD -MP -MF clib/$(DEPDIR)/test_smp-test_smp.Tpo -c -o clib/test_smp-test_smp.o `test -f 'clib/test_smp.c' || echo '$(srcdir)/'`clib/test_smp.c
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/test_smp-test_smp.Tpo clib/$(DEPDIR)/test_smp-test_smp.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_smp.c' object='clib/test_smp-test_smp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_smp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_smp-test_smp.o `test -f 'clib/test_smp.c' || echo '$(srcdir)/'`clib/test_smp.c
+
+clib/test_smp-test_smp.obj: clib/test_smp.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_smp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_smp-test_smp.obj -MD -MP -MF clib/$(DEPDIR)/test_smp-test_smp.Tpo -c -o clib/test_smp-test_smp.obj `if test -f 'clib/test_smp.c'; then $(CYGPATH_W) 'clib/test_smp.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_smp.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) clib/$(DEPDIR)/test_smp-test_smp.Tpo clib/$(DEPDIR)/test_smp-test_smp.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='clib/test_smp.c' object='clib/test_smp-test_smp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_smp_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o clib/test_smp-test_smp.obj `if test -f 'clib/test_smp.c'; then $(CYGPATH_W) 'clib/test_smp.c'; else $(CYGPATH_W) '$(srcdir)/clib/test_smp.c'; fi`
 
 clib/test_socket-test_socket.o: clib/test_socket.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(test_socket_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT clib/test_socket-test_socket.o -MD -MP -MF clib/$(DEPDIR)/test_socket-test_socket.Tpo -c -o clib/test_socket-test_socket.o `test -f 'clib/test_socket.c' || echo '$(srcdir)/'`clib/test_socket.c

@@ -38,6 +38,20 @@ u8 * format_vec32 (u8 * s, va_list * va)
   return s;
 }
 
+u8 * format_vec_uword (u8 * s, va_list * va)
+{
+  uword * v = va_arg (*va, uword *);
+  char * fmt = va_arg (*va, char *);
+  uword i;
+  for (i = 0; i < vec_len (v); i++)
+    {
+      if (i > 0)
+	s = format (s, ", ");
+      s = format (s, fmt, v[i]);
+    }
+  return s;
+}
+
 /* Ascii buffer and length. */
 u8 * format_ascii_bytes (u8 * s, va_list * va)
 {

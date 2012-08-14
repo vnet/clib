@@ -25,6 +25,7 @@
 #define included_clib_smp_h
 
 #include <clib/cache.h>
+#include <clib/os.h>		/* for os_panic */
 
 /* Per-CPU state. */
 typedef struct {
@@ -94,6 +95,26 @@ os_get_cpu_number (void)
 #define clib_smp_swap(addr,new) __sync_lock_test_and_set(addr,new)
 #define clib_smp_atomic_add(addr,increment) __sync_fetch_and_add(addr,increment)
 
+#if defined (i386) || defined (__x86_64__)
+#define clib_smp_pause() do { asm volatile ("pause"); } while (0)
+#endif
+
+#ifndef clib_smp_pause
+#define clib_smp_pause() do { } while (0)
+#endif
+
+#ifdef CLIB_UNIX
+#include <sched.h>
+
+always_inline void
+os_sched_yield (void)
+{ sched_yield (); }
+#else
+always_inline void
+os_sched_yield (void)
+{ clib_smp_pause (); }
+#endif
+
 typedef enum {
   CLIB_SMP_LOCK_TYPE_READER,
   CLIB_SMP_LOCK_TYPE_WRITER,
@@ -107,7 +128,13 @@ typedef enum {
   CLIB_SMP_LOCK_WAIT_WRITER,
 } clib_smp_lock_wait_type_t;
 
+#if uword_bits == 64
 typedef u16 clib_smp_quarter_word_t;
+typedef u32 clib_smp_half_word_t;
+#else
+typedef u8 clib_smp_quarter_word_t;
+typedef u16 clib_smp_half_word_t;
+#endif
 
 typedef union {
   struct {
@@ -281,33 +308,18 @@ always_inline void
 clib_smp_unlock_for_reader (clib_smp_lock_t * l)
 { clib_smp_unlock_inline (l, CLIB_SMP_LOCK_TYPE_READER); }
 
-#define clib_atomic_exec(p,var,body)					\
+#define clib_exec_on_global_heap(body)					\
 do {									\
-  typeof (v) * __clib_atomic_exec_p = &(p);				\
-  typeof (v) __clib_atomic_exec_locked = uword_to_pointer (1, void *);	\
-  typeof (v) __clib_atomic_exec_v;					\
-  void * __clib_atomic_exec_saved_heap;					\
+  void * __clib_exec_on_global_heap_saved_heap;				\
 									\
   /* Switch to global (thread-safe) heap. */				\
-  __clib_atomic_exec_saved_heap = clib_mem_set_heap (clib_smp_main.global_heap); \
-									\
-  /* Grab lock. */							\
-  while ((__clib_atomic_exec_v						\
-	  = clib_smp_swap (__clib_atomic_exec_p,			\
-			   __clib_atomic_exec_locked))			\
-	 == __clib_atomic_exec_locked)					\
-    ;									\
+  __clib_exec_on_global_heap_saved_heap = clib_mem_set_heap (clib_smp_main.global_heap); \
 									\
   /* Execute body. */							\
-  (var) = __clib_atomic_exec_v;						\
   body;									\
-  __clib_atomic_exec_v = (var);						\
-									\
-  /* Release lock. */							\
-  (void) clib_smp_swap (__clib_atomic_exec_p, __clib_atomic_exec_v);	\
 									\
   /* Switch back to previous heap. */					\
-  clib_mem_set_heap (__clib_atomic_exec_saved_heap);			\
+  clib_mem_set_heap (__clib_exec_on_global_heap_saved_heap);		\
 } while (0)
 
 uword os_smp_bootstrap (uword n_cpus,

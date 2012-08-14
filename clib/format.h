@@ -77,6 +77,7 @@ format_get_indent (u8 * s)
 
 /* Standard user-defined formats. */
 _ (format_vec32);
+_ (format_vec_uword);
 _ (format_ascii_bytes);
 _ (format_hex_bytes);
 _ (format_white_space);

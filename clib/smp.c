@@ -79,14 +79,6 @@ void clib_smp_init (void)
 		  clib_smp_stack_top_for_cpu (m, cpu));
 }
 
-#if defined (i386) || defined (__x86_64__)
-#define clib_smp_pause() do { asm volatile ("pause"); } while (0)
-#endif
-
-#ifndef clib_smp_pause
-#define clib_smp_pause() do { asm volatile ("nop"); } while (0)
-#endif
-
 void clib_smp_lock_init (clib_smp_lock_t ** pl)
 {
   clib_smp_lock_t * l;

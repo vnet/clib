@@ -32,6 +32,7 @@ TESTS	=  test_elog \
 	   test_random_isaac \
 	   test_serialize \
 	   test_socket \
+	   test_smp \
 	   test_time \
 	   test_timing_wheel \
 	   test_vec \
@@ -56,6 +57,7 @@ test_random_SOURCES = clib/test_random.c
 test_random_isaac_SOURCES = clib/test_random_isaac.c
 test_serialize_SOURCES = clib/test_serialize.c
 test_socket_SOURCES = clib/test_socket.c
+test_smp_SOURCES = clib/test_smp.c
 test_time_SOURCES = clib/test_time.c
 test_timing_wheel_SOURCES = clib/test_timing_wheel.c
 test_vec_SOURCES = clib/test_vec.c
@@ -78,6 +80,7 @@ test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_smp_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -100,6 +103,7 @@ test_random_LDADD =	libclib.la
 test_random_isaac_LDADD =	libclib.la
 test_serialize_LDADD =	libclib.la
 test_socket_LDADD =	libclib.la
+test_smp_LDADD =	libclib.la -lm
 test_time_LDADD =	libclib.la -lm
 test_timing_wheel_LDADD =	libclib.la -lm
 test_vec_LDADD =	libclib.la
@@ -121,6 +125,7 @@ test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
 test_serialize_LDFLAGS = -static
 test_socket_LDFLAGS = -static
+test_smp_LDFLAGS = -static
 test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
@@ -189,6 +194,7 @@ nobase_include_HEADERS = \
   clib/random_isaac.h \
   clib/serialize.h \
   clib/smp.h \
+  clib/smp_fifo.h \
   clib/socket.h \
   clib/sparse_vec.h \
   clib/standalone_stdio.h \
@@ -237,6 +243,7 @@ CLIB_CORE = \
   clib/random_isaac.c \
   clib/serialize.c \
   clib/smp.c \
+  clib/smp_fifo.c \
   clib/std-formats.c \
   clib/string.c \
   clib/time.c \
