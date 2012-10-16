@@ -64,7 +64,7 @@ void * vec_resize_allocate_memory (void * v,
 
   new_alloc_bytes = (old_alloc_bytes * 3) / 2;
   if (new_alloc_bytes < data_bytes)
-      new_alloc_bytes = data_bytes;
+    new_alloc_bytes = data_bytes;
 
   new = clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align, header_bytes);
 
