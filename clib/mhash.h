@@ -24,20 +24,27 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <clib/format.h>
 #include <clib/hash.h>
+#include <clib/heap.h>
 
 /* Hash table plus vector of keys. */
 typedef struct {
-  /* Vector used to store keys.  Hash table stores keys as byte
+  /* Vector or heap used to store keys.  Hash table stores keys as byte
      offsets into this vector. */
-  u8 * key_vector;
+  u8 * key_vector_or_heap;
 
-  /* Byte offsets of free keys in vector. */
+  /* Byte offsets of free keys in vector (used to store free keys when
+     n_key_bytes > 1). */
   u32 * key_vector_free_indices;
+
+  u8 * key_tmp;
 
   /* Possibly fixed size of key.
      0 means keys are vectors of u8's.
      1 means keys are null terminated c strings. */
+#define MHASH_VEC_STRING_KEY 0
+#define MHASH_C_STRING_KEY 1
   u32 n_key_bytes;
 
   /* Seed value for Jenkins hash. */
@@ -45,9 +52,28 @@ typedef struct {
 
   /* Hash table mapping key -> value. */
   uword * hash;
+
+  /* Format function for keys. */
+  format_function_t * format_key;
 } mhash_t;
 
 void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes);
+
+always_inline void
+mhash_init_c_string (mhash_t * h, uword n_value_bytes)
+{ mhash_init (h, n_value_bytes, MHASH_C_STRING_KEY); }
+
+always_inline void
+mhash_init_vec_string (mhash_t * h, uword n_value_bytes)
+{ mhash_init (h, n_value_bytes, MHASH_VEC_STRING_KEY); }
+
+always_inline void *
+mhash_key_to_mem (mhash_t * h, uword key)
+{
+  return (key == ~0
+	  ? h->key_tmp
+	  : vec_elt_at_index (h->key_vector_or_heap, key));
+}
 
 hash_pair_t * mhash_get_pair (mhash_t * h, void * key);
 uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value);
@@ -65,6 +91,13 @@ mhash_set (mhash_t * h, void * key, uword new_value, uword * old_value)
 { return mhash_set_mem (h, key, &new_value, old_value); }
 
 always_inline uword
+mhash_unset_key (mhash_t * h, uword key, uword * old_value)
+{
+  void * k = mhash_key_to_mem (h, key);
+  return mhash_unset (h, k, old_value);
+}
+
+always_inline uword
 mhash_value_bytes (mhash_t * m)
 {
   hash_t * h = hash_header (m->hash);
@@ -75,20 +108,19 @@ always_inline uword
 mhash_elts (mhash_t * m)
 { return hash_elts (m->hash); }
 
+always_inline uword
+mhash_key_vector_is_heap (mhash_t * h)
+{ return h->n_key_bytes <= 1; }
+
 always_inline void
 mhash_free (mhash_t * h)
 {
-  vec_free (h->key_vector);
+  if (mhash_key_vector_is_heap (h))
+    heap_free (h->key_vector_or_heap);
+  else
+    vec_free (h->key_vector_or_heap);
   vec_free (h->key_vector_free_indices);
   hash_free (h->hash);
-}
-
-always_inline void *
-mhash_key_to_mem (mhash_t * h, uword key)
-{
-  return ((key & 1)
-	  ? h->key_vector + (key / 2)
-	  : uword_to_pointer (key, void *));
 }
 
 #define mhash_foreach(k,v,mh,body)				\
@@ -100,5 +132,7 @@ do {								\
     body;							\
   }));								\
 } while (0)
+
+format_function_t format_mhash_key;
 
 #endif /* included_clib_mhash_h */
