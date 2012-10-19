@@ -318,25 +318,6 @@ mheap_put_small_object (mheap_t * h, uword bin, uword offset)
     }
 }
 
-static void
-mheap_flush_small_objects (void * v)
-{
-  mheap_t * h = mheap_header (v);
-  mheap_small_object_cache_t * c = &h->small_object_cache;
-  uword i;
-
-  if (! v || ! MHEAP_HAVE_SMALL_OBJECT_CACHE)
-    return;
-
-  for (i = 0; i < ARRAY_LEN (c->offsets); i++)
-    {
-      if (c->bins.as_u8[i] == 0)
-	continue;
-      mheap_put (v, c->offsets[i]);
-      c->bins.as_u8[i] = 0;
-    }
-}
-
 static uword
 mheap_get_search_free_bin (void * v,
 			   uword bin,
@@ -1276,6 +1257,7 @@ void mheap_validate (void * v)
 
   uword elt_count, elt_size;
   uword free_count_from_free_lists, free_size_from_free_lists;
+  uword small_elt_free_count, small_elt_free_size;
 
 #define CHECK(x) if (! (x)) { mheap_validate_breakpoint (); os_panic (); }
 
@@ -1283,8 +1265,6 @@ void mheap_validate (void * v)
     return;
 
   mheap_maybe_lock (v);
-
-  mheap_flush_small_objects (v);
 
   /* Validate number of elements and size. */
   free_size_from_free_lists = free_count_from_free_lists = 0;
@@ -1335,6 +1315,30 @@ void mheap_validate (void * v)
 	}
     }
 
+  /* Go through small object cache. */
+  small_elt_free_count = small_elt_free_size = 0;
+  for (i = 0; i < ARRAY_LEN (h->small_object_cache.bins.as_u8); i++)
+    {
+      if (h->small_object_cache.bins.as_u8[i] != 0)
+	{
+	  mheap_elt_t * e;
+	  uword b = h->small_object_cache.bins.as_u8[i] - 1;
+	  uword o = h->small_object_cache.offsets[i];
+	  uword s;
+
+	  e = mheap_elt_at_uoffset (v, o);
+
+	  /* Object must be allocated. */
+	  CHECK (! e->is_free);
+
+	  s = mheap_elt_data_bytes (e);
+	  CHECK (user_data_size_to_bin_index (s) == b);
+
+	  small_elt_free_count += 1;
+	  small_elt_free_size += s;
+	}
+    }
+
   {
     mheap_elt_t * e, * n;
     uword elt_free_size, elt_free_count;
@@ -1369,7 +1373,7 @@ void mheap_validate (void * v)
 
     CHECK (free_count_from_free_lists == elt_free_count);
     CHECK (free_size_from_free_lists == elt_free_size);
-    CHECK (elt_count == h->n_elts + elt_free_count);
+    CHECK (elt_count == h->n_elts + elt_free_count + small_elt_free_count);
     CHECK (elt_size + (elt_count + 1) * MHEAP_ELT_OVERHEAD_BYTES == vec_len (v));
   }
 
