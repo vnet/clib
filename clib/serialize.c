@@ -557,19 +557,25 @@ void unserialize_heap (serialize_main_t * m, va_list * va)
   }
 }
 
+void serialize_magic (serialize_main_t * m, void * magic, u32 magic_bytes)
+{
+  void * p;
+  serialize_integer (m, magic_bytes, sizeof (magic_bytes));
+  p = serialize_get (m, magic_bytes);
+  memcpy (p, magic, magic_bytes);
+}
+
 void unserialize_check_magic (serialize_main_t * m, void * magic,
 			      u32 magic_bytes)
 {
-  clib_error_t * error = 0;
   u32 l;
   void * d;
 
-  l = unserialize_likely_small_unsigned_integer (m);
+  unserialize_integer (m, &l, sizeof (l));
   if (l != magic_bytes)
     {
     bad:
-      error = clib_error_return (0, "bad magic number");
-      serialize_error (&m->header, error);
+      serialize_error_return (m, "bad magic number");
     }
   d = serialize_get (m, magic_bytes);
   if (memcmp (magic, d, magic_bytes))
@@ -1085,6 +1091,8 @@ static void unix_file_read (serialize_main_header_t * m, serialize_stream_t * s)
       else
 	serialize_error (m, clib_error_return_unix (0, "read"));
     }
+  else if (n == 0)
+    serialize_stream_set_end_of_stream (s);
   s->current_buffer_index = 0;
   s->n_buffer_bytes = n;
 }

@@ -86,6 +86,9 @@ always_inline void
 serialize_error (serialize_main_header_t * m, clib_error_t * error)
 { clib_longjmp (&m->error_longjmp, pointer_to_uword (error)); }
 
+#define serialize_error_return(m,args...)			\
+  serialize_error (&(m)->header, clib_error_return (0, args))
+
 void * serialize_read_write_not_inline (serialize_main_header_t * m,
 					serialize_stream_t * s,
 					uword n_bytes, uword flags);
@@ -404,7 +407,7 @@ clib_error_t * serialize (serialize_main_t * m, ...);
 clib_error_t * unserialize (serialize_main_t * m, ...);
 clib_error_t * va_serialize (serialize_main_t * m, va_list * va);
 
-void unserialize_check_magic (serialize_main_t * m,
-			      void * magic, u32 magic_bytes);
+void serialize_magic (serialize_main_t * m, void * magic, u32 magic_bytes);
+void unserialize_check_magic (serialize_main_t * m, void * magic, u32 magic_bytes);
 
 #endif /* included_clib_serialize_h */
