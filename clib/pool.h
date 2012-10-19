@@ -349,4 +349,11 @@ do {									\
   _pool_var(rv);                                                        \
 })
 
+#define pool_foreach_index(i,v,body)		\
+  for ((i) = 0; (i) < vec_len (v); (i)++)	\
+    {						\
+      if (! pool_is_free_index ((v), (i)))	\
+	do { body; } while (0);			\
+    }
+
 #endif /* included_pool_h */
