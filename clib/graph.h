@@ -75,14 +75,26 @@ typedef struct {
 typedef struct {
   /* Pool of nodes. */
   graph_node_t * nodes;
+
+  void * opaque;
+
+  format_function_t * format_node;
 } graph_t;
 
 /* Set link distance, creating link if not found. */
 u32 graph_set_link (graph_t * g, u32 src, u32 dst, u32 distance);
+
+always_inline void graph_set_bidirectional_link (graph_t * g, u32 src, u32 dst, u32 distance)
+{
+  graph_set_link (g, src, dst, distance);
+  graph_set_link (g, dst, src, distance);
+}
+
 void graph_del_link (graph_t * g, u32 src, u32 dst);
 uword graph_del_node (graph_t * g, u32 src);
 
 unformat_function_t unformat_graph;
 format_function_t format_graph;
+format_function_t format_graph_node;
 
 #endif /* included_clib_graph_h */

@@ -117,6 +117,19 @@ uword unformat_graph (unformat_input_t * input, va_list * args)
   return result;
 }
 
+u8 * format_graph_node (u8 * s, va_list * args)
+{
+  graph_t * g = va_arg (*args, graph_t *);
+  u32 node_index = va_arg (*args, u32);
+
+  if (g->format_node)
+    s = format (s, "%U", g->format_node, g, node_index);
+  else
+    s = format (s, "%d", node_index);
+
+  return s;
+}
+
 u8 * format_graph (u8 * s, va_list * args)
 {
   graph_t * g = va_arg (*args, graph_t *);
@@ -127,9 +140,11 @@ u8 * format_graph (u8 * s, va_list * args)
   s = format (s, "graph %d nodes", pool_elts (g->nodes));
   pool_foreach (n, g->nodes, ({
     s = format (s, "\n%U", format_white_space, indent + 2);
-    s = format (s, "%d -> ", n - g->nodes);
+    s = format (s, "%U -> ", format_graph_node, g, n - g->nodes);
     vec_foreach (l, n->next.links)
-      s = format (s, "%d (%d), ", l->node_index, l->distance);
+      s = format (s, "%U (%d), ",
+		  format_graph_node, g, l->node_index,
+		  l->distance);
   }));
 
   return s;
