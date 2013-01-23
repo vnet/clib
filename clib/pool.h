@@ -226,7 +226,7 @@ always_inline void * _pool_free (void * v)
     return v;
   clib_bitmap_free (p->free_bitmap);
   vec_free (p->free_indices);
-  vec_free_h (v, sizeof (p[0]));
+  vec_free_h (v, pool_aligned_header_bytes);
   return 0;
 }
 
