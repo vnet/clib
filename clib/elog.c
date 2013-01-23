@@ -940,11 +940,13 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t * em = va_arg (*va, elog_main_t *);
   uword i;
+  u32 rs;
 
   unserialize_check_magic (m, elog_serialize_magic,
 			   strlen (elog_serialize_magic));
 
-  unserialize_integer (m, &em->event_ring_size, sizeof (u32));
+  unserialize_integer (m, &rs, sizeof (u32));
+  em->event_ring_size = rs;
   elog_init (em, em->event_ring_size);
 
   unserialize (m, unserialize_elog_time_stamp, &em->serialize_time);
