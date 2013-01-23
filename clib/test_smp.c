@@ -27,6 +27,8 @@
 typedef struct {
   u32 seed, verbose, n_cpu;
 
+  u32 n_iter_barrier_sync;
+
   u32 write_max_size;
 
   f64 n_write;
@@ -104,7 +106,7 @@ u8 * format_clib_smp_barrier_sync_history (u8 * s, va_list * va)
 	  i64 idt = ci->cpu_time_stamp_history[j] - c0->cpu_time_stamp_history[j];
 	  f64 dt;
 
-	  dt = (idt < 0 ? -idt : idt) * h->time.seconds_per_clock;
+	  dt = (idt < 0 ? -idt : idt);
 	  ave += dt;
 	  rms += dt*dt;
 	  if (dt < min) min = dt;
@@ -113,10 +115,13 @@ u8 * format_clib_smp_barrier_sync_history (u8 * s, va_list * va)
 	}
     }
 
-  ave /= n_ave;
-  rms = sqrt (rms / n_ave - ave*ave) / n_ave;
+  if (n_ave > 0)
+    {
+      ave /= n_ave;
+      rms = sqrt (rms / n_ave - ave*ave) / n_ave;
+    }
 
-  s = format (s, "count %d, ave %.4e +- %.4e, min %.4e max %.4e",
+  s = format (s, "barrier sync wait times: ave %.4e clocks +- %.4e, min %.4e max %.4e",
 	      n_ave, ave, rms, min, max);
 
   return s;
@@ -135,14 +140,17 @@ void clib_smp_barrier_sync (uword n_cpus)
 
   if (my_cpu == 0)
     {
-      work.wait_enable = 1;
       work.n_slaves_at_barrier = 0;
+      work.wait_enable = 1;
+      CLIB_MEMORY_BARRIER ();
       while (work.n_slaves_at_barrier < n_cpus - 1)
 	;
       work.wait_enable = 0;
     }
   else
     {
+      while (! work.wait_enable)
+	;
       clib_smp_atomic_add (&work.n_slaves_at_barrier, 1);
       while (work.wait_enable)
 	;
@@ -162,12 +170,13 @@ static uword test_smp_per_cpu_main (test_smp_main_t * m)
   uword n_left_to_write, n_left_to_read, n_write;
   test_smp_fifo_elt_t * e;
 
-  if (1)
+  if (m->n_iter_barrier_sync > 0)
     {
       uword i, j, n;
-      for (i = 0; i < 1023; i++)
+      clib_smp_barrier_sync (m->n_cpu);
+      for (i = 0; i < m->n_iter_barrier_sync; i++)
 	{
-	  n = random_u32 (&my_seed) % (1 << 20);
+	  n = random_u32 (&my_seed) % (1 << 16);
 	  for (j = 0; j < n; j++)
 	    asm volatile ("nop");
 	  clib_smp_barrier_sync (m->n_cpu);
@@ -272,6 +281,8 @@ int test_smp_main (unformat_input_t * input)
     {
       if (unformat (input, "write %f", &m->n_write))
 	;
+      else if (unformat (input, "barrier-sync-iter %d", &m->n_iter_barrier_sync))
+	;
       else if (unformat (input, "seed %d", &m->seed))
 	;
       else if (unformat (input, "n-cpu %d", &m->n_cpu))
@@ -293,7 +304,7 @@ int test_smp_main (unformat_input_t * input)
   if (! m->seed)
     m->seed = random_default_seed ();
 
-  clib_warning ("%d cpu, write %f seed %d", m->n_cpu, m->n_write, m->seed);
+  clib_warning ("%d cpu, write %f seed %d, iter %d", m->n_cpu, m->n_write, m->seed, m->n_iter_barrier_sync);
 
   {
     uword r;
