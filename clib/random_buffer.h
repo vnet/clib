@@ -90,4 +90,11 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
     return b->buffer + i;
 }
 
+/* Random data of type T. */
+#define clib_random_buffer_get(b,t)					\
+({									\
+  t * __clib_random_buffer_get = clib_random_buffer_get_data ((b), sizeof (t)); \
+  *__clib_random_buffer_get;						\
+})
+
 #endif /* included_clib_random_buffer_h */
