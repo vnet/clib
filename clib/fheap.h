@@ -54,12 +54,13 @@ do {									\
 } while (0)
 
 typedef struct {
-  u32 min_root;
-
   /* Vector of nodes. */
   fheap_node_t * nodes;
 
   u32 * root_list_by_rank;
+
+  /* Node index of minimum element.  ~0 for none. */
+  u32 min_root;
 
   u32 enable_validate;
 
