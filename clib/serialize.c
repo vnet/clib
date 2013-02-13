@@ -659,6 +659,8 @@ static void * serialize_write_not_inline (serialize_main_header_t * m,
        data into. */
     if (n_left_b == 0)
       {
+	if (! m->data_function)
+	  break;
 	s->current_buffer_index = cur_bi;
 	m->data_function (m, s);
 	cur_bi = s->current_buffer_index;
@@ -723,8 +725,7 @@ static void * serialize_read_not_inline (serialize_main_header_t * m,
 	      vec_add (s->overflow_buffer, s->buffer + cur_bi, n_left_b);
 	      n_left_o += n_left_b;
 	      n_left_to_read -= n_left_b;
-	      /* Advance buffer to end --- even if
-		 SERIALIZE_FLAG_NO_ADVANCE_CURRENT_BUFFER_INDEX is set. */
+	      /* Advance buffer to end. */
 	      cur_bi = s->n_buffer_bytes;
 	      n_left_b = 0;
 	    }
@@ -735,6 +736,8 @@ static void * serialize_read_not_inline (serialize_main_header_t * m,
 	      cur_bi = s->current_buffer_index;
 	      n_left_b = s->n_buffer_bytes - cur_bi;
 	    }
+	  else
+	    serialize_stream_set_end_of_stream (s);
 	}
 
       /* For first time through loop return if we have enough data
@@ -744,17 +747,18 @@ static void * serialize_read_not_inline (serialize_main_header_t * m,
 	  && n_left_b >= n_left_to_read)
 	{
 	  s->current_buffer_index = cur_bi + n_bytes_to_read;
+	  s->flags |= (s->current_buffer_index == s->n_buffer_bytes && ! m->data_function) << SERIALIZE_END_OF_STREAM_BIT;
 	  return s->buffer + cur_bi;
 	}
 
-      if (! m->data_function
-	  || serialize_stream_is_end_of_stream (s))
+      if (serialize_stream_is_end_of_stream (s))
 	{
-	  /* This can happen for a peek at end of file.
-	     Pad overflow buffer with 0s. */
-	  vec_resize (s->overflow_buffer, n_left_to_read);
-	  n_left_o += n_left_to_read;
-	  n_left_to_read = 0;
+	  /* Attempt to read beyond end of stream. */
+	  if (m->recursion_level > 0)
+	    serialize_error (m, SERIALIZE_END_OF_STREAM_ERROR);
+	  else
+	    /* Zero return means end of stream. */
+	    return 0;
 	}
       else
 	{

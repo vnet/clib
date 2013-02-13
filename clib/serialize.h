@@ -54,7 +54,8 @@ typedef struct serialize_stream_t {
   u32 current_overflow_index;
 
   u32 flags;
-#define SERIALIZE_END_OF_STREAM (1 << 0)
+#define SERIALIZE_END_OF_STREAM_BIT 0
+#define SERIALIZE_END_OF_STREAM (1 << SERIALIZE_END_OF_STREAM_BIT)
 
   uword data_function_opaque;
 
@@ -70,13 +71,10 @@ serialize_stream_is_end_of_stream (serialize_stream_t * s)
 { return (s->flags & SERIALIZE_END_OF_STREAM) != 0; }
 
 typedef struct serialize_main_header_t {
-  u32 recursion_level;
+  uword recursion_level;
 
   /* Data callback function and opaque data. */
   serialize_data_function_t * data_function;
-
-  /* Error if signaled by data function. */
-  clib_error_t * error;
 
   /* Exit unwind point if error occurs. */
   clib_longjmp_t error_longjmp;
@@ -102,13 +100,15 @@ serialize_stream_read_write (serialize_main_header_t * header,
 			     uword n_bytes,
 			     uword flags)
 {
-  uword i, j, l;
+  uword i, j, l, n;
 
   l = vec_len (s->overflow_buffer);
+  n = s->n_buffer_bytes;
   i = s->current_buffer_index;
   j = i + n_bytes;
   s->current_buffer_index = j;
-  if (l == 0 && j <= s->n_buffer_bytes)
+  s->flags |= (j == n && ! header->data_function) << SERIALIZE_END_OF_STREAM_BIT;
+  if (l == 0 && j <= n)
     {
       return s->buffer + i;
     }
@@ -401,6 +401,8 @@ clib_error_t * unserialize_open_unix_file (serialize_main_t * m, char * file);
 void serialize_open_unix_file_descriptor (serialize_main_t * m, int fd);
 void unserialize_open_unix_file_descriptor (serialize_main_t * m, int fd);
 #endif /* CLIB_UNIX */
+
+#define SERIALIZE_END_OF_STREAM_ERROR (uword_to_pointer (1, clib_error_t *))
 
 /* Main routines. */
 clib_error_t * serialize (serialize_main_t * m, ...);
