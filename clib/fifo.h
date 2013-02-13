@@ -77,34 +77,39 @@ clib_fifo_reset (void * v)
 }
 
 /* External resize function. */
-void * _clib_fifo_resize (void * v, uword n_elts, uword elt_bytes);
+void * _clib_fifo_resize (void * v, uword n_elts, uword elt_bytes, uword memset_value_for_empty_space);
 
-#define clib_fifo_resize(f,n_elts) \
-  f = _clib_fifo_resize ((f), (n_elts), sizeof ((f)[0]))
+#define clib_fifo_resize_init_empty(f,n_elts,memset_value_for_empty_space) \
+  f = _clib_fifo_resize ((f), (n_elts), sizeof ((f)[0]),memset_value_for_empty_space)
+
+#define clib_fifo_resize(f,n_elts) clib_fifo_resize_init_empty(f,n_elts,0)
 
 always_inline void *
-_clib_fifo_validate (void * v, uword n_elts, uword elt_bytes)
+_clib_fifo_validate (void * v, uword n_elts, uword elt_bytes, uword memset_value_for_empty_space)
 {
   if (clib_fifo_free_elts (v) < n_elts)
-    v = _clib_fifo_resize (v, n_elts, elt_bytes);
+    v = _clib_fifo_resize (v, n_elts, elt_bytes, memset_value_for_empty_space);
   return v;
 }
 
-#define clib_fifo_validate(f,n_elts) \
-  f = _clib_fifo_validate ((f), (n_elts), sizeof (f[0]))
+#define clib_fifo_validate_init_empty(f,n_elts,memset_value_for_empty_space) \
+  f = _clib_fifo_validate ((f), (n_elts), sizeof (f[0]), memset_value_for_empty_space)
   
+#define clib_fifo_validate(f,n_elts) clib_fifo_validate_init_empty(f,n_elts,0)
+
 /* Advance tail pointer by N_ELTS which can be either positive or negative. */
 always_inline void *
 _clib_fifo_advance_tail (void * v, word n_elts, uword elt_bytes,
 			 uword * tail_return)
 {
+  uword memset_value_for_empty_space = 0;
   word i, l, n_free;
   clib_fifo_header_t * f;
 
   n_free = clib_fifo_free_elts (v);
   if (n_free < n_elts)
     {
-      v = _clib_fifo_resize (v, n_elts, elt_bytes);
+      v = _clib_fifo_resize (v, n_elts, elt_bytes, memset_value_for_empty_space);
       n_free = clib_fifo_free_elts (v);
     }
 
@@ -255,7 +260,26 @@ clib_fifo_elt_index (void * v, uword i)
   return result;
 }
 
+/* Return index relative to head for index in vector. */
+always_inline uword
+clib_fifo_index_for_elt_index (void * v, uword ei)
+{
+  clib_fifo_header_t * f = clib_fifo_header (v);
+  word i = 0;
+
+  if (v)
+    {
+      i = ei - f->head_index;
+      if (i < 0)
+	i += _vec_len (v);
+    }
+
+  ASSERT (ei == clib_fifo_elt_index (v, i));
+  return i;
+}
+
 #define clib_fifo_elt_at_index(v,i) ((v) + clib_fifo_elt_index (v, (i)))
+#define clib_fifo_index_for_elt(v,e) clib_fifo_index_for_elt_index ((v), (e) - (v))
 
 #define clib_fifo_foreach(v,f,body)		\
 do {						\

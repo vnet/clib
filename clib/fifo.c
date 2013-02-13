@@ -62,7 +62,7 @@
    fifo_free (f) frees fifo.
 */
 
-void * _clib_fifo_resize (void * v_old, uword n_new_elts, uword elt_bytes)
+void * _clib_fifo_resize (void * v_old, uword n_new_elts, uword elt_bytes, uword memset_value_for_empty_space)
 {
   void * v_new, * end, * head;
   uword n_old_elts, header_bytes;
@@ -106,7 +106,7 @@ void * _clib_fifo_resize (void * v_old, uword n_new_elts, uword elt_bytes)
 
   /* Zero empty space. */
   n_zero_bytes = (n_new_elts - n_old_elts) * elt_bytes;
-  memset (v_new + n_copy_bytes, 0, n_zero_bytes);
+  memset (v_new + n_copy_bytes, memset_value_for_empty_space, n_zero_bytes);
 
   clib_fifo_free (v_old);
 
