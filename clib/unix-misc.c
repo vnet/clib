@@ -22,6 +22,7 @@
 */
 
 #include <clib/error.h>
+#include <clib/format.h>
 #include <clib/os.h>
 #include <clib/unix.h>
 
@@ -30,6 +31,7 @@
 #include <sys/uio.h>		/* writev */
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
+#include <dirent.h>
 
 clib_error_t * unix_file_n_bytes (char * file, uword * result)
 {
@@ -147,6 +149,66 @@ clib_error_t * unix_proc_file_contents (char * file, u8 ** result)
   *result = rv;
   close (fd);
   return 0;
+}
+
+/* Call function foreach regular file in directory. */
+clib_error_t *
+unix_foreach_directory_file (char * dir_name,
+			     clib_error_t * (* f) (void * arg, u8 * path_name, u8 * file_name),
+			     void * arg,
+			     int recursive)
+{
+  DIR * d;
+  struct dirent * e;
+  clib_error_t * error = 0;
+  u8 * s, * t;
+
+  d = opendir (dir_name);
+  if (! d)
+    {
+      if (errno == ENOENT)
+        return 0;
+
+      return clib_error_return_unix (0, "opendir `%s'", dir_name);
+    }
+
+  s = t = 0;
+  while ((e = readdir (d)))
+    {
+      if (e->d_type == DT_DIR)
+	{
+	  /* Skip . & .. */
+	  if (! strcmp (e->d_name, ".")
+	      || ! strcmp (e->d_name, ".."))
+	    continue;
+      
+	  if (recursive)
+	    {
+	      s = format (s, "%s/%s%c", dir_name, e->d_name, 0);
+	      error = unix_foreach_directory_file ((char *) s, f, arg, recursive);
+	    }
+	}
+
+      else if (e->d_type == DT_REG)
+	{
+	  s = format (s, "%s/%s%c", dir_name, e->d_name, 0);
+	  t = format (t, "%s%c", e->d_name, 0);
+
+	  error = f (arg, s, t);
+	}
+
+      vec_reset_length (s);
+      vec_reset_length (t);
+
+      if (error)
+	break;
+    }
+
+  vec_free (s);
+  vec_free (t);
+  closedir (d);
+
+  return error;
 }
 
 void os_panic (void)
