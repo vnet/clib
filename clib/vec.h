@@ -245,7 +245,7 @@ do {								\
 #define vec_validate_init_empty(V,I,INIT) \
   vec_validate_init_empty_ha(V,I,INIT,0,0)
 /* Make sure vector is long enough for given index and initialize empty space (alignment specified). */
-#define vec_validate_init_empty_aligned(V,I,A) \
+#define vec_validate_init_empty_aligned(V,I,INIT,A) \
   vec_validate_init_empty_ha(V,I,INIT,0,A)
 
 /* Add 1 element to end of vector (general version). */
