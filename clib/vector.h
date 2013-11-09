@@ -28,139 +28,74 @@
 
 /* Vector types. */
 
-#if defined (__MMX__) || defined (__IWMMXT__)
-#define CLIB_HAVE_VEC64
+/* Determine number of bits in vector register. */
+#if defined (__AVX2__)
+
+#define CLIB_VECTOR_WORD_BITS 256
+
+/* AVX only supports 256 bit floating point and does not fully support integer operations. */ 
+#elif defined (__SSE2__) || defined (__AVX__) || defined (__ALTIVEC__)
+
+#define CLIB_VECTOR_WORD_BITS 128
+
+#elif defined (__MMX__) || defined (__IWMMXT__)
+
+#define CLIB_VECTOR_WORD_BITS 64
+
+#else
+
+/* Vectors not supported. */
+#define CLIB_VECTOR_WORD_BITS 0
+
 #endif
 
-#if defined (__SSE2__) && __GNUC__ >= 4
-#define CLIB_HAVE_VEC128
+#define __(vt,t0,t1,n)							\
+  typedef t1 vt __attribute__ ((vector_size (sizeof (t1) * (n))));	\
+  typedef union { vt as_##vt; t0 as_##t0[n]; } vt##_union_t;
+#define _(vt,t,n) __(vt,t,t,n)
+
+#if CLIB_VECTOR_WORD_BITS >= 64
+_ (i8x8, i8, 8); _ (i16x4, i16, 4); _ (i32x2, i32, 2);
+_ (u8x8, u8, 8); _ (u16x4, u16, 4); _ (u32x2, u32, 2);
+_ (f32x2, f32, 2);
 #endif
 
-#if defined (__ALTIVEC__)
-#define CLIB_HAVE_VEC128
+#if CLIB_VECTOR_WORD_BITS >= 128
+_ (i8x16, i8, 16); _ (i16x8, i16, 8); _ (i32x4, i32, 4); __ (i64x2, i64, signed long long, 2);
+_ (u8x16, u8, 16); _ (u16x8, u16, 8); _ (u32x4, u32, 4); __ (u64x2, i64, unsigned long long, 2);
+_ (f32x4, f32, 4); _ (f64x2, f64, 2);
 #endif
 
-/* 128 implies 64 */
-#ifdef CLIB_HAVE_VEC128
-#define CLIB_HAVE_VEC64
+#if CLIB_VECTOR_WORD_BITS >= 256
+_ (i8x32, i8, 32); _ (i16x16, i16, 16); _ (i32x8, i32, 8); _ (i64x4, i64, 4);
+_ (u8x32, u8, 32); _ (u16x16, u16, 16); _ (u32x8, u32, 8); _ (u64x4, u64, 4);
+_ (f32x8, f32, 8); _ (f64x4, f64, 4);
 #endif
 
-#define _vector_size(n) __attribute__ ((vector_size (n)))
+#undef _
+#undef __
 
-#ifdef CLIB_HAVE_VEC64
-/* Signed 64 bit. */
-typedef char i8x8 _vector_size (8);
-typedef short i16x4 _vector_size (8);
-typedef int i32x2 _vector_size (8);
+/* Number of a given type that fits into a vector register of largest width. */
+#define CLIB_VECTOR_WORD_LEN(t) (CLIB_VECTOR_WORD_BITS / (8 * sizeof (t)))
 
-/* Unsigned 64 bit. */
-typedef unsigned char u8x8 _vector_size (8);
-typedef unsigned short u16x4 _vector_size (8);
-typedef unsigned int u32x2 _vector_size (8);
+#if CLIB_VECTOR_WORD_BITS > 0
 
-/* Floating point 64 bit. */
-typedef float f32x2 _vector_size (8);
-#endif /* CLIB_HAVE_VEC64 */
+#define _(vt,t)								\
+  typedef t vt __attribute__ ((vector_size (CLIB_VECTOR_WORD_BITS / BITS (u8)))); \
+  typedef union { vt as_##vt; t as_##t[CLIB_VECTOR_WORD_LEN (t)]; } vt##_union_t;
 
-#ifdef CLIB_HAVE_VEC128
-/* Signed 128 bit. */
-typedef i8 i8x16 _vector_size (16);
-typedef i16 i16x8 _vector_size (16);
-typedef i32 i32x4 _vector_size (16);
-typedef long long i64x2 _vector_size (16);
-
-/* Unsigned 128 bit. */
-typedef u8 u8x16 _vector_size (16);
-typedef u16 u16x8 _vector_size (16);
-typedef u32 u32x4 _vector_size (16);
-typedef u64 u64x2 _vector_size (16);
-
-typedef f32 f32x4 _vector_size (16);
-typedef f64 f64x2 _vector_size (16);
-#endif /* CLIB_HAVE_VEC128 */
-
-/* Vector word sized types. */
-#ifndef CLIB_VECTOR_WORD_BITS
-# ifdef CLIB_HAVE_VEC128
-#  define CLIB_VECTOR_WORD_BITS 128
-# else
-#  define CLIB_VECTOR_WORD_BITS 64
-# endif
-#endif /* CLIB_VECTOR_WORD_BITS */
-
-/* Vector word sized types. */
-#if CLIB_VECTOR_WORD_BITS == 128
-typedef  i8  i8x _vector_size (16);
-typedef i16 i16x _vector_size (16);
-typedef i32 i32x _vector_size (16);
-typedef i64 i64x _vector_size (16);
-typedef  u8  u8x _vector_size (16);
-typedef u16 u16x _vector_size (16);
-typedef u32 u32x _vector_size (16);
-typedef u64 u64x _vector_size (16);
-#endif
-#if CLIB_VECTOR_WORD_BITS == 64
-typedef  i8  i8x _vector_size (8);
-typedef i16 i16x _vector_size (8);
-typedef i32 i32x _vector_size (8);
-typedef i64 i64x _vector_size (8);
-typedef  u8  u8x _vector_size (8);
-typedef u16 u16x _vector_size (8);
-typedef u32 u32x _vector_size (8);
-typedef u64 u64x _vector_size (8);
-#endif
-
-#undef _vector_size
-
-#define VECTOR_WORD_TYPE(t) t##x
-#define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
-
-/* Union types. */
-#if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
-
-#define _(t)					\
-  typedef union {				\
-    t##x as_##t##x;				\
-    t as_##t[VECTOR_WORD_TYPE_LEN (t)];	\
-  } t##x##_union_t;
-
-_ (u8);
-_ (u16);
-_ (u32);
-_ (u64);
-_ (i8);
-_ (i16);
-_ (i32);
-_ (i64);
+_ (i8x, i8); _ (i16x, i16); _ (i32x, i32); _ (i64x, i64);
+_ (u8x, u8); _ (u16x, u16); _ (u32x, u32); _ (u64x, u64);
+_ (f32x, f32); _ (f64x, f64);
 
 #undef _
 
-#endif
+#else /* CLIB_VECTOR_WORD_BITS > 0 */
 
-#ifdef CLIB_HAVE_VEC64
-
-#define _(t,n)					\
-  typedef union {				\
-    t##x##n as_##t##x##n;			\
-    t as_##t[n];				\
-  } t##x##n##_union_t;				\
-
-_ (u8, 8);
-_ (u16, 4);
-_ (u32, 2);
-_ (i8, 8);
-_ (i16, 4);
-_ (i32, 2);
-
-#undef _
-
-#endif
-
-#ifdef CLIB_HAVE_VEC128
+/* When we don't have vector types, still define e.g. u32x4_union_t but as an array. */
 
 #define _(t,n)					\
   typedef union {				\
-    t##x##n as_##t##x##n;			\
     t as_##t[n];				\
   } t##x##n##_union_t;				\
 
@@ -174,27 +109,6 @@ _ (i32, 4);
 _ (i64, 2);
 _ (f32, 4);
 _ (f64, 2);
-
-#undef _
-
-#endif
-
-/* When we don't have vector types, still define e.g. u32x4_union_t but as an array. */
-#if !defined(CLIB_HAVE_VEC128) && !defined(CLIB_HAVE_VEC64)
-
-#define _(t,n)					\
-  typedef union {				\
-    t as_##t[n];				\
-  } t##x##n##_union_t;				\
-
-_ (u8, 16);
-_ (u16, 8);
-_ (u32, 4);
-_ (u64, 2);
-_ (i8, 16);
-_ (i16, 8);
-_ (i32, 4);
-_ (i64, 2);
 
 #undef _
 

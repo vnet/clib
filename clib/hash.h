@@ -468,6 +468,12 @@ always_inline uword
 hash32_rotate_left (u32 x, u32 i)
 { return (x << i) | (x >> (BITS (i) - i)); }
 
+#if CLIB_VECTOR_WORD_BITS > 0
+always_inline u32x
+hash32x_rotate_left (u32x x, u32 i)
+{ return (x << i) | (x >> (BITS (i) - i)); }
+#endif
+
 #define hash_v3_mix32(a,b,c)					\
 do {								\
   (a) -= (c); (a) ^= hash32_rotate_left ((c), 4); (c) += (b);	\
@@ -531,31 +537,31 @@ do {							\
 /* Vector v3 mixing/finalize. */
 #define hash_v3_mix_step_1_u32x(a,b,c)				\
 do {								\
-  (a) -= (c); (a) ^= u32x_irotate_left ((c), 4); (c) += (b);	\
-  (b) -= (a); (b) ^= u32x_irotate_left ((a), 6); (a) += (c);	\
-  (c) -= (b); (c) ^= u32x_irotate_left ((b), 8); (b) += (a);	\
+  (a) -= (c); (a) ^= hash32x_rotate_left ((c), 4); (c) += (b);	\
+  (b) -= (a); (b) ^= hash32x_rotate_left ((a), 6); (a) += (c);	\
+  (c) -= (b); (c) ^= hash32x_rotate_left ((b), 8); (b) += (a);	\
 } while (0)
 
 #define hash_v3_mix_step_2_u32x(a,b,c)				\
 do {								\
-  (a) -= (c); (a) ^= u32x_irotate_left ((c),16); (c) += (b);	\
-  (b) -= (a); (b) ^= u32x_irotate_left ((a),19); (a) += (c);	\
-  (c) -= (b); (c) ^= u32x_irotate_left ((b), 4); (b) += (a);	\
+  (a) -= (c); (a) ^= hash32x_rotate_left ((c),16); (c) += (b);	\
+  (b) -= (a); (b) ^= hash32x_rotate_left ((a),19); (a) += (c);	\
+  (c) -= (b); (c) ^= hash32x_rotate_left ((b), 4); (b) += (a);	\
 } while (0)
 
 #define hash_v3_finalize_step_1_u32x(a,b,c)		\
 do {							\
-  (c) ^= (b); (c) -= u32x_irotate_left ((b), 14);	\
-  (a) ^= (c); (a) -= u32x_irotate_left ((c), 11);	\
-  (b) ^= (a); (b) -= u32x_irotate_left ((a), 25);	\
+  (c) ^= (b); (c) -= hash32x_rotate_left ((b), 14);	\
+  (a) ^= (c); (a) -= hash32x_rotate_left ((c), 11);	\
+  (b) ^= (a); (b) -= hash32x_rotate_left ((a), 25);	\
 } while (0)
 
 #define hash_v3_finalize_step_2_u32x(a,b,c)		\
 do {							\
-  (c) ^= (b); (c) -= u32x_irotate_left ((b), 16);	\
-  (a) ^= (c); (a) -= u32x_irotate_left ((c),  4);	\
-  (b) ^= (a); (b) -= u32x_irotate_left ((a), 14);	\
-  (c) ^= (b); (c) -= u32x_irotate_left ((b), 24);	\
+  (c) ^= (b); (c) -= hash32x_rotate_left ((b), 16);	\
+  (a) ^= (c); (a) -= hash32x_rotate_left ((c),  4);	\
+  (b) ^= (a); (b) -= hash32x_rotate_left ((a), 14);	\
+  (c) ^= (b); (c) -= hash32x_rotate_left ((b), 24);	\
 } while (0)
 
 #define hash_v3_mix_u32x(a,b,c)			\

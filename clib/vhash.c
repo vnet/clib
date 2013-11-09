@@ -23,7 +23,7 @@
 
 #include <clib/vhash.h>
 
-#ifdef CLIB_HAVE_VEC128
+#if CLIB_VECTOR_WORD_BITS > 0
 
 /* Overflow search buckets have an extra u32x4 for saving key_hash data.
    This makes it easier to refill main search bucket from overflow vector. */
@@ -247,18 +247,20 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
   h->log2_n_keys = log2_n_keys;
   h->n_key_u32 = n_key_u32;
   m = pow2_mask (h->log2_n_keys) &~ 3;
-  for (i = 0; i < VECTOR_WORD_TYPE_LEN (u32); i++)
+  for (i = 0; i < CLIB_VECTOR_WORD_LEN (u32); i++)
     h->bucket_mask.as_u32[i] = m;
 
   /* Allocate and zero search buckets. */
   i = (sizeof (b[0]) / sizeof (u32x4) + n_key_u32) << (log2_n_keys - 2);
   vec_validate_aligned (h->search_buckets, i - 1, CLIB_CACHE_LINE_BYTES);
 
+  /* Inialize find first zero lookup table. */
   for (i = 0; i < ARRAY_LEN (h->find_first_zero_table); i++)
     h->find_first_zero_table[i] = min_log2 (first_set (~i));
 
+  /* Initialize hash seeds. */
   for (i = 0; i < ARRAY_LEN (h->hash_seeds); i++)
-    for (j = 0; j < VECTOR_WORD_TYPE_LEN (u32); j++)
+    for (j = 0; j < CLIB_VECTOR_WORD_LEN (u32); j++)
       h->hash_seeds[i].as_u32[j] = hash_seeds[i];
 }
 
@@ -387,7 +389,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
    {									\
      vhash_set_stage (vm->vhash,					\
 		      /* vector_index */ i,				\
-		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+		      /* n_vectors */ CLIB_VECTOR_WORD_LEN (u32),	\
 		      vhash_main_set_result,				\
 		      vm, N_KEY_U32);					\
    })									\
@@ -409,7 +411,7 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
    {									\
      vhash_unset_stage (vm->vhash,					\
 		      /* vector_index */ i,				\
-		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+		      /* n_vectors */ CLIB_VECTOR_WORD_LEN (u32),	\
 		      vhash_main_get_result,				\
 		      vm, N_KEY_U32);					\
    })									\
@@ -742,4 +744,4 @@ void vhash_resize (vhash_t * old, u32 log2_n_keys)
   *old = new;
 }
 
-#endif /* CLIB_HAVE_VEC128 */
+#endif /* CLIB_VECTOR_WORD_BITS > 0 */

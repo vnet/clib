@@ -150,6 +150,16 @@ always_inline u8x8 u8x8_splat (u8 a)
 #define i16x4_splat u16x4_splat
 #define i8x8_splat u8x8_splat
 
+always_inline u32x u32x_splat (u32 a)
+{
+#if CLIB_VECTOR_WORD_BITS > 128
+  return (u32x) __builtin_ia32_pbroadcastd256 ((i32x4) {a});
+#else
+  u32x4 x = {a,a,a,a};
+  return x;
+#endif
+}
+
 always_inline u64x2 u64x2_read_lo (u64x2 x, u64 * a)
 { return (u64x2) __builtin_ia32_loadlps ((f32x4) x, (void *) a); }
 
@@ -317,33 +327,6 @@ _ (i32x2, i32x2, right, psrad);
   ((u64x2) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u64)))
 #define i64x2_word_shift_right(a,n) \
   ((i64x2) u8x16_word_shift_right((u8x16) (a), (n) * sizeof (u64)))
-
-/* SSE2 has no rotate instructions: use shifts to simulate them. */
-#define _(t,n,lr1,lr2)					\
-  always_inline t##x##n					\
-  t##x##n##_irotate_##lr1 (t##x##n w, int i)		\
-  {							\
-    ASSERT (i >= 0 && i <= BITS (t));			\
-    return (t##x##n##_ishift_##lr1 (w, i)		\
-	    | t##x##n##_ishift_##lr2 (w, BITS (t) - i)); \
-  }							\
-							\
-  always_inline t##x##n					\
-  t##x##n##_rotate_##lr1 (t##x##n w, t##x##n i)		\
-  {							\
-    t##x##n j = t##x##n##_splat (BITS (t));		\
-    return (t##x##n##_shift_##lr1 (w, i)		\
-	    | t##x##n##_shift_##lr2 (w, j - i));	\
-  }
-
-_ (u16, 8, left, right);
-_ (u16, 8, right, left);
-_ (u32, 4, left, right);
-_ (u32, 4, right, left);
-_ (u64, 2, left, right);
-_ (u64, 2, right, left);
-
-#undef _
 
 #define _(t,n,lr1,lr2)						\
   always_inline t##x##n						\

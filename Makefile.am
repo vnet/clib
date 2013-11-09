@@ -131,11 +131,11 @@ test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
-# noinst_PROGRAMS += test_vhash
-# test_vhash_SOURCES = clib/test_vhash.c clib/vhash.c
-# test_vhash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
-# test_vhash_LDADD = libclib.la
-# test_vhash_LDFLAGS = -static
+noinst_PROGRAMS += test_vhash
+test_vhash_SOURCES = clib/test_vhash.c clib/vhash.c
+test_vhash_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_vhash_LDADD = libclib.la
+test_vhash_LDFLAGS = -static
 
 # Unit tests to be included into standalone and kernel libraries
 CORE_UNIT_TEST_SOURCES = \

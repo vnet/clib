@@ -34,7 +34,7 @@
 #include <clib/time.h>
 #include <clib/vhash.h>
 
-#ifdef CLIB_HAVE_VEC128
+#if CLIB_VECTOR_WORD_BITS > 0
 
 typedef struct {
   u32 n_iter;
@@ -216,7 +216,7 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
    {									\
      vhash_set_stage (&tm->vhash,					\
 		      /* vector_index */ i,				\
-		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+		      /* n_vectors */ CLIB_VECTOR_WORD_LEN (u32),	\
 		      test_vhash_set_result,				\
 		      tm, N_KEY_U32);					\
    })									\
@@ -238,7 +238,7 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
    {									\
      vhash_unset_stage (&tm->vhash,					\
 			/* vector_index */ i,				\
-			/* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
+			/* n_vectors */ CLIB_VECTOR_WORD_LEN (u32),	\
 			test_vhash_unset_result,			\
 			tm, N_KEY_U32);					\
    })									\
@@ -698,15 +698,15 @@ int test_vhash_main (unformat_input_t * input)
   return 0;
 }
 
-#endif /* CLIB_HAVE_VEC128 */
+#else /* CLIB_VECTOR_WORD_BITS > 0 */
 
-#ifndef CLIB_HAVE_VEC128
 int test_vhash_main (unformat_input_t * input)
 {
   clib_error ("compiled without vector support");
   return 0;
 }
-#endif
+
+#endif /* CLIB_VECTOR_WORD_BITS > 0 */
 
 #ifdef CLIB_UNIX
 int main (int argc, char * argv [])
